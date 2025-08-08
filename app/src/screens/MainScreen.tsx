@@ -8,6 +8,8 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { describe, ocr, qa, tts } from '../api/client';
 import { base64ToUint8Array, pcm16ToWavBytes } from '../utils/pcmToWav';
+import { useSettings } from '../app/state/useSettings';
+
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { downscale } from '../utils/downscale';
 import { CaptureButton } from '../components/CaptureButton';
@@ -17,6 +19,8 @@ export default function MainScreen() {
   const [perm, requestPerm] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
   const cameraRef = useRef<any>(null);
+
+  const { settings } = useSettings();
 
   const [image, setImage] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -59,11 +63,12 @@ export default function MainScreen() {
     try {
       let result;
       const mime = image.split(';')[0].replace('data:', '') || 'image/jpeg';
-      if (mode === 'scene') result = await describe(b64, mime);
-      else if (mode === 'ocr') result = await ocr(b64, mime);
+      const opts = { verbosity: settings.verbosity, language: settings.language } as any;
+      if (mode === 'scene') result = await describe(b64, mime, opts);
+      else if (mode === 'ocr') result = await ocr(b64, mime, opts);
       else {
         if (!question.trim()) throw new Error('Please enter a question for Q&A');
-        result = await qa(b64, question.trim(), mime);
+        result = await qa(b64, question.trim(), mime, opts);
       }
       const t2 = Date.now();
       setText(result.text);

@@ -3,10 +3,12 @@ import type { IAIProvider, GenOptions, GenResult } from './IAIProvider.js';
 
 export function buildSystemPrompt(mode: 'scene'|'ocr'|'qa', options?: GenOptions) {
   const verbosity = options?.verbosity ?? 'brief';
+  const language = options?.language ?? 'darija';
+  const langDir = language === 'darija' ? 'Respond in Darija (Moroccan Arabic).' : language === 'ar' ? 'Respond in Modern Standard Arabic.' : 'Respond in English.';
   const base = {
-    scene: `You are Nadar, assisting blind users. Respond in Darija when possible. Format strictly as:\nIMMEDIATE: [1 short sentence]\nOBJECTS: [up to 2 bullets]\nNAVIGATION: [1 short sentence]\nKeep each part short and practical. Don’t identify people; avoid private screens; express uncertainty when unsure.`,
-    ocr: `Extract visible text and summarize in 2 bullets. If mixed languages, note them. Ask the user: 'Do you want a full readout?' Keep it concise.`,
-    qa: `Answer in one short sentence. If uncertain, say you are not sure and propose one clarifying question. Be helpful and safe.`,
+    scene: `${langDir} You are Nadar, assisting blind users. Format strictly as:\nIMMEDIATE: [1 short sentence]\nOBJECTS: [up to 2 bullets]\nNAVIGATION: [1 short sentence]\nKeep each part short and practical. Don’t identify people; avoid private screens; express uncertainty when unsure.`,
+    ocr: `${langDir} Extract visible text and summarize in 2 bullets. If mixed languages, note them. Ask the user: 'Do you want a full readout?' Keep it concise.`,
+    qa: `${langDir} Answer in one short sentence. If uncertain, say you are not sure and propose one clarifying question. Be helpful and safe.`,
   }[mode];
   const vb = verbosity === 'brief' ? ' Keep response to max 3 short bullet points.'
     : verbosity === 'detailed' ? ' Provide more detail but remain structured and concise.'
