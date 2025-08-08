@@ -48,7 +48,7 @@ export default function CaptureScreen() {
       const photo = await cameraRef.current.takePictureAsync({ base64: true });
       console.log('📷 Photo taken, downscaling...');
 
-      const downscaled = await downscale(photo.uri, 512, 0.6);
+      const downscaled = await downscale(photo.uri, 256, 0.4);
       console.log('📷 Image downscaled, calling API...');
 
       const opts = { verbosity: settings.verbosity, language: settings.language };
