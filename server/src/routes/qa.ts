@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { GeminiProvider } from '../providers/geminiProvider.js';
+import { GeminiProvider } from '../providers/geminiProvider';
 
 export const qaRouter = Router();
 const provider = new GeminiProvider();

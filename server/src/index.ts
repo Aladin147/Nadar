@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import express from 'express';
-import { describeRouter } from './routes/describe.js';
-import { ocrRouter } from './routes/ocr.js';
-import { qaRouter } from './routes/qa.js';
-import { ttsRouter } from './routes/tts.js';
+import { describeRouter } from './routes/describe';
+import { ocrRouter } from './routes/ocr';
+import { qaRouter } from './routes/qa';
+import { ttsRouter } from './routes/tts';
 
 const app = express();
 app.use(express.json({ limit: '5mb' }));

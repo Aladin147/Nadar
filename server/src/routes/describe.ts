@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { GeminiProvider } from '../providers/geminiProvider.js';
+import { GeminiProvider } from '../providers/geminiProvider';
 
 export const describeRouter = Router();
 const provider = new GeminiProvider();
 
 describeRouter.post('/', async (req, res) => {
-  const { imageBase64, options } = req.body ?? {};
+  const { imageBase64, options, mimeType } = req.body ?? {};
   if (!imageBase64) return res.status(400).json({ error: 'imageBase64 required' });
   try {
     const result = await provider.describe({ imageBase64, options });

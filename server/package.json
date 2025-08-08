@@ -5,17 +5,18 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "dev": "nodemon --watch src --ext ts --exec \"node --loader ts-node/esm src/index.ts\""
+    "dev": "nodemon --watch src --ext ts --exec \"ts-node --transpile-only src/index.ts\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
-  "type": "module",
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "zod": "^4.0.15"
   },
