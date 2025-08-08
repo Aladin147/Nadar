@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { GeminiProvider } from '../providers/geminiProvider';
+import { QABody } from './schemas';
 
 
 export const helpQA = 'POST /qa expects JSON: { imageBase64, question, options? }';
@@ -10,8 +11,9 @@ export const qaRouter = Router();
 const provider = new GeminiProvider();
 
 qaRouter.post('/', async (req, res) => {
-  const { imageBase64, question, options, mimeType } = req.body ?? {};
-  if (!imageBase64 || !question) return res.status(400).json({ error: 'imageBase64 and question required' });
+  const parse = QABody.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: parse.error.issues[0]?.message || 'invalid body' });
+  const { imageBase64, question, options, mimeType } = parse.data;
   try {
     const result = await provider.qa({ imageBase64, question, mimeType, options });
     res.json(result);

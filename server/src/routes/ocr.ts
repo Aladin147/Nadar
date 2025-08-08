@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { GeminiProvider } from '../providers/geminiProvider';
+import { OCRBody } from './schemas';
 
 
 export const helpOCR = 'POST /ocr expects JSON: { imageBase64, options? }';
@@ -10,8 +11,9 @@ export const ocrRouter = Router();
 const provider = new GeminiProvider();
 
 ocrRouter.post('/', async (req, res) => {
-  const { imageBase64, options, mimeType } = req.body ?? {};
-  if (!imageBase64) return res.status(400).json({ error: 'imageBase64 required' });
+  const parse = OCRBody.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: parse.error.issues[0]?.message || 'invalid body' });
+  const { imageBase64, options, mimeType } = parse.data;
   try {
     const result = await provider.ocr({ imageBase64, mimeType, options });
     res.json(result);
