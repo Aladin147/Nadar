@@ -3,11 +3,10 @@ import { GeminiProvider } from '../providers/geminiProvider';
 import { QABody } from './schemas';
 
 
+export const qaRouter = Router();
 export const helpQA = 'POST /qa expects JSON: { imageBase64, question, options? }';
 
 qaRouter.get('/', (_req, res) => res.type('text/plain').send(helpQA));
-
-export const qaRouter = Router();
 const provider = new GeminiProvider();
 
 qaRouter.post('/', async (req, res) => {

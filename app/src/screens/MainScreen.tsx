@@ -13,11 +13,13 @@ export default function MainScreen() {
   const [mode, setMode] = useState<'scene'|'ocr'|'qa'>('scene');
   const [perm, requestPerm] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
+  const cameraRef = useRef<any>(null);
 
   const [image, setImage] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
+  const [timings, setTimings] = useState<{ prep: number; model: number; total: number } | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
   async function pickImage() {
@@ -45,9 +47,12 @@ export default function MainScreen() {
     setImage(`data:${ds.mimeType};base64,${ds.base64}`);
   }
 
+  async function run() {
     if (!image) return;
-    setBusy(true); setText('');
+    setBusy(true); setText(''); setTimings(null);
+    const t0 = Date.now();
     const [, b64] = image.split(',');
+    const t1 = Date.now();
 
     try {
       let result;
@@ -58,9 +63,12 @@ export default function MainScreen() {
         if (!question.trim()) throw new Error('Please enter a question for Q&A');
         result = await qa(b64, question.trim(), mime);
       }
+      const t2 = Date.now();
       setText(result.text);
+      setTimings({ prep: t1 - t0, model: (result.timings?.modelMs || 0), total: t2 - t0 });
     } catch (e: any) {
       setText(`Error: ${e?.message || 'unknown'}`);
+      setTimings(null);
     } finally {
       setBusy(false);
     }
@@ -84,7 +92,15 @@ export default function MainScreen() {
         <Text style={styles.title}>Nadar MVP Tester</Text>
         <View style={styles.modes}>
           {(['scene','ocr','qa'] as const).map(m => (
-            <TouchableOpacity key={m} style={[styles.mode, mode===m && styles.modeActive]} onPress={()=>setMode(m)}>
+            <TouchableOpacity
+              key={m}
+              style={[styles.mode, mode===m && styles.modeActive]}
+              onPress={()=>setMode(m)}
+              accessibilityLabel={`${m.toUpperCase()} mode`}
+              accessibilityHint={`Switch to ${m} analysis mode`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: mode === m }}
+            >
               <Text style={styles.modeText}>{m.toUpperCase()}</Text>
             </TouchableOpacity>
           ))}
@@ -117,12 +133,12 @@ export default function MainScreen() {
 
         {showCamera && (
           <View style={{ height: 360, marginTop: 10, borderRadius: 12, overflow: 'hidden' }}>
-            <CameraView style={{ flex: 1 }} facing="back">
+            <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back">
               <View style={{ position: 'absolute', bottom: 16, alignSelf: 'center' }}>
                 <CaptureButton title="Capture" onPress={async ()=>{
-                  const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-                  if (!res.canceled && res.assets?.length) {
-                    await onCapture(res.assets[0].uri);
+                  if (cameraRef.current) {
+                    const photo = await cameraRef.current.takePictureAsync({ base64: true });
+                    await onCapture(photo.uri);
                   }
                 }} />
               </View>
@@ -131,9 +147,18 @@ export default function MainScreen() {
         )}
 
         {!!text && (
-          <View style={{ marginTop: 14 }}>
+          <View style={{ marginTop: 20 }}>
             <Text selectable style={styles.output}>{text}</Text>
-            <Button title="Play Audio" onPress={playTTS} />
+            {timings && (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, justifyContent: 'center' }}>
+                <Text style={styles.timing}>Prep: {timings.prep}ms</Text>
+                <Text style={styles.timing}>Model: {timings.model}ms</Text>
+                <Text style={styles.timing}>Total: {timings.total}ms</Text>
+              </View>
+            )}
+            <View style={{ marginTop: 12 }}>
+              <CaptureButton title="🔊 Play Audio" onPress={playTTS} />
+            </View>
           </View>
         )}
       </ScrollView>
@@ -142,13 +167,48 @@ export default function MainScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111' },
-  inner: { padding: 16 },
-  title: { fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 12 },
-  modes: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  mode: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#333' },
-  modeActive: { backgroundColor: '#6c63ff' },
-  modeText: { color: '#fff', fontWeight: '600' },
-  output: { color: '#fff', backgroundColor: '#222', padding: 10, borderRadius: 8 },
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  inner: { padding: 20 },
+  title: { fontSize: 28, fontWeight: '800', color: '#ffffff', marginBottom: 20, textAlign: 'center' },
+  modes: { flexDirection: 'row', gap: 12, marginBottom: 20, justifyContent: 'center' },
+  mode: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  modeActive: {
+    backgroundColor: '#6366f1',
+    borderColor: '#8b5cf6',
+    shadowColor: '#6366f1',
+    shadowOpacity: 0.4,
+  },
+  modeText: { color: '#fff', fontWeight: '700', fontSize: 14, textTransform: 'uppercase' },
+  output: {
+    color: '#e5e5e5',
+    backgroundColor: '#1a1a1a',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  timing: {
+    color: '#9ca3af',
+    fontSize: 12,
+    fontWeight: '500',
+    backgroundColor: '#262626',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
 });
 

@@ -3,11 +3,10 @@ import { GeminiProvider } from '../providers/geminiProvider';
 import { TTSBody } from './schemas';
 
 
+export const ttsRouter = Router();
 export const helpTTS = 'POST /tts expects JSON: { text, voice? }';
 
 ttsRouter.get('/', (_req, res) => res.type('text/plain').send(helpTTS));
-
-export const ttsRouter = Router();
 const provider = new GeminiProvider();
 
 ttsRouter.post('/', async (req, res) => {

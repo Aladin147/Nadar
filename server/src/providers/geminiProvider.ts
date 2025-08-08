@@ -27,7 +27,10 @@ export class GeminiProvider implements IAIProvider {
     const sys = buildSystemPrompt('scene', options);
     const parts = [sys, toInlineImage(imageBase64, mimeType)];
     const t0 = Date.now();
-    const result = await this.visionModel.generateContent(parts as any);
+    const result = await Promise.race([
+      this.visionModel.generateContent(parts as any),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 30000))
+    ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
     return { text, timings: { modelMs: t1 - t0 } };
@@ -37,7 +40,10 @@ export class GeminiProvider implements IAIProvider {
     const sys = buildSystemPrompt('ocr', options);
     const parts = [sys, toInlineImage(imageBase64, mimeType)];
     const t0 = Date.now();
-    const result = await this.visionModel.generateContent(parts as any);
+    const result = await Promise.race([
+      this.visionModel.generateContent(parts as any),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 30000))
+    ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
     return { text, timings: { modelMs: t1 - t0 } };
@@ -47,26 +53,32 @@ export class GeminiProvider implements IAIProvider {
     const sys = buildSystemPrompt('qa', options);
     const parts = [sys + `\n\nQUESTION: ${question}`, toInlineImage(imageBase64, mimeType)];
     const t0 = Date.now();
-    const result = await this.visionModel.generateContent(parts as any);
+    const result = await Promise.race([
+      this.visionModel.generateContent(parts as any),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 30000))
+    ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
     return { text, timings: { modelMs: t1 - t0 } };
   }
 
   async tts({ text, voice }: { text: string; voice?: string }): Promise<{ audioBase64: string }> {
-    const result = await this.ttsModel.generateContent({
-      contents: [{ role: 'user', parts: [{ text }] }],
-      generationConfig: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: voice || 'Kore'
+    const result = await Promise.race([
+      this.ttsModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text }] }],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: voice || 'Kore'
+              }
             }
           }
         }
-      }
-    } as any);
+      } as any),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('TTS timeout')), 20000))
+    ]) as any;
     const audioBase64 = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || '';
     return { audioBase64 };
   }
