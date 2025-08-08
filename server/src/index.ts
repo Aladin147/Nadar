@@ -15,7 +15,7 @@ const limiter = rateLimit({ windowMs: 60_000, limit: 60 });
 app.use(limiter);
 
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
