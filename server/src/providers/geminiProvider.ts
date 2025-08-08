@@ -24,6 +24,8 @@ export class GeminiProvider implements IAIProvider {
   private gen = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
   private visionModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash' });
   private ttsModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash-preview-tts' });
+  private timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 30000;
+  private ttsTimeoutMs = Number(process.env.GEMINI_TTS_TIMEOUT_MS) || 20000;
 
   async describe({ imageBase64, mimeType, options }: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
     const sys = buildSystemPrompt('scene', options);
@@ -31,7 +33,7 @@ export class GeminiProvider implements IAIProvider {
     const t0 = Date.now();
     const result = await Promise.race([
       this.visionModel.generateContent(parts as any),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 30000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
     ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
@@ -44,7 +46,7 @@ export class GeminiProvider implements IAIProvider {
     const t0 = Date.now();
     const result = await Promise.race([
       this.visionModel.generateContent(parts as any),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 30000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
     ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
@@ -57,7 +59,7 @@ export class GeminiProvider implements IAIProvider {
     const t0 = Date.now();
     const result = await Promise.race([
       this.visionModel.generateContent(parts as any),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 30000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
     ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
@@ -79,7 +81,7 @@ export class GeminiProvider implements IAIProvider {
           }
         }
       } as any),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('TTS timeout')), 20000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('TTS timeout')), this.ttsTimeoutMs))
     ]) as any;
     const audioBase64 = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || '';
     return { audioBase64 };
