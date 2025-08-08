@@ -1,11 +1,30 @@
-import * as ImageManipulator from 'expo-image-manipulator';
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 
 export async function downscale(uri: string, maxDim = 1024, compress = 0.8) {
-  const result = await ImageManipulator.manipulateAsync(
-    uri,
-    [{ resize: { width: maxDim, height: maxDim } }],
-    { compress, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-  );
-  return { base64: result.base64!, mimeType: 'image/jpeg', uri: result.uri };
+  if (Platform.OS !== 'web') {
+    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    return { base64, mimeType: 'image/jpeg', uri };
+  }
+  return new Promise<{ base64: string; mimeType: string; uri: string }>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const { width, height } = img;
+      const scale = Math.min(1, maxDim / Math.max(width, height));
+      const w = Math.round(width * scale);
+      const h = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('Canvas 2D context not available'));
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', compress);
+      const base64 = dataUrl.split(',')[1] || '';
+      resolve({ base64, mimeType: 'image/jpeg', uri: dataUrl });
+    };
+    img.onerror = (e) => reject(new Error('Failed to load image for downscale'));
+    img.src = uri;
+  });
 }
 
