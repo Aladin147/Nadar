@@ -8,11 +8,18 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
 
   for (let i = 0; i < attempts; i++) {
     try {
+      // Add timeout to fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const res = await fetch(`${API_BASE}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       console.log(`Response status: ${res.status}`);
 
@@ -33,6 +40,9 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
       return result;
     } catch (e: any) {
       console.log(`API Error (attempt ${i + 1}):`, e.message);
+      if (e.name === 'AbortError') {
+        console.log('Request timed out after 10 seconds');
+      }
       lastErr = e;
 
       if (i < attempts - 1) {
@@ -62,5 +72,31 @@ export function qa(imageBase64: string, question: string, mimeType?: string, opt
 }
 export function tts(text: string, voice?: string) {
   return postJSON<TTSResult>(`/tts`, { text, voice });
+}
+
+export async function testConnection() {
+  try {
+    console.log('Testing connection to:', `${API_BASE}/health`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(`${API_BASE}/health`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    console.log('Health check response:', res.status);
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log('Health check data:', data);
+      return true;
+    }
+    return false;
+  } catch (e: any) {
+    console.log('Connection test failed:', e.message);
+    return false;
+  }
 }
 

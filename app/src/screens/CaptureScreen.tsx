@@ -5,7 +5,7 @@ import { theme } from '../app/theme';
 import { Segmented } from '../app/components/Segmented';
 import { useAppState } from '../app/state/AppContext';
 import { downscale } from '../utils/downscale';
-import { describe, ocr, qa } from '../api/client';
+import { describe, ocr, qa, testConnection } from '../api/client';
 import { useSettings } from '../app/state/useSettings';
 
 const { width, height } = Dimensions.get('window');
@@ -97,11 +97,21 @@ export default function CaptureScreen() {
         <View style={styles.overlay}>
           <View style={styles.header}>
             <Text style={styles.title}>Nadar</Text>
-            <Segmented 
-              options={['scene', 'ocr', 'qa']} 
-              value={mode} 
-              onChange={(v) => setMode(v as any)} 
+            <Segmented
+              options={['scene', 'ocr', 'qa']}
+              value={mode}
+              onChange={(v) => setMode(v as any)}
             />
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={async () => {
+                console.log('🔍 Testing connection...');
+                const success = await testConnection();
+                console.log('🔍 Connection test result:', success);
+              }}
+            >
+              <Text style={styles.testButtonText}>Test Connection</Text>
+            </TouchableOpacity>
           </View>
 
           {mode === 'qa' && (
@@ -256,6 +266,19 @@ const styles = StyleSheet.create({
   retryText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  testButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: theme.spacing(2),
+    paddingVertical: theme.spacing(1),
+    borderRadius: theme.radius.md,
+    marginTop: theme.spacing(1),
+  },
+  testButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   permissionContainer: {
     flex: 1,
