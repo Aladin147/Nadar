@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { GeminiProvider } from '../providers/geminiProvider';
 
+
+export const helpOCR = 'POST /ocr expects JSON: { imageBase64, options? }';
+
+ocrRouter.get('/', (_req, res) => res.type('text/plain').send(helpOCR));
+
 export const ocrRouter = Router();
 const provider = new GeminiProvider();
 

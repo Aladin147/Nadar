@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { GeminiProvider } from '../providers/geminiProvider';
 
+
+export const helpTTS = 'POST /tts expects JSON: { text, voice? }';
+
+ttsRouter.get('/', (_req, res) => res.type('text/plain').send(helpTTS));
+
 export const ttsRouter = Router();
 const provider = new GeminiProvider();
 

@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { GeminiProvider } from '../providers/geminiProvider';
 
+
+export const helpDescribe = 'POST /describe expects JSON: { imageBase64, options? }';
+
+describeRouter.get('/', (_req, res) => res.type('text/plain').send(helpDescribe));
+
 export const describeRouter = Router();
 const provider = new GeminiProvider();
 

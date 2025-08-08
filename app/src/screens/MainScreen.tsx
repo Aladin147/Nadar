@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Button, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Button, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
@@ -15,11 +15,12 @@ export default function MainScreen() {
   const soundRef = useRef<Audio.Sound | null>(null);
 
   async function pickImage() {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, base64: true });
     if (!res.canceled && res.assets?.length) {
       const a = res.assets[0];
-      const base64 = await FileSystem.readAsStringAsync(a.uri, { encoding: FileSystem.EncodingType.Base64 });
-      setImage(`data:${a.mimeType || 'image/jpeg'};base64,${base64}`);
+      const base64 = a.base64 || await FileSystem.readAsStringAsync(a.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const mime = a.mimeType || 'image/jpeg';
+      setImage(`data:${mime};base64,${base64}`);
     }
   }
 
@@ -32,7 +33,10 @@ export default function MainScreen() {
       let result;
       if (mode === 'scene') result = await describe(b64);
       else if (mode === 'ocr') result = await ocr(b64);
-      else result = await qa(b64, question || '');
+      else {
+        if (!question.trim()) throw new Error('Please enter a question for Q&A');
+        result = await qa(b64, question.trim());
+      }
       setText(result.text);
     } catch (e: any) {
       setText(`Error: ${e?.message || 'unknown'}`);
@@ -70,8 +74,14 @@ export default function MainScreen() {
 
         {mode==='qa' && (
           <View style={{ marginTop: 10 }}>
-            <Text>Question:</Text>
-            {/* For simplicity, hardcode a question for now. We can add TextInput later. */}
+            <Text style={{ color: '#ccc', marginBottom: 6 }}>Question:</Text>
+            <TextInput
+              value={question}
+              onChangeText={setQuestion}
+              placeholder="Ask about the image…"
+              placeholderTextColor="#888"
+              style={{ backgroundColor: '#222', color: '#fff', padding: 10, borderRadius: 8 }}
+            />
           </View>
         )}
 
