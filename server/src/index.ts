@@ -40,7 +40,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   res.status(status).json({ error: message });
 });
 
-app.listen(port, () => {
-  console.log(`Nadar server listening on :${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Nadar server listening on 0.0.0.0:${port}`);
 });
 

@@ -7,6 +7,7 @@ import { useAppState } from '../app/state/AppContext';
 import { downscale } from '../utils/downscale';
 import { describe, ocr, qa, testConnection } from '../api/client';
 import { useSettings } from '../app/state/useSettings';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -133,8 +134,8 @@ export default function CaptureScreen() {
           )}
 
           <View style={styles.captureArea}>
-            <TouchableOpacity 
-              style={styles.captureButton} 
+            <TouchableOpacity
+              style={styles.captureButton}
               onPress={handleCapture}
               disabled={state.isLoading}
               accessibilityLabel={`Capture for ${mode} analysis`}
@@ -147,6 +148,28 @@ export default function CaptureScreen() {
                   <Text style={styles.captureText}>📷</Text>
                 )}
               </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.libraryButton}
+              onPress={async () => {
+                try {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: false,
+                    quality: 1,
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    await processImage(result.assets[0].uri, 'library');
+                  }
+                } catch (error: any) {
+                  dispatch({ type: 'SET_ERROR', error: 'Failed to select image' });
+                }
+              }}
+              disabled={state.isLoading}
+              accessibilityLabel="Select from photo library"
+            >
+              <Text style={styles.libraryText}>📱 Library</Text>
             </TouchableOpacity>
           </View>
 
@@ -277,6 +300,19 @@ const styles = StyleSheet.create({
   testButtonText: {
     color: '#fff',
     fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  libraryButton: {
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    paddingHorizontal: theme.spacing(2),
+    paddingVertical: theme.spacing(1),
+    borderRadius: theme.radius.md,
+    marginTop: theme.spacing(2),
+  },
+  libraryText: {
+    color: '#000',
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },

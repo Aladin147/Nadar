@@ -6,6 +6,7 @@ import LandingScreen from './src/screens/LandingScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import CaptureScreen from './src/screens/CaptureScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
 function AppContent() {
@@ -40,6 +41,8 @@ function AppContent() {
         return <CaptureScreen />;
       case 'results':
         return <ResultsScreen />;
+      case 'history':
+        return <HistoryScreen />;
       case 'settings':
         return <SettingsScreen />;
       default:
