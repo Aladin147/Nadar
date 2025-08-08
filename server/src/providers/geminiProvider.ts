@@ -14,7 +14,7 @@ function buildSystemPrompt(mode: 'scene'|'ocr'|'qa', options?: GenOptions) {
   return base + vb;
 }
 
-function toInlineImage(imageBase64: string, mimeType: string) {
+function toInlineImage(imageBase64: string, mimeType: string = 'image/jpeg') {
   return { inlineData: { data: imageBase64, mimeType } } as const;
 }
 
@@ -23,9 +23,9 @@ export class GeminiProvider implements IAIProvider {
   private visionModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash' });
   private ttsModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash-preview-tts' });
 
-  async describe({ imageBase64, options }: { imageBase64: string; options?: GenOptions }): Promise<GenResult> {
+  async describe({ imageBase64, mimeType, options }: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
     const sys = buildSystemPrompt('scene', options);
-    const parts = [sys, toInlineImage(imageBase64, 'image/jpeg')];
+    const parts = [sys, toInlineImage(imageBase64, mimeType)];
     const t0 = Date.now();
     const result = await this.visionModel.generateContent(parts as any);
     const t1 = Date.now();
@@ -33,9 +33,9 @@ export class GeminiProvider implements IAIProvider {
     return { text, timings: { modelMs: t1 - t0 } };
   }
 
-  async ocr({ imageBase64, options }: { imageBase64: string; options?: GenOptions }): Promise<GenResult> {
+  async ocr({ imageBase64, mimeType, options }: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
     const sys = buildSystemPrompt('ocr', options);
-    const parts = [sys, toInlineImage(imageBase64, 'image/jpeg')];
+    const parts = [sys, toInlineImage(imageBase64, mimeType)];
     const t0 = Date.now();
     const result = await this.visionModel.generateContent(parts as any);
     const t1 = Date.now();
@@ -43,9 +43,9 @@ export class GeminiProvider implements IAIProvider {
     return { text, timings: { modelMs: t1 - t0 } };
   }
 
-  async qa({ imageBase64, question, options }: { imageBase64: string; question: string; options?: GenOptions }): Promise<GenResult> {
+  async qa({ imageBase64, question, mimeType, options }: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
     const sys = buildSystemPrompt('qa', options);
-    const parts = [sys + `\n\nQUESTION: ${question}`, toInlineImage(imageBase64, 'image/jpeg')];
+    const parts = [sys + `\n\nQUESTION: ${question}`, toInlineImage(imageBase64, mimeType)];
     const t0 = Date.now();
     const result = await this.visionModel.generateContent(parts as any);
     const t1 = Date.now();
