@@ -1,11 +1,14 @@
 import 'dotenv/config';
+import 'dotenv/config';
 import express from 'express';
+import cors from 'cors';
 import { describeRouter } from './routes/describe';
 import { ocrRouter } from './routes/ocr';
 import { qaRouter } from './routes/qa';
 import { ttsRouter } from './routes/tts';
 
 const app = express();
+app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
