@@ -32,7 +32,6 @@ export default function MainScreen() {
     }
   }
 
-  async function run() {
   async function openCamera() {
     if (!perm?.granted) {
       const r = await requestPerm();
