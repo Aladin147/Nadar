@@ -38,27 +38,37 @@ export default function CaptureScreen() {
 
   async function handleCapture() {
     if (!cameraRef.current || state.isLoading) return;
-    
+
     dispatch({ type: 'SET_LOADING', loading: true });
-    
+    dispatch({ type: 'SET_ERROR', error: null });
+
     try {
+      console.log('📷 Taking photo...');
       const photo = await cameraRef.current.takePictureAsync({ base64: true });
+      console.log('📷 Photo taken, downscaling...');
+
       const downscaled = await downscale(photo.uri, 1024, 0.8);
-      
+      console.log('📷 Image downscaled, calling API...');
+
       const opts = { verbosity: settings.verbosity, language: settings.language };
       let result;
-      
+
       if (mode === 'scene') {
+        console.log('🔍 Calling describe API...');
         result = await describe(downscaled.base64, downscaled.mimeType, opts);
       } else if (mode === 'ocr') {
+        console.log('📖 Calling OCR API...');
         result = await ocr(downscaled.base64, downscaled.mimeType, opts);
       } else {
         if (!question.trim()) {
-          dispatch({ type: 'SET_ERROR', error: 'Please enter a question for Q&A mode' });
+          dispatch({ type: 'SET_ERROR', error: 'Please select a question for Q&A mode' });
           return;
         }
+        console.log('❓ Calling Q&A API...');
         result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts);
       }
+
+      console.log('✅ API call successful, navigating to results...');
 
       const captureResult = {
         id: Date.now().toString(),
@@ -73,9 +83,11 @@ export default function CaptureScreen() {
       dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
       dispatch({ type: 'ADD_TO_HISTORY', result: captureResult });
       dispatch({ type: 'NAVIGATE', route: 'results' });
-      
+
     } catch (error: any) {
-      dispatch({ type: 'SET_ERROR', error: error.message || 'Failed to analyze image' });
+      console.error('❌ Capture error:', error);
+      const errorMessage = error.message || 'Failed to analyze image';
+      dispatch({ type: 'SET_ERROR', error: `Error: ${errorMessage}. Check server connection.` });
     }
   }
 
@@ -129,11 +141,23 @@ export default function CaptureScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.instruction}>
-              {mode === 'scene' && 'Point at your surroundings for instant scene analysis'}
-              {mode === 'ocr' && 'Point at text to read signs, menus, and documents'}
-              {mode === 'qa' && 'Select a question and point at what you want to know about'}
-            </Text>
+            {state.error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Error: {state.error}</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => dispatch({ type: 'SET_ERROR', error: null })}
+                >
+                  <Text style={styles.retryText}>Dismiss</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={styles.instruction}>
+                {mode === 'scene' && 'Point at your surroundings for instant scene analysis'}
+                {mode === 'ocr' && 'Point at text to read signs, menus, and documents'}
+                {mode === 'qa' && 'Select a question and point at what you want to know about'}
+              </Text>
+            )}
           </View>
         </View>
       </CameraView>
@@ -210,6 +234,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
     lineHeight: 20,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(220, 38, 38, 0.9)',
+    borderRadius: theme.radius.md,
+    padding: theme.spacing(2),
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#fff',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: theme.spacing(1),
+  },
+  retryButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: theme.spacing(2),
+    paddingVertical: theme.spacing(1),
+    borderRadius: theme.radius.sm,
+  },
+  retryText: {
+    color: '#fff',
+    fontWeight: '600',
   },
   permissionContainer: {
     flex: 1,

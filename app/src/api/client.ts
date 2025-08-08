@@ -4,6 +4,8 @@ export type Mode = 'scene' | 'ocr' | 'qa';
 
 export async function postJSON<T>(path: string, body: any, attempts = 2): Promise<T> {
   let lastErr: any;
+  console.log(`API Call: ${API_BASE}${path}`);
+
   for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(`${API_BASE}${path}`, {
@@ -11,24 +13,38 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+
+      console.log(`Response status: ${res.status}`);
+
       if (!res.ok) {
+        const errorText = await res.text();
+        console.log(`Error response: ${errorText}`);
+
         // Retry on 5xx only
         if (res.status >= 500 && i < attempts - 1) {
           await new Promise(r => setTimeout(r, 400 * (i + 1)));
           continue;
         }
-        throw new Error(`HTTP ${res.status}`);
+        throw new Error(`Server error (${res.status}): ${errorText}`);
       }
-      return res.json();
+
+      const result = await res.json();
+      console.log('API Success:', result);
+      return result;
     } catch (e: any) {
+      console.log(`API Error (attempt ${i + 1}):`, e.message);
       lastErr = e;
+
       if (i < attempts - 1) {
         await new Promise(r => setTimeout(r, 400 * (i + 1)));
         continue;
       }
     }
   }
-  throw lastErr || new Error('Network error');
+
+  const finalError = lastErr || new Error('Network error');
+  console.log('Final API Error:', finalError.message);
+  throw finalError;
 }
 
 type Timings = { modelMs: number };
