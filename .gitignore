@@ -1,0 +1,19 @@
+# General
+node_modules/
+.env
+.DS_Store
+
+# Server
+/server/node_modules/
+/server/dist/
+/server/.env
+/server/npm-debug.log*
+
+# App (placeholder)
+/app/node_modules/
+/app/android/
+/app/ios/
+
+# Keys
+Gemini_API_KEY.txt
+
