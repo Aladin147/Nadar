@@ -38,11 +38,14 @@ export default function LandingScreen({ onStart, onDemo, onSettings }: { onStart
   );
 }
 
-function Feature({ title, desc }: { title: string; desc: string }) {
+function Feature({ icon, title, desc }: { icon: string; title: string; desc: string }) {
   return (
     <View style={styles.feature}>
-      <Text style={styles.featureTitle}>{title}</Text>
-      <Text style={styles.featureDesc}>{desc}</Text>
+      <Text style={styles.featureIcon}>{icon}</Text>
+      <View style={styles.featureContent}>
+        <Text style={styles.featureTitle}>{title}</Text>
+        <Text style={styles.featureDesc}>{desc}</Text>
+      </View>
     </View>
   );
 }

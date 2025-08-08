@@ -1,0 +1,244 @@
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { theme } from '../app/theme';
+import { Segmented } from '../app/components/Segmented';
+import { useAppState } from '../app/state/AppContext';
+import { downscale } from '../utils/downscale';
+import { describe, ocr, qa } from '../api/client';
+import { useSettings } from '../app/state/useSettings';
+
+const { width, height } = Dimensions.get('window');
+
+export default function CaptureScreen() {
+  const { state, dispatch } = useAppState();
+  const { settings } = useSettings();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [mode, setMode] = useState<'scene' | 'ocr' | 'qa'>('scene');
+  const [question, setQuestion] = useState('');
+  const cameraRef = useRef<any>(null);
+
+  if (!permission) {
+    return <View style={styles.container}><Text style={styles.permissionText}>Loading camera...</Text></View>;
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <Text style={styles.permissionTitle}>Camera Access Required</Text>
+          <Text style={styles.permissionText}>Nadar needs camera access to analyze your surroundings.</Text>
+          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+            <Text style={styles.permissionButtonText}>Enable Camera</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  async function handleCapture() {
+    if (!cameraRef.current || state.isLoading) return;
+    
+    dispatch({ type: 'SET_LOADING', loading: true });
+    
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ base64: true });
+      const downscaled = await downscale(photo.uri, 1024, 0.8);
+      
+      const opts = { verbosity: settings.verbosity, language: settings.language };
+      let result;
+      
+      if (mode === 'scene') {
+        result = await describe(downscaled.base64, downscaled.mimeType, opts);
+      } else if (mode === 'ocr') {
+        result = await ocr(downscaled.base64, downscaled.mimeType, opts);
+      } else {
+        if (!question.trim()) {
+          dispatch({ type: 'SET_ERROR', error: 'Please enter a question for Q&A mode' });
+          return;
+        }
+        result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts);
+      }
+
+      const captureResult = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        imageUri: photo.uri,
+        mode,
+        question: mode === 'qa' ? question : undefined,
+        result: result.text,
+        timings: result.timings,
+      };
+
+      dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
+      dispatch({ type: 'ADD_TO_HISTORY', result: captureResult });
+      dispatch({ type: 'NAVIGATE', route: 'results' });
+      
+    } catch (error: any) {
+      dispatch({ type: 'SET_ERROR', error: error.message || 'Failed to analyze image' });
+    }
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <CameraView ref={cameraRef} style={styles.camera} facing="back">
+        <View style={styles.overlay}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Nadar</Text>
+            <Segmented 
+              options={['scene', 'ocr', 'qa']} 
+              value={mode} 
+              onChange={(v) => setMode(v as any)} 
+            />
+          </View>
+
+          {mode === 'qa' && (
+            <View style={styles.questionContainer}>
+              <Text style={styles.questionLabel}>What would you like to know?</Text>
+              {/* For now, show preset questions - full TextInput in next iteration */}
+              <View style={styles.presetQuestions}>
+                {['What is this?', 'What color is it?', 'Is there text?'].map(q => (
+                  <TouchableOpacity 
+                    key={q} 
+                    style={[styles.presetQuestion, question === q && styles.presetQuestionActive]}
+                    onPress={() => setQuestion(q)}
+                  >
+                    <Text style={styles.presetQuestionText}>{q}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <View style={styles.captureArea}>
+            <TouchableOpacity 
+              style={styles.captureButton} 
+              onPress={handleCapture}
+              disabled={state.isLoading}
+              accessibilityLabel={`Capture for ${mode} analysis`}
+              accessibilityHint="Tap to take photo and analyze"
+            >
+              <View style={[styles.captureInner, state.isLoading && styles.captureLoading]}>
+                {state.isLoading ? (
+                  <Text style={styles.captureText}>Analyzing...</Text>
+                ) : (
+                  <Text style={styles.captureText}>📷</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.instruction}>
+              {mode === 'scene' && 'Point at your surroundings for instant scene analysis'}
+              {mode === 'ocr' && 'Point at text to read signs, menus, and documents'}
+              {mode === 'qa' && 'Select a question and point at what you want to know about'}
+            </Text>
+          </View>
+        </View>
+      </CameraView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.bg },
+  camera: { flex: 1 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+  header: { 
+    paddingTop: theme.spacing(2), 
+    paddingHorizontal: theme.spacing(2),
+    alignItems: 'center',
+    gap: theme.spacing(2),
+  },
+  title: { 
+    color: '#fff', 
+    fontSize: 20, 
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  questionContainer: {
+    margin: theme.spacing(2),
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing(2),
+  },
+  questionLabel: { color: '#fff', fontWeight: '600', marginBottom: theme.spacing(1) },
+  presetQuestions: { gap: theme.spacing(1) },
+  presetQuestion: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: theme.radius.md,
+    padding: theme.spacing(1),
+  },
+  presetQuestionActive: { backgroundColor: theme.colors.primary },
+  presetQuestionText: { color: '#fff', textAlign: 'center' },
+  captureArea: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+  },
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  captureInner: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureLoading: { backgroundColor: theme.colors.primary },
+  captureText: { fontSize: 24, fontWeight: '800' },
+  footer: {
+    padding: theme.spacing(2),
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  instruction: {
+    color: '#fff',
+    textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing(3),
+  },
+  permissionTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: theme.spacing(2),
+    textAlign: 'center',
+  },
+  permissionText: {
+    color: theme.colors.textMut,
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: theme.spacing(3),
+  },
+  permissionButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing(2),
+    paddingHorizontal: theme.spacing(3),
+    borderRadius: theme.radius.lg,
+  },
+  permissionButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+});
