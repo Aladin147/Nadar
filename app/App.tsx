@@ -5,6 +5,7 @@ import { AppNavigator } from './src/app/navigation/AppNavigator';
 import LandingScreen from './src/screens/LandingScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import CaptureScreen from './src/screens/CaptureScreen';
+import ResultsScreen from './src/screens/ResultsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
 function AppContent() {
@@ -37,6 +38,8 @@ function AppContent() {
         return <OnboardingScreen onComplete={handleCompleteOnboarding} />;
       case 'capture':
         return <CaptureScreen />;
+      case 'results':
+        return <ResultsScreen />;
       case 'settings':
         return <SettingsScreen />;
       default:
