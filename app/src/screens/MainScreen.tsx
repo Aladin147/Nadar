@@ -1,5 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Button, Image, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Segmented } from '../app/components/Segmented';
+import { PrimaryButton } from '../app/components/PrimaryButton';
+import { theme } from '../app/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
@@ -89,21 +92,7 @@ export default function MainScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.inner}>
         <Text style={styles.title}>Nadar MVP Tester</Text>
-        <View style={styles.modes}>
-          {(['scene','ocr','qa'] as const).map(m => (
-            <TouchableOpacity
-              key={m}
-              style={[styles.mode, mode===m && styles.modeActive]}
-              onPress={()=>setMode(m)}
-              accessibilityLabel={`${m.toUpperCase()} mode`}
-              accessibilityHint={`Switch to ${m} analysis mode`}
-              accessibilityRole="button"
-              accessibilityState={{ selected: mode === m }}
-            >
-              <Text style={styles.modeText}>{m.toUpperCase()}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Segmented options={['scene','ocr','qa']} value={mode} onChange={(v)=>setMode(v as any)} />
 
         <Button title="Pick Image" onPress={pickImage} />
         {image && <Image source={{ uri: image }} style={{ width: '100%', height: 200, marginTop: 10, borderRadius: 8 }} resizeMode="cover" />}
@@ -166,9 +155,9 @@ export default function MainScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
-  inner: { padding: 20 },
-  title: { fontSize: 28, fontWeight: '800', color: '#ffffff', marginBottom: 20, textAlign: 'center' },
+  container: { flex: 1, backgroundColor: theme.colors.bg },
+  inner: { padding: theme.spacing(2) },
+  title: { ...theme.typography.title, color: theme.colors.text, marginBottom: theme.spacing(2), textAlign: 'center' },
   modes: { flexDirection: 'row', gap: 12, marginBottom: 20, justifyContent: 'center' },
   mode: {
     paddingVertical: 12,

@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { IAIProvider, GenOptions, GenResult } from './IAIProvider.js';
 
-function buildSystemPrompt(mode: 'scene'|'ocr'|'qa', options?: GenOptions) {
+export function buildSystemPrompt(mode: 'scene'|'ocr'|'qa', options?: GenOptions) {
   const verbosity = options?.verbosity ?? 'brief';
   const base = {
     scene: `You are Nadar, assisting blind users. Respond in Darija when possible. Format strictly as:\nIMMEDIATE: [1 short sentence]\nOBJECTS: [up to 2 bullets]\nNAVIGATION: [1 short sentence]\nKeep each part short and practical. Don’t identify people; avoid private screens; express uncertainty when unsure.`,

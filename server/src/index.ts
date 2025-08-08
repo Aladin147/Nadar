@@ -28,6 +28,18 @@ app.use('/qa', qaRouter);
 app.use('/tts', ttsRouter);
 
 const port = process.env.PORT || 4000;
+// Centralized error handler (must be before listen)
+import type { NextFunction, Request, Response } from 'express';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Payload too large' });
+  }
+  const status = typeof err?.status === 'number' ? err.status : 500;
+  const message = err?.message || 'Internal server error';
+  res.status(status).json({ error: message });
+});
+
 app.listen(port, () => {
   console.log(`Nadar server listening on :${port}`);
 });
