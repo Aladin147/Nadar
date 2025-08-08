@@ -5,9 +5,15 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { describe, ocr, qa, tts } from '../api/client';
 import { base64ToUint8Array, pcm16ToWavBytes } from '../utils/pcmToWav';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { downscale } from '../utils/downscale';
+import { CaptureButton } from '../components/CaptureButton';
 
 export default function MainScreen() {
   const [mode, setMode] = useState<'scene'|'ocr'|'qa'>('scene');
+  const [perm, requestPerm] = useCameraPermissions();
+  const [showCamera, setShowCamera] = useState(false);
+
   const [image, setImage] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [question, setQuestion] = useState('');
@@ -25,17 +31,32 @@ export default function MainScreen() {
   }
 
   async function run() {
+  async function openCamera() {
+    if (!perm?.granted) {
+      const r = await requestPerm();
+      if (!r.granted) return;
+    }
+    setShowCamera(true);
+  }
+
+  async function onCapture(uri: string) {
+    setShowCamera(false);
+    const ds = await downscale(uri, 1024, 0.8);
+    setImage(`data:${ds.mimeType};base64,${ds.base64}`);
+  }
+
     if (!image) return;
     setBusy(true); setText('');
     const [, b64] = image.split(',');
 
     try {
       let result;
-      if (mode === 'scene') result = await describe(b64);
-      else if (mode === 'ocr') result = await ocr(b64);
+      const mime = image.split(';')[0].replace('data:', '') || 'image/jpeg';
+      if (mode === 'scene') result = await describe(b64, mime);
+      else if (mode === 'ocr') result = await ocr(b64, mime);
       else {
         if (!question.trim()) throw new Error('Please enter a question for Q&A');
-        result = await qa(b64, question.trim());
+        result = await qa(b64, question.trim(), mime);
       }
       setText(result.text);
     } catch (e: any) {
@@ -88,6 +109,26 @@ export default function MainScreen() {
         <View style={{ marginTop: 10 }}>
           <Button title={busy ? 'Working…' : 'Run'} onPress={run} disabled={!image || busy} />
         </View>
+
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+          <Button title="Pick Image" onPress={pickImage} />
+          <CaptureButton title="Open Camera" onPress={openCamera} />
+        </View>
+
+        {showCamera && (
+          <View style={{ height: 360, marginTop: 10, borderRadius: 12, overflow: 'hidden' }}>
+            <CameraView style={{ flex: 1 }} facing="back">
+              <View style={{ position: 'absolute', bottom: 16, alignSelf: 'center' }}>
+                <CaptureButton title="Capture" onPress={async ()=>{
+                  const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+                  if (!res.canceled && res.assets?.length) {
+                    await onCapture(res.assets[0].uri);
+                  }
+                }} />
+              </View>
+            </CameraView>
+          </View>
+        )}
 
         {!!text && (
           <View style={{ marginTop: 14 }}>

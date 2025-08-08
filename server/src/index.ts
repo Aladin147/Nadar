@@ -1,14 +1,14 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 import { describeRouter } from './routes/describe';
 import { ocrRouter } from './routes/ocr';
 import { qaRouter } from './routes/qa';
 import { ttsRouter } from './routes/tts';
 
 const app = express();
-import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 
 app.use(morgan('combined'));
 const limiter = rateLimit({ windowMs: 60_000, limit: 60 });
