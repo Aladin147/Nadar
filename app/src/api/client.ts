@@ -31,16 +31,20 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
   throw lastErr || new Error('Network error');
 }
 
+type Timings = { modelMs: number };
+export type GenResult = { text: string; timings?: Timings };
+export type TTSResult = { audioBase64: string };
+
 export function describe(imageBase64: string, mimeType?: string, options?: any) {
-  return postJSON<{ text: string }>(`/describe`, { imageBase64, mimeType, options });
+  return postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options });
 }
 export function ocr(imageBase64: string, mimeType?: string, options?: any) {
-  return postJSON<{ text: string }>(`/ocr`, { imageBase64, mimeType, options });
+  return postJSON<GenResult>(`/ocr`, { imageBase64, mimeType, options });
 }
 export function qa(imageBase64: string, question: string, mimeType?: string, options?: any) {
-  return postJSON<{ text: string }>(`/qa`, { imageBase64, question, mimeType, options });
+  return postJSON<GenResult>(`/qa`, { imageBase64, question, mimeType, options });
 }
 export function tts(text: string, voice?: string) {
-  return postJSON<{ audioBase64: string }>(`/tts`, { text, voice });
+  return postJSON<TTSResult>(`/tts`, { text, voice });
 }
 

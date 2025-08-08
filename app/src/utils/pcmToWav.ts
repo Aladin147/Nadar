@@ -1,8 +1,19 @@
 export function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = globalThis.atob ? atob(base64) : Buffer.from(base64, 'base64').toString('binary');
+  const binary = typeof atob === 'function' ? atob(base64) : Buffer.from(base64, 'base64').toString('binary');
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
+}
+
+export function uint8ToBase64(bytes: Uint8Array): string {
+  if (typeof btoa === 'function') {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  // Node fallback
+  // @ts-ignore
+  return Buffer.from(bytes).toString('base64');
 }
 
 export function pcm16ToWavBytes(pcm: Uint8Array, sampleRate = 24000, channels = 1) {
