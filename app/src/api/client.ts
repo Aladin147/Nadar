@@ -1,4 +1,4 @@
-import { API_BASE } from '../config';
+import { API_BASE, DEMO_MODE } from '../config';
 
 export type Mode = 'scene' | 'ocr' | 'qa';
 
@@ -61,16 +61,47 @@ type Timings = { modelMs: number };
 export type GenResult = { text: string; timings?: Timings };
 export type TTSResult = { audioBase64: string };
 
+function createDemoResponse(mode: string, question?: string): GenResult {
+  const responses = {
+    describe: "IMMEDIATE: Clear path ahead, no obstacles detected. OBJECTS: Wooden table with laptop, coffee mug on the right side, smartphone next to keyboard. NAVIGATION: Safe to move forward, table edge 2 feet ahead on your left.",
+    ocr: "MENU\n\nCoffee - $3.50\nTea - $2.75\nCroissant - $4.25\nMuffin - $3.00\n\nDaily Special:\nAvocado Toast - $6.95",
+    qa: question?.toLowerCase().includes('color') ? "The main colors I can see are brown (wooden table), black (laptop), and white (coffee mug)." : "This appears to be a workspace setup with a laptop computer on a wooden desk."
+  };
+
+  return {
+    text: responses[mode as keyof typeof responses] || responses.describe,
+    timings: { modelMs: 1000 }
+  };
+}
+
 export function describe(imageBase64: string, mimeType?: string, options?: any) {
+  if (DEMO_MODE) {
+    console.log('🎭 Demo mode: returning mock scene description');
+    return Promise.resolve(createDemoResponse('describe'));
+  }
   return postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options });
 }
 export function ocr(imageBase64: string, mimeType?: string, options?: any) {
+  if (DEMO_MODE) {
+    console.log('🎭 Demo mode: returning mock OCR result');
+    return Promise.resolve(createDemoResponse('ocr'));
+  }
   return postJSON<GenResult>(`/ocr`, { imageBase64, mimeType, options });
 }
 export function qa(imageBase64: string, question: string, mimeType?: string, options?: any) {
+  if (DEMO_MODE) {
+    console.log('🎭 Demo mode: returning mock Q&A result');
+    return Promise.resolve(createDemoResponse('qa', question));
+  }
   return postJSON<GenResult>(`/qa`, { imageBase64, question, mimeType, options });
 }
 export function tts(text: string, voice?: string) {
+  if (DEMO_MODE) {
+    console.log('🎭 Demo mode: returning mock TTS audio');
+    // Return a small demo audio (silence)
+    const silenceBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+    return Promise.resolve({ audioBase64: silenceBase64 });
+  }
   return postJSON<TTSResult>(`/tts`, { text, voice });
 }
 

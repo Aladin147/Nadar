@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { theme } from '../app/theme';
 import { Segmented } from '../app/components/Segmented';
@@ -8,6 +8,7 @@ import { downscale } from '../utils/downscale';
 import { describe, ocr, qa, testConnection } from '../api/client';
 import { useSettings } from '../app/state/useSettings';
 import * as ImagePicker from 'expo-image-picker';
+import { DEMO_MODE } from '../config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,6 +19,79 @@ export default function CaptureScreen() {
   const [mode, setMode] = useState<'scene' | 'ocr' | 'qa'>('scene');
   const [question, setQuestion] = useState('');
   const cameraRef = useRef<any>(null);
+
+  // Skip camera permissions on web or in demo mode
+  if (Platform.OS === 'web' || DEMO_MODE) {
+    // Web version - show image picker interface
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.webContainer}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Nadar {DEMO_MODE ? '(Demo Mode)' : ''}</Text>
+            <Segmented
+              options={['scene', 'ocr', 'qa']}
+              value={mode}
+              onChange={(v) => setMode(v as any)}
+            />
+          </View>
+
+          {mode === 'qa' && (
+            <View style={styles.questionContainer}>
+              <Text style={styles.questionLabel}>What would you like to know?</Text>
+              <View style={styles.presetQuestions}>
+                {['What is this?', 'What color is it?', 'Is there text?'].map(q => (
+                  <TouchableOpacity
+                    key={q}
+                    style={[styles.presetQuestion, question === q && styles.presetQuestionActive]}
+                    onPress={() => setQuestion(q)}
+                  >
+                    <Text style={styles.presetQuestionText}>{q}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <View style={styles.webCaptureArea}>
+            <TouchableOpacity
+              style={styles.webUploadButton}
+              onPress={async () => {
+                try {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: false,
+                    quality: 1,
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    await processImage(result.assets[0].uri, 'library');
+                  }
+                } catch (error: any) {
+                  dispatch({ type: 'SET_ERROR', error: 'Failed to select image' });
+                }
+              }}
+              disabled={state.isLoading}
+            >
+              <Text style={styles.webUploadText}>
+                {state.isLoading ? 'Analyzing...' : '📁 Select Image'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {state.error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Error: {state.error}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => dispatch({ type: 'SET_ERROR', error: null })}
+              >
+                <Text style={styles.retryText}>Dismiss</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!permission) {
     return <View style={styles.container}><Text style={styles.permissionText}>Loading camera...</Text></View>;
@@ -314,6 +388,29 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  webContainer: {
+    flex: 1,
+    padding: theme.spacing(3),
+    backgroundColor: theme.colors.bg,
+  },
+  webCaptureArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webUploadButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing(3),
+    paddingHorizontal: theme.spacing(4),
+    borderRadius: theme.radius.lg,
+    minWidth: 200,
+  },
+  webUploadText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
     textAlign: 'center',
   },
   permissionContainer: {
