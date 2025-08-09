@@ -6,7 +6,7 @@ import { theme } from '../app/theme';
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { useAppState } from '../app/state/AppContext';
 import { tts } from '../api/client';
-import { base64ToUint8Array, pcm16ToWavBytes } from '../utils/pcmToWav';
+import { base64ToUint8Array, pcm16ToWavBytes, uint8ToBase64 } from '../utils/pcmToWav';
 import { useSettings } from '../app/state/useSettings';
 
 export default function ResultsScreen() {
@@ -29,35 +29,37 @@ export default function ResultsScreen() {
 
   async function playAudio() {
     if (isPlayingAudio) return;
-    
+
     setIsPlayingAudio(true);
     try {
       const response = await tts(result.result, settings.voice);
+      const mime = response.mimeType || 'audio/wav';
       const pcm = base64ToUint8Array(response.audioBase64);
-      const wav = pcm16ToWavBytes(pcm);
+      const wav = mime.includes('wav') ? pcm : pcm16ToWavBytes(pcm);
       const wavPath = FileSystem.cacheDirectory + 'result_tts.wav';
-      
+
       await FileSystem.writeAsStringAsync(
-        wavPath, 
-        Buffer.from(wav).toString('base64'), 
+        wavPath,
+        Buffer.from(wav).toString('base64'),
         { encoding: FileSystem.EncodingType.Base64 }
       );
-      
+
       if (soundRef.current) {
         await soundRef.current.unloadAsync();
         soundRef.current = null;
       }
-      
-      const { sound } = await Audio.Sound.createAsync({ uri: wavPath });
+      await sound.setVolumeAsync(1.0);
+      await sound.playFromPositionAsync(0);
+
+
+      const { sound } = await Audio.Sound.createAsync({ uri: wavPath }, { shouldPlay: true, volume: 1.0 });
       soundRef.current = sound;
-      
+
       sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
+        if ('isLoaded' in status && status.isLoaded && 'didJustFinish' in status && status.didJustFinish) {
           setIsPlayingAudio(false);
         }
       });
-      
-      await sound.playAsync();
     } catch (error) {
       console.error('TTS Error:', error);
       setIsPlayingAudio(false);
@@ -67,9 +69,9 @@ export default function ResultsScreen() {
   function parseStructuredResult(text: string) {
     const sections = [];
     const lines = text.split('\n').filter(line => line.trim());
-    
+
     let currentSection = { title: '', content: '' };
-    
+
     for (const line of lines) {
       if (line.includes('IMMEDIATE:') || line.includes('OBJECTS:') || line.includes('NAVIGATION:')) {
         if (currentSection.title) {
@@ -89,11 +91,11 @@ export default function ResultsScreen() {
         sections.push({ title: 'Analysis', content: line });
       }
     }
-    
+
     if (currentSection.title) {
       sections.push(currentSection);
     }
-    
+
     return sections.length > 0 ? sections : [{ title: 'Result', content: text }];
   }
 
@@ -109,7 +111,7 @@ export default function ResultsScreen() {
               <Text style={styles.modeText}>{result.mode.toUpperCase()}</Text>
             </View>
           </View>
-          
+
           {result.question && (
             <View style={styles.questionCard}>
               <Text style={styles.questionLabel}>Question:</Text>
@@ -123,7 +125,7 @@ export default function ResultsScreen() {
             <View key={index} style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.sectionPlayButton}
                   onPress={() => playAudio()}
                   accessibilityLabel={`Play ${section.title}`}
@@ -159,22 +161,22 @@ export default function ResultsScreen() {
         )}
 
         <View style={styles.actions}>
-          <PrimaryButton 
-            title={isPlayingAudio ? "🔊 Playing..." : "🔊 Play Full Audio"} 
+          <PrimaryButton
+            title={isPlayingAudio ? "🔊 Playing..." : "🔊 Play Full Audio"}
             onPress={playAudio}
             disabled={isPlayingAudio}
             style={styles.audioButton}
           />
-          
+
           <View style={styles.secondaryActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.secondaryButton}
               onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
             >
               <Text style={styles.secondaryButtonText}>📷 Take Another</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.secondaryButton}
               onPress={() => {
                 // TODO: Implement share functionality
@@ -194,15 +196,15 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   content: { padding: theme.spacing(2) },
   header: { marginBottom: theme.spacing(3) },
-  imageContainer: { 
+  imageContainer: {
     position: 'relative',
     borderRadius: theme.radius.lg,
     overflow: 'hidden',
     marginBottom: theme.spacing(2),
   },
-  image: { 
-    width: '100%', 
-    height: 200, 
+  image: {
+    width: '100%',
+    height: 200,
     backgroundColor: theme.colors.surface,
   },
   modeTag: {
@@ -214,9 +216,9 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing(0.5),
     borderRadius: theme.radius.sm,
   },
-  modeText: { 
-    color: '#fff', 
-    fontSize: 12, 
+  modeText: {
+    color: '#fff',
+    fontSize: 12,
     fontWeight: '700',
   },
   questionCard: {
@@ -226,17 +228,17 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     padding: theme.spacing(2),
   },
-  questionLabel: { 
-    color: theme.colors.textMut, 
-    fontSize: 12, 
+  questionLabel: {
+    color: theme.colors.textMut,
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: theme.spacing(0.5),
   },
-  questionText: { 
-    color: theme.colors.text, 
+  questionText: {
+    color: theme.colors.text,
     fontSize: 16,
   },
-  resultsContainer: { 
+  resultsContainer: {
     gap: theme.spacing(2),
     marginBottom: theme.spacing(3),
   },

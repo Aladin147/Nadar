@@ -59,7 +59,7 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
 
 type Timings = { modelMs: number };
 export type GenResult = { text: string; timings?: Timings };
-export type TTSResult = { audioBase64: string };
+export type TTSResult = { audioBase64: string; mimeType?: string };
 
 function createDemoResponse(mode: string, question?: string): GenResult {
   const responses = {

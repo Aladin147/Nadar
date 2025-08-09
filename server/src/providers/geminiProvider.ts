@@ -83,8 +83,10 @@ export class GeminiProvider implements IAIProvider {
       } as any),
       new Promise((_, reject) => setTimeout(() => reject(new Error('TTS timeout')), this.ttsTimeoutMs))
     ]) as any;
-    const audioBase64 = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || '';
-    return { audioBase64 };
+    const inline = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData || {};
+    const audioBase64 = inline.data || '';
+    const mimeType = inline.mimeType || 'audio/wav';
+    return { audioBase64, mimeType };
   }
 }
 

@@ -19,6 +19,57 @@ export default function CaptureScreen() {
   const [mode, setMode] = useState<'scene' | 'ocr' | 'qa'>('scene');
   const [question, setQuestion] = useState('');
   const cameraRef = useRef<any>(null);
+  async function processImage(imageUri: string, source: 'camera' | 'library') {
+    dispatch({ type: 'SET_LOADING', loading: true });
+    dispatch({ type: 'SET_ERROR', error: null });
+
+    try {
+      console.log(`📷 Processing ${source} image...`);
+      const downscaled = await downscale(imageUri, 256, 0.4);
+      console.log('📷 Image downscaled, calling API...');
+
+      const opts = { verbosity: settings.verbosity, language: settings.language };
+      let result: any;
+
+      if (mode === 'scene') {
+        console.log('🔍 Calling describe API...');
+        result = await describe(downscaled.base64, downscaled.mimeType, opts);
+      } else if (mode === 'ocr') {
+        console.log('📖 Calling OCR API...');
+        result = await ocr(downscaled.base64, downscaled.mimeType, opts);
+      } else {
+        if (!question.trim()) {
+          dispatch({ type: 'SET_ERROR', error: 'Please select a question for Q&A mode' });
+          return;
+        }
+        console.log('❓ Calling Q&A API...');
+        result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts);
+      }
+
+      console.log('✅ API call successful, navigating to results...');
+
+      const captureResult = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        imageUri,
+        mode,
+        question: mode === 'qa' ? question : undefined,
+        result: result.text,
+        timings: result.timings,
+      };
+
+      dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
+      dispatch({ type: 'ADD_TO_HISTORY', result: captureResult });
+      dispatch({ type: 'NAVIGATE', route: 'results' });
+    } catch (error: any) {
+      console.error('❌ Processing error:', error);
+      const errorMessage = error?.message || 'Failed to analyze image';
+      dispatch({ type: 'SET_ERROR', error: errorMessage });
+    } finally {
+      // Keep isLoading state managed by success/SET_CAPTURE_RESULT or error above
+    }
+  }
+
 
   // Skip camera permissions on web or in demo mode
   if (Platform.OS === 'web' || DEMO_MODE) {
@@ -199,8 +250,8 @@ export default function CaptureScreen() {
               {/* For now, show preset questions - full TextInput in next iteration */}
               <View style={styles.presetQuestions}>
                 {['What is this?', 'What color is it?', 'Is there text?'].map(q => (
-                  <TouchableOpacity 
-                    key={q} 
+                  <TouchableOpacity
+                    key={q}
                     style={[styles.presetQuestion, question === q && styles.presetQuestionActive]}
                     onPress={() => setQuestion(q)}
                   >
@@ -280,15 +331,15 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   camera: { flex: 1 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
-  header: { 
-    paddingTop: theme.spacing(2), 
+  header: {
+    paddingTop: theme.spacing(2),
     paddingHorizontal: theme.spacing(2),
     alignItems: 'center',
     gap: theme.spacing(2),
   },
-  title: { 
-    color: '#fff', 
-    fontSize: 20, 
+  title: {
+    color: '#fff',
+    fontSize: 20,
     fontWeight: '800',
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -309,9 +360,9 @@ const styles = StyleSheet.create({
   },
   presetQuestionActive: { backgroundColor: theme.colors.primary },
   presetQuestionText: { color: '#fff', textAlign: 'center' },
-  captureArea: { 
-    flex: 1, 
-    justifyContent: 'center', 
+  captureArea: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   captureButton: {
