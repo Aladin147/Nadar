@@ -10,8 +10,11 @@ import { ttsRouter } from './routes/tts';
 
 const app = express();
 
+// Trust proxy so rate limiter can read X-Forwarded-For from dev tunnels/reverse proxies
+app.set('trust proxy', true);
+
 app.use(morgan('combined'));
-const limiter = rateLimit({ windowMs: 60_000, limit: 60 });
+const limiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: true });
 app.use(limiter);
 
 app.use(cors());

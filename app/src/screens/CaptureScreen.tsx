@@ -61,12 +61,16 @@ export default function CaptureScreen() {
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     allowsEditing: false,
                     quality: 1,
+                    base64: true,
                   });
                   if (!result.canceled && result.assets[0]) {
-                    await processImage(result.assets[0].uri, 'library');
+                    const asset = result.assets[0];
+                    const uriOrData = asset.base64 ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}` : asset.uri;
+                    await processImage(uriOrData, 'library');
                   }
                 } catch (error: any) {
-                  dispatch({ type: 'SET_ERROR', error: 'Failed to select image' });
+                  console.error('Web image select error:', error);
+                  dispatch({ type: 'SET_ERROR', error: error?.message || 'Failed to select image' });
                 }
               }}
               disabled={state.isLoading}

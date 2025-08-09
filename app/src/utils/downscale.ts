@@ -3,8 +3,12 @@ import * as FileSystem from 'expo-file-system';
 
 export async function downscale(uri: string, maxDim = 1024, compress = 0.8) {
   if (Platform.OS !== 'web') {
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    return { base64, mimeType: 'image/jpeg', uri };
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      return { base64, mimeType: 'image/jpeg', uri };
+    } catch (e: any) {
+      throw new Error(`Failed to read file: ${e?.message || 'unknown error'}`);
+    }
   }
   return new Promise<{ base64: string; mimeType: string; uri: string }>((resolve, reject) => {
     const img = new Image();
@@ -23,8 +27,12 @@ export async function downscale(uri: string, maxDim = 1024, compress = 0.8) {
       const base64 = dataUrl.split(',')[1] || '';
       resolve({ base64, mimeType: 'image/jpeg', uri: dataUrl });
     };
-    img.onerror = (e) => reject(new Error('Failed to load image for downscale'));
-    img.src = uri;
+    img.onerror = (e) => {
+      console.error('Downscale image load error:', e);
+      reject(new Error('Failed to load image for downscale'));
+    };
+    // If already a data URL, load directly; else add origin hint
+    img.src = uri.startsWith('data:') ? uri : uri + (uri.includes('?') ? '&' : '?') + 'origin=*';
   });
 }
 
