@@ -14,7 +14,8 @@ export class HybridProvider implements IAIProvider {
     
     // Initialize ElevenLabs if API key is available
     try {
-      this.elevenlabsProvider = new ElevenLabsProvider();
+      // Pass empty opts to use environment variables by default
+      this.elevenlabsProvider = new ElevenLabsProvider({});
       console.log('✅ ElevenLabs provider initialized');
     } catch (error) {
       console.log('⚠️ ElevenLabs provider not available:', error instanceof Error ? error.message : 'Unknown error');
