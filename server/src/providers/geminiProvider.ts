@@ -6,9 +6,24 @@ export function buildSystemPrompt(mode: 'scene'|'ocr'|'qa', options?: GenOptions
   const language = options?.language ?? 'darija';
   const langDir = language === 'darija' ? 'Respond in Darija (Moroccan Arabic).' : language === 'ar' ? 'Respond in Modern Standard Arabic.' : 'Respond in English.';
   const base = {
-    scene: `${langDir} You are Nadar, assisting blind users. Format strictly as:\nIMMEDIATE: [1 short sentence]\nOBJECTS: [up to 2 bullets]\nNAVIGATION: [1 short sentence]\nKeep each part short and practical. Don’t identify people; avoid private screens; express uncertainty when unsure.`,
-    ocr: `${langDir} Extract visible text and summarize in 2 bullets. If mixed languages, note them. Ask the user: 'Do you want a full readout?' Keep it concise.`,
-    qa: `${langDir} Answer in one short sentence. If uncertain, say you are not sure and propose one clarifying question. Be helpful and safe.`,
+    scene: `${langDir} You are نظر (Nadar), an AI assistant for blind users in Morocco. You are their eyes, guiding them through daily navigation.
+
+When analyzing images, prioritize by proximity and importance:
+1. IMMEDIATE dangers or critical safety information (red lights, obstacles, hazards)
+2. Navigation guidance (what's ahead, direction, movement options)
+3. Environmental context (location, objects, people nearby)
+
+Format strictly as:
+Only respond using Darija in Arabic Script.
+IMMEDIATE: [1 short sentence - safety/critical info first]
+OBJECTS: [up to 2 bullets - key items by proximity]
+NAVIGATION: [1 short sentence - movement guidance]
+
+Keep responses very concise and actionable. Assume users are on the move and need quick, essential information. Don't identify people; avoid reading private screens; express uncertainty when unsure. Never use phrases like "as you can see" or "if you look".`,
+
+    ocr: `${langDir} You are نظر (Nadar), helping blind users read text. Extract visible text and summarize in 2 bullets maximum. If mixed languages are present, note them. Ask: "Do you want a full readout?" Keep responses concise and practical. Avoid reading private or sensitive information.`,
+
+    qa: `${langDir} You are نظر (Nadar), answering specific questions for blind users. Provide one short, direct sentence. If uncertain about anything, clearly state you are not sure and suggest one clarifying question. Always prioritize safety - if you see imminent danger or critical information, mention it first regardless of the question asked.`,
   }[mode];
   const vb = verbosity === 'brief' ? ' Keep response to max 3 short bullet points.'
     : verbosity === 'detailed' ? ' Provide more detail but remain structured and concise.'
@@ -37,7 +52,8 @@ export class GeminiProvider implements IAIProvider {
     ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
-    return { text, timings: { modelMs: t1 - t0 } };
+    const structured = parseSceneStructured(text);
+    return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 }, structured };
   }
 
   async ocr({ imageBase64, mimeType, options }: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
@@ -50,7 +66,7 @@ export class GeminiProvider implements IAIProvider {
     ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
-    return { text, timings: { modelMs: t1 - t0 } };
+    return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 } };
   }
 
   async qa({ imageBase64, question, mimeType, options }: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
@@ -63,10 +79,10 @@ export class GeminiProvider implements IAIProvider {
     ]) as any;
     const t1 = Date.now();
     const text = result.response.text();
-    return { text, timings: { modelMs: t1 - t0 } };
+    return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 } };
   }
 
-  async tts({ text, voice }: { text: string; voice?: string }): Promise<{ audioBase64: string }> {
+  async tts({ text, voice }: { text: string; voice?: string }): Promise<{ audioBase64: string; mimeType?: string }> {
     const result = await Promise.race([
       this.ttsModel.generateContent({
         contents: [{ role: 'user', parts: [{ text }] }],
@@ -88,5 +104,24 @@ export class GeminiProvider implements IAIProvider {
     const mimeType = inline.mimeType || 'audio/wav';
     return { audioBase64, mimeType };
   }
+}
+
+function parseSceneStructured(text: string): GenResult['structured'] {
+  const structured: GenResult['structured'] = {};
+  const lines = text.split(/\r?\n/);
+  const getAfter = (prefix: string) => {
+    const line = lines.find(l => l.toUpperCase().startsWith(prefix));
+    if (!line) return undefined;
+    return line.split(':').slice(1).join(':').trim();
+  };
+  structured.immediate = getAfter('IMMEDIATE:');
+  const objectsRaw = getAfter('OBJECTS:');
+  if (objectsRaw) {
+    const bullets = objectsRaw.split(/\s*[•\-*]\s*/).map(s => s.trim()).filter(Boolean);
+    structured.objects = bullets.length ? bullets : objectsRaw.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  structured.navigation = getAfter('NAVIGATION:');
+  if (!structured.immediate && !structured.objects && !structured.navigation) return undefined;
+  return structured;
 }
 

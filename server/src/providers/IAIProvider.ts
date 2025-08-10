@@ -7,8 +7,13 @@ export interface GenOptions {
 
 export interface GenResult {
   text: string;
-  timings?: { modelMs?: number };
+  timings?: { prep?: number; model?: number; total?: number };
   tokens?: { input?: number; output?: number };
+  structured?: {
+    immediate?: string;
+    objects?: string[];
+    navigation?: string;
+  };
 }
 
 export interface IAIProvider {

@@ -30,7 +30,7 @@ app.use('/ocr', ocrRouter);
 app.use('/qa', qaRouter);
 app.use('/tts', ttsRouter);
 
-const port = process.env.PORT || 4000;
+const port = Number(process.env.PORT) || 4000;
 // Centralized error handler (must be before listen)
 import type { NextFunction, Request, Response } from 'express';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

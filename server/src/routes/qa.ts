@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { GeminiProvider } from '../providers/geminiProvider';
+import { HybridProvider } from '../providers/hybridProvider';
 import { QABody } from './schemas';
 
 
@@ -7,7 +7,7 @@ export const qaRouter = Router();
 export const helpQA = 'POST /qa expects JSON: { imageBase64, question, options? }';
 
 qaRouter.get('/', (_req, res) => res.type('text/plain').send(helpQA));
-const provider = new GeminiProvider();
+const provider = new HybridProvider();
 
 qaRouter.post('/', async (req, res) => {
   const parse = QABody.safeParse(req.body);

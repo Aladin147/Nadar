@@ -1,10 +1,30 @@
-import { API_BASE, DEMO_MODE } from '../config';
+import { API_BASE } from '../config';
+import { loadSettings } from '../app/state/settings';
 
 export type Mode = 'scene' | 'ocr' | 'qa';
 
+async function resolveApiBase(): Promise<string> {
+  try {
+    const s = await loadSettings();
+    const base = s.apiBase || API_BASE;
+
+    if (!base) {
+      throw new Error('No server configured. Please set up the server connection in Settings.');
+    }
+
+    return base;
+  } catch (error) {
+    if (!API_BASE) {
+      throw new Error('No server configured. Please set up the server connection in Settings.');
+    }
+    return API_BASE;
+  }
+}
+
 export async function postJSON<T>(path: string, body: any, attempts = 2): Promise<T> {
   let lastErr: any;
-  console.log(`API Call: ${API_BASE}${path}`);
+  const base = await resolveApiBase();
+  console.log(`API Call: ${base}${path}`);
 
   for (let i = 0; i < attempts; i++) {
     try {
@@ -12,7 +32,7 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const res = await fetch(`${API_BASE}${path}`, {
+      const res = await fetch(`${base}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -26,13 +46,18 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
       if (!res.ok) {
         const errorText = await res.text();
         console.log(`Error response: ${errorText}`);
-
-        // Retry on 5xx only
-        if (res.status >= 500 && i < attempts - 1) {
+        const is5xx = res.status >= 500;
+        const is4xx = res.status >= 400 && res.status < 500;
+        if (is5xx && i < attempts - 1) {
           await new Promise(r => setTimeout(r, 400 * (i + 1)));
           continue;
         }
-        throw new Error(`Server error (${res.status}): ${errorText}`);
+        let friendly = `Server error (${res.status})`;
+        if (res.status === 413) friendly = 'Image too large';
+        else if (res.status === 429) friendly = 'Too many requests';
+        else if (res.status === 400) friendly = 'Invalid request';
+        else if (res.status === 401 || res.status === 403) friendly = 'Unauthorized';
+        throw new Error(`${friendly}: ${errorText}`);
       }
 
       const result = await res.json();
@@ -74,44 +99,67 @@ function createDemoResponse(mode: string, question?: string): GenResult {
   };
 }
 
-export function describe(imageBase64: string, mimeType?: string, options?: any) {
-  if (DEMO_MODE) {
+export async function describe(imageBase64: string, mimeType?: string, options?: any) {
+  const base = await resolveApiBase();
+  if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock scene description');
-    return Promise.resolve(createDemoResponse('describe'));
+    return createDemoResponse('describe');
   }
   return postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options });
 }
-export function ocr(imageBase64: string, mimeType?: string, options?: any) {
-  if (DEMO_MODE) {
+export async function ocr(imageBase64: string, mimeType?: string, options?: any) {
+  const base = await resolveApiBase();
+  if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock OCR result');
-    return Promise.resolve(createDemoResponse('ocr'));
+    return createDemoResponse('ocr');
   }
   return postJSON<GenResult>(`/ocr`, { imageBase64, mimeType, options });
 }
-export function qa(imageBase64: string, question: string, mimeType?: string, options?: any) {
-  if (DEMO_MODE) {
+export async function qa(imageBase64: string, question: string, mimeType?: string, options?: any) {
+  const base = await resolveApiBase();
+  if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock Q&A result');
-    return Promise.resolve(createDemoResponse('qa', question));
+    return createDemoResponse('qa', question);
   }
   return postJSON<GenResult>(`/qa`, { imageBase64, question, mimeType, options });
 }
-export function tts(text: string, voice?: string) {
-  if (DEMO_MODE) {
+export async function tts(text: string, voice?: string, provider?: 'gemini' | 'elevenlabs') {
+  const base = await resolveApiBase();
+  if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock TTS audio');
-    // Return a small demo audio (silence)
     const silenceBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-    return Promise.resolve({ audioBase64: silenceBase64 });
+    return { audioBase64: silenceBase64 };
   }
-  return postJSON<TTSResult>(`/tts`, { text, voice });
+  return postJSON<TTSResult>(`/tts`, { text, voice, provider });
+}
+
+// Get available TTS providers from server
+export async function getTTSProviders() {
+  const base = await resolveApiBase();
+  if (base === 'DEMO_MODE') {
+    return { available: ['gemini'], current: 'gemini' };
+  }
+  return postJSON<{ available: string[]; current: string }>(`/tts/providers`);
+}
+
+// Set TTS provider on server
+export async function setTTSProvider(provider: 'gemini' | 'elevenlabs') {
+  const base = await resolveApiBase();
+  if (base === 'DEMO_MODE') {
+    console.log('🎭 Demo mode: TTS provider setting ignored');
+    return { success: true };
+  }
+  return postJSON<{ success: boolean }>(`/tts/provider`, { provider });
 }
 
 export async function testConnection() {
   try {
-    console.log('Testing connection to:', `${API_BASE}/health`);
+    const base = await resolveApiBase();
+    console.log('Testing connection to:', `${base}/health`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const res = await fetch(`${API_BASE}/health`, {
+    const res = await fetch(`${base}/health`, {
       method: 'GET',
       signal: controller.signal,
     });

@@ -1,8 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../app/theme';
 import { useAppState } from '../app/state/AppContext';
 import { PrimaryButton } from '../app/components/PrimaryButton';
+import { Card } from '../app/components/Card';
+import { ConnectivityPill } from '../app/components/ConnectivityPill';
 
 export default function HistoryScreen() {
   const { state, dispatch } = useAppState();
@@ -32,49 +35,60 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>History</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.titleGroup}>
+            <Text style={styles.title}>نظر</Text>
+            <Text style={styles.titleSub}>History</Text>
+          </View>
+          <ConnectivityPill />
+        </View>
         <Text style={styles.subtitle}>{state.history.length} analyzed images</Text>
       </View>
       
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         {state.history.map((item) => (
-          <TouchableOpacity 
-            key={item.id} 
-            style={styles.historyItem}
+          <TouchableOpacity
+            key={item.id}
             onPress={() => handleViewResult(item)}
             accessibilityRole="button"
             accessibilityLabel={`View ${item.mode} analysis from ${new Date(item.timestamp).toLocaleDateString()}`}
           >
-            <Image source={{ uri: item.imageUri }} style={styles.thumbnail} />
-            
-            <View style={styles.itemContent}>
-              <View style={styles.itemHeader}>
-                <Text style={styles.itemMode}>{item.mode.toUpperCase()}</Text>
-                <Text style={styles.itemDate}>
-                  {new Date(item.timestamp).toLocaleDateString()}
-                </Text>
+            <Card style={styles.historyItem}>
+              <View style={styles.itemLayout}>
+                <Image source={{ uri: item.imageUri }} style={styles.thumbnail} />
+
+                <View style={styles.itemContent}>
+                  <View style={styles.itemHeader}>
+                    <View style={styles.modePill}>
+                      <Text style={styles.itemMode}>{item.mode.toUpperCase()}</Text>
+                    </View>
+                    <Text style={styles.itemDate}>
+                      {new Date(item.timestamp).toLocaleDateString()}
+                    </Text>
+                  </View>
+
+                  {item.question && (
+                    <Text style={styles.itemQuestion} numberOfLines={1}>
+                      Q: {item.question}
+                    </Text>
+                  )}
+
+                  <Text style={styles.itemResult} numberOfLines={2}>
+                    {item.structured?.immediate || item.result}
+                  </Text>
+
+                  {item.timings && (
+                    <Text style={styles.itemTiming}>
+                      {item.timings.total}ms
+                    </Text>
+                  )}
+                </View>
+
+                <View style={styles.itemArrow}>
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.textMut} />
+                </View>
               </View>
-              
-              {item.question && (
-                <Text style={styles.itemQuestion} numberOfLines={1}>
-                  Q: {item.question}
-                </Text>
-              )}
-              
-              <Text style={styles.itemResult} numberOfLines={2}>
-                {item.result}
-              </Text>
-              
-              {item.timings && (
-                <Text style={styles.itemTiming}>
-                  {item.timings.total}ms
-                </Text>
-              )}
-            </View>
-            
-            <View style={styles.itemArrow}>
-              <Text style={styles.arrowText}>→</Text>
-            </View>
+            </Card>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -88,6 +102,24 @@ const styles = StyleSheet.create({
     padding: theme.spacing(3),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing(1),
+  },
+  titleGroup: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: theme.spacing(1),
+  },
+  titleSub: {
+    ...theme.typography.body,
+    color: theme.colors.textMut,
+    fontSize: 16,
+    fontWeight: '500',
   },
   title: {
     ...theme.typography.title,
@@ -95,19 +127,19 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing(0.5),
   },
   subtitle: {
+    ...theme.typography.body,
     color: theme.colors.textMut,
     fontSize: 14,
   },
   scrollView: { flex: 1 },
   content: { padding: theme.spacing(2) },
   historyItem: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderWidth: 1,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing(2),
     marginBottom: theme.spacing(2),
+    backgroundColor: theme.colors.surfaceAlt,
+    borderColor: theme.colors.border,
+  },
+  itemLayout: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   thumbnail: {
@@ -126,9 +158,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing(0.5),
   },
+  modePill: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing(1),
+    paddingVertical: 4,
+    borderRadius: theme.radius.full,
+  },
   itemMode: {
-    color: theme.colors.primary,
-    fontSize: 12,
+    color: '#fff',
+    fontSize: 11,
     fontWeight: '700',
   },
   itemDate: {
@@ -154,10 +192,6 @@ const styles = StyleSheet.create({
   itemArrow: {
     marginLeft: theme.spacing(1),
   },
-  arrowText: {
-    color: theme.colors.textMut,
-    fontSize: 16,
-  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -174,6 +208,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing(1),
   },
   emptyText: {
+    ...theme.typography.body,
     color: theme.colors.textMut,
     textAlign: 'center',
     marginBottom: theme.spacing(3),

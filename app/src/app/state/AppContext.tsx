@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Route } from '../navigation/AppNavigator';
 
 export type CaptureResult = {
@@ -8,7 +9,12 @@ export type CaptureResult = {
   mode: 'scene' | 'ocr' | 'qa';
   question?: string;
   result: string;
-  timings?: { prep: number; model: number; total: number };
+  timings?: { prep?: number; model?: number; total?: number };
+  structured?: {
+    immediate?: string;
+    objects?: string[];
+    navigation?: string;
+  };
 };
 
 type AppState = {
@@ -66,6 +72,26 @@ const AppContext = createContext<{
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Load persisted onboarding state
+  useEffect(() => {
+    (async () => {
+      try {
+        const done = await AsyncStorage.getItem('nadar.onboarding.v1');
+        if (done === '1') {
+          dispatch({ type: 'COMPLETE_ONBOARDING' });
+          dispatch({ type: 'NAVIGATE', route: 'capture' });
+        }
+      } catch {}
+    })();
+  }, []);
+
+  // Persist onboarding completion
+  useEffect(() => {
+    if (state.hasCompletedOnboarding) {
+      AsyncStorage.setItem('nadar.onboarding.v1', '1').catch(() => {});
+    }
+  }, [state.hasCompletedOnboarding]);
   return (
     <AppContext.Provider value={{ state, dispatch }}>
       {children}

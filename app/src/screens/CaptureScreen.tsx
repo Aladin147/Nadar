@@ -1,14 +1,23 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, Platform, TextInput, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { theme } from '../app/theme';
-import { Segmented } from '../app/components/Segmented';
-import { useAppState } from '../app/state/AppContext';
-import { downscale } from '../utils/downscale';
-import { describe, ocr, qa, testConnection } from '../api/client';
-import { useSettings } from '../app/state/useSettings';
 import * as ImagePicker from 'expo-image-picker';
-import { DEMO_MODE } from '../config';
+import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { theme } from '../app/theme';                     // ✅ correct for screens
+import { useAppState } from '../app/state/AppContext';
+import { useSettings } from '../app/state/useSettings';
+import { describe, ocr, qa, testConnection } from '../api/client';
+import { downscale } from '../utils/downscale';
+
+// Import the updated components
+import { Segmented } from '../app/components/Segmented';
+import { Chip } from '../app/components/Chip';
+import { Card } from '../app/components/Card';
+import { SecondaryButton } from '../app/components/SecondaryButton';
+import { PrimaryButton } from '../app/components/PrimaryButton';
+import { ConnectivityPill } from '../app/components/ConnectivityPill';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,14 +27,55 @@ export default function CaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<'scene' | 'ocr' | 'qa'>('scene');
   const [question, setQuestion] = useState('');
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraRef = useRef<any>(null);
+
+  // Persist last question and restore on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const last = await AsyncStorage.getItem('nadar.lastQuestion.v1');
+        if (last) setQuestion(last);
+      } catch {}
+    })();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem('nadar.lastQuestion.v1', question).catch(()=>{});
+  }, [question]);
+
+  // Timer handling for progress HUD
+  useEffect(() => {
+    if (state.isLoading) {
+      startTimeRef.current = Date.now();
+      setElapsedMs(0);
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        if (startTimeRef.current) setElapsedMs(Date.now() - startTimeRef.current);
+      }, 100);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [state.isLoading]);
+
   async function processImage(imageUri: string, source: 'camera' | 'library') {
     dispatch({ type: 'SET_LOADING', loading: true });
     dispatch({ type: 'SET_ERROR', error: null });
 
     try {
       console.log(`📷 Processing ${source} image...`);
-      const downscaled = await downscale(imageUri, 256, 0.4);
+      const downscaled = await downscale(imageUri, 1024, 0.7);
       console.log('📷 Image downscaled, calling API...');
 
       const opts = { verbosity: settings.verbosity, language: settings.language };
@@ -47,6 +97,7 @@ export default function CaptureScreen() {
       }
 
       console.log('✅ API call successful, navigating to results...');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
 
       const captureResult = {
         id: Date.now().toString(),
@@ -56,6 +107,7 @@ export default function CaptureScreen() {
         question: mode === 'qa' ? question : undefined,
         result: result.text,
         timings: result.timings,
+        structured: (result as any).structured,
       };
 
       dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
@@ -65,20 +117,25 @@ export default function CaptureScreen() {
       console.error('❌ Processing error:', error);
       const errorMessage = error?.message || 'Failed to analyze image';
       dispatch({ type: 'SET_ERROR', error: errorMessage });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(()=>{});
     } finally {
       // Keep isLoading state managed by success/SET_CAPTURE_RESULT or error above
     }
   }
 
 
-  // Skip camera permissions on web or in demo mode
-  if (Platform.OS === 'web' || DEMO_MODE) {
+  // Web version - show image picker interface
+  if (Platform.OS === 'web') {
     // Web version - show image picker interface
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.webContainer}>
           <View style={styles.header}>
-            <Text style={styles.title}>Nadar {DEMO_MODE ? '(Demo Mode)' : ''}</Text>
+            <View style={styles.headerTop}>
+              <Text style={styles.title}>نظر</Text>
+              <Text style={styles.subtitle}>Nadar</Text>
+              <ConnectivityPill style={styles.connectivityPill} />
+            </View>
             <Segmented
               options={['scene', 'ocr', 'qa']}
               value={mode}
@@ -100,12 +157,22 @@ export default function CaptureScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              <TextInput
+                value={question}
+                onChangeText={setQuestion}
+                placeholder="Ask about the image…"
+                 placeholderTextColor={theme.colors.textMut}
+                style={styles.questionInput}
+                accessibilityLabel="Question input"
+              />
             </View>
           )}
 
           <View style={styles.webCaptureArea}>
-            <TouchableOpacity
-              style={styles.webUploadButton}
+            <PrimaryButton
+              title={state.isLoading ? 'Analyzing…' : '📁 Select Image'}
+              disabled={state.isLoading}
+              style={{ minWidth: 220 }}
               onPress={async () => {
                 try {
                   const result = await ImagePicker.launchImageLibraryAsync({
@@ -124,12 +191,7 @@ export default function CaptureScreen() {
                   dispatch({ type: 'SET_ERROR', error: error?.message || 'Failed to select image' });
                 }
               }}
-              disabled={state.isLoading}
-            >
-              <Text style={styles.webUploadText}>
-                {state.isLoading ? 'Analyzing...' : '📁 Select Image'}
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
 
           {state.error && (
@@ -158,9 +220,7 @@ export default function CaptureScreen() {
         <View style={styles.permissionContainer}>
           <Text style={styles.permissionTitle}>Camera Access Required</Text>
           <Text style={styles.permissionText}>Nadar needs camera access to analyze your surroundings.</Text>
-          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-            <Text style={styles.permissionButtonText}>Enable Camera</Text>
-          </TouchableOpacity>
+          <PrimaryButton title="Enable Camera" onPress={requestPermission} />
         </View>
       </View>
     );
@@ -177,7 +237,7 @@ export default function CaptureScreen() {
       const photo = await cameraRef.current.takePictureAsync({ base64: true });
       console.log('📷 Photo taken, downscaling...');
 
-      const downscaled = await downscale(photo.uri, 256, 0.4);
+      const downscaled = await downscale(photo.uri, 1024, 0.7);
       console.log('📷 Image downscaled, calling API...');
 
       const opts = { verbosity: settings.verbosity, language: settings.language };
@@ -207,7 +267,10 @@ export default function CaptureScreen() {
         mode,
         question: mode === 'qa' ? question : undefined,
         result: result.text,
-        timings: result.timings,
+        timings: result.timings
+          ? { prep: undefined, model: (result.timings as any).modelMs ?? (result.timings as any).model ?? undefined, total: undefined }
+          : undefined,
+        structured: (result as any).structured,
       };
 
       dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
@@ -226,40 +289,32 @@ export default function CaptureScreen() {
       <CameraView ref={cameraRef} style={styles.camera} facing="back">
         <View style={styles.overlay}>
           <View style={styles.header}>
-            <Text style={styles.title}>Nadar</Text>
+            <View style={styles.headerTop}>
+              <Text style={styles.title}>نظر</Text>
+              <Text style={styles.subtitle}>Nadar</Text>
+              <ConnectivityPill style={styles.connectivityPill} />
+            </View>
             <Segmented
               options={['scene', 'ocr', 'qa']}
               value={mode}
               onChange={(v) => setMode(v as any)}
             />
-            <TouchableOpacity
-              style={styles.testButton}
-              onPress={async () => {
-                console.log('🔍 Testing connection...');
-                const success = await testConnection();
-                console.log('🔍 Connection test result:', success);
-              }}
-            >
-              <Text style={styles.testButtonText}>Test Connection</Text>
-            </TouchableOpacity>
           </View>
 
           {mode === 'qa' && (
-            <View style={styles.questionContainer}>
+            <Card style={styles.questionContainer}>
               <Text style={styles.questionLabel}>What would you like to know?</Text>
-              {/* For now, show preset questions - full TextInput in next iteration */}
               <View style={styles.presetQuestions}>
                 {['What is this?', 'What color is it?', 'Is there text?'].map(q => (
-                  <TouchableOpacity
+                  <Chip
                     key={q}
-                    style={[styles.presetQuestion, question === q && styles.presetQuestionActive]}
+                    title={q}
+                    selected={question === q}
                     onPress={() => setQuestion(q)}
-                  >
-                    <Text style={styles.presetQuestionText}>{q}</Text>
-                  </TouchableOpacity>
+                  />
                 ))}
               </View>
-            </View>
+            </Card>
           )}
 
           <View style={styles.captureArea}>
@@ -279,7 +334,8 @@ export default function CaptureScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            <SecondaryButton
+              title="📱 Library"
               style={styles.libraryButton}
               onPress={async () => {
                 try {
@@ -296,11 +352,20 @@ export default function CaptureScreen() {
                 }
               }}
               disabled={state.isLoading}
-              accessibilityLabel="Select from photo library"
-            >
-              <Text style={styles.libraryText}>📱 Library</Text>
-            </TouchableOpacity>
+            />
           </View>
+
+          {state.isLoading && (
+            <View
+              style={styles.hud}
+              accessibilityLabel="Analyzing"
+              accessibilityLiveRegion="polite"
+              pointerEvents="none"
+            >
+              <ActivityIndicator color="#fff" size="large" />
+              <Text style={styles.hudText}>Analyzing… {(elapsedMs / 1000).toFixed(1)}s</Text>
+            </View>
+          )}
 
           <View style={styles.footer}>
             {state.error ? (
@@ -330,28 +395,52 @@ export default function CaptureScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   camera: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+  overlay: { flex: 1, backgroundColor: theme.colors.overlay35 },
   header: {
-    paddingTop: theme.spacing(2),
+    paddingTop: theme.spacing(4),
     paddingHorizontal: theme.spacing(2),
     alignItems: 'center',
     gap: theme.spacing(2),
   },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    position: 'relative',
+  },
   title: {
+    ...theme.typography.title,
     color: '#fff',
-    fontSize: 20,
-    fontWeight: '800',
+    textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+    flex: 1,
+  },
+  subtitle: {
+    ...theme.typography.meta,
+    color: theme.colors.textMut,
+    textAlign: 'center',
+    position: 'absolute',
+    top: 30,
+    left: 0,
+    right: 0,
+  },
+  connectivityPill: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   questionContainer: {
     margin: theme.spacing(2),
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
+    backgroundColor: theme.colors.overlay70,
   },
-  questionLabel: { color: '#fff', fontWeight: '600', marginBottom: theme.spacing(1) },
+  questionLabel: {
+    ...theme.typography.section,
+    color: '#fff',
+    marginBottom: theme.spacing(1.5),
+  },
   presetQuestions: { gap: theme.spacing(1) },
   presetQuestion: {
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -360,30 +449,43 @@ const styles = StyleSheet.create({
   },
   presetQuestionActive: { backgroundColor: theme.colors.primary },
   presetQuestionText: { color: '#fff', textAlign: 'center' },
+  questionInput: {
+    marginTop: theme.spacing(2),
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    color: '#fff',
+    borderRadius: theme.radius.md,
+    padding: theme.spacing(1.5),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)'
+  },
   captureArea: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.8)',
   },
   captureInner: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   captureLoading: { backgroundColor: theme.colors.primary },
   captureText: { fontSize: 24, fontWeight: '800' },
@@ -391,6 +493,18 @@ const styles = StyleSheet.create({
     padding: theme.spacing(2),
     backgroundColor: 'rgba(0,0,0,0.7)',
   },
+  hud: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+  },
+  hudText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   instruction: {
     color: '#fff',
     textAlign: 'center',
@@ -433,17 +547,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   libraryButton: {
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
-    borderRadius: theme.radius.md,
     marginTop: theme.spacing(2),
-  },
-  libraryText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   webContainer: {
     flex: 1,

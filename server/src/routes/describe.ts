@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { GeminiProvider } from '../providers/geminiProvider';
+import { HybridProvider } from '../providers/hybridProvider';
 import { DescribeBody } from './schemas';
 export const describeRouter = Router();
 
@@ -8,7 +8,7 @@ export const describeRouter = Router();
 export const helpDescribe = 'POST /describe expects JSON: { imageBase64, options? }';
 
 describeRouter.get('/', (_req, res) => res.type('text/plain').send(helpDescribe));
-const provider = new GeminiProvider();
+const provider = new HybridProvider();
 
 describeRouter.post('/', async (req, res) => {
   const parse = DescribeBody.safeParse(req.body);

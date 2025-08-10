@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { GeminiProvider } from '../providers/geminiProvider';
+import { HybridProvider } from '../providers/hybridProvider';
 import { OCRBody } from './schemas';
 
 
@@ -7,7 +7,7 @@ export const ocrRouter = Router();
 export const helpOCR = 'POST /ocr expects JSON: { imageBase64, options? }';
 
 ocrRouter.get('/', (_req, res) => res.type('text/plain').send(helpOCR));
-const provider = new GeminiProvider();
+const provider = new HybridProvider();
 
 ocrRouter.post('/', async (req, res) => {
   const parse = OCRBody.safeParse(req.body);

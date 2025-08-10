@@ -10,5 +10,9 @@ export const options = z.object({
 export const DescribeBody = z.object({ imageBase64, mimeType, options });
 export const OCRBody = z.object({ imageBase64, mimeType, options });
 export const QABody = z.object({ imageBase64, question: z.string().min(1, 'question required'), mimeType, options });
-export const TTSBody = z.object({ text: z.string().min(1,'text required'), voice: z.string().optional() });
+export const TTSBody = z.object({
+  text: z.string().min(1,'text required'),
+  voice: z.string().optional(),
+  provider: z.enum(['gemini', 'elevenlabs']).optional()
+});
 

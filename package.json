@@ -1,11 +1,14 @@
 {
-  "dependencies": {
-    "@react-navigation/native": "^6.1.18",
-    "@react-navigation/stack": "^6.4.1",
-    "react-native-gesture-handler": "^2.28.0",
-    "react-native-reanimated": "^4.0.2",
-    "react-native-safe-area-context": "^5.6.0",
-    "react-native-screens": "^4.13.1",
-    "undefined": "react-navigation/bottom-tabs"
-  }
+  "name": "nadar",
+  "version": "1.0.0",
+  "description": "AI-powered visual assistance app for Morocco's blind community",
+  "private": true,
+  "scripts": {
+    "get-ip": "node get-ip.js",
+    "mobile-setup": "node get-ip.js"
+  },
+  "workspaces": [
+    "app",
+    "server"
+  ]
 }
