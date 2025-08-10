@@ -9,11 +9,51 @@ node_modules/
 /server/.env
 /server/npm-debug.log*
 
-# App (placeholder)
+# App
 /app/node_modules/
 /app/android/
 /app/ios/
+/app/.expo/
+/app/dist/
+/app/web-build/
 
-# Keys
+# Sensitive Files & API Keys
 Gemini_API_KEY.txt
+*.key
+*.pem
+*.p12
+*.mobileprovision
+
+# System Prompts & Prototypes (contain API details)
+Sys_Prompts.txt
+sys_prompts.txt
+system_prompts.txt
+**/prototypes/**
+**/prototype/**
+prototype.html
+test-*.html
+
+# Development & Testing
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.expo/
+expo-env.d.ts
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 

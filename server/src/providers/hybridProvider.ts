@@ -1,6 +1,6 @@
 import { IAIProvider, GenOptions, GenResult } from './IAIProvider';
 import { GeminiProvider } from './geminiProvider';
-import { ElevenLabsProvider } from './elevenlabsProvider';
+import { ElevenLabsProvider } from './elevenLabsProvider';
 
 export type TTSProvider = 'gemini' | 'elevenlabs';
 
@@ -17,7 +17,7 @@ export class HybridProvider implements IAIProvider {
       this.elevenlabsProvider = new ElevenLabsProvider();
       console.log('✅ ElevenLabs provider initialized');
     } catch (error) {
-      console.log('⚠️ ElevenLabs provider not available:', error.message);
+      console.log('⚠️ ElevenLabs provider not available:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
@@ -66,7 +66,7 @@ export class HybridProvider implements IAIProvider {
         }
       } catch (fallbackError) {
         console.error(`❌ Fallback ${fallbackProvider} TTS also failed:`, fallbackError);
-        throw new Error(`Both TTS providers failed. Primary: ${error.message}, Fallback: ${fallbackError.message}`);
+        throw new Error(`Both TTS providers failed. Primary: ${error instanceof Error ? error.message : 'Unknown error'}, Fallback: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
       }
     }
   }

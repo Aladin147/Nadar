@@ -1,4 +1,4 @@
-import { IAIProvider, GenResult } from '../types';
+import { IAIProvider, GenResult } from './IAIProvider';
 
 export class ElevenLabsProvider implements Partial<IAIProvider> {
   private apiKey: string;
