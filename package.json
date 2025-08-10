@@ -6,9 +6,5 @@
   "scripts": {
     "get-ip": "node get-ip.js",
     "mobile-setup": "node get-ip.js"
-  },
-  "workspaces": [
-    "app",
-    "server"
-  ]
+  }
 }
