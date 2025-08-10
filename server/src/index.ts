@@ -7,6 +7,7 @@ import { describeRouter } from './routes/describe';
 import { ocrRouter } from './routes/ocr';
 import { qaRouter } from './routes/qa';
 import { ttsRouter } from './routes/tts';
+import { execSync } from 'child_process';
 
 // Ephemeral image cache for follow-ups (2-minute TTL)
 export const recentImages = new Map<string, { buf: Buffer; ts: number }>();
@@ -57,7 +58,22 @@ app.use(express.json({ limit: '50mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-app.get('/', (_req, res) => res.type('text/plain').send('Nadar API. Endpoints: /health, POST /describe, /ocr, /qa, /tts'));
+// Version endpoint with git commit and build time
+app.get('/version', (_req, res) => {
+  try {
+    const commit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+    const builtAt = new Date().toISOString();
+    res.json({ commit, builtAt });
+  } catch (error) {
+    // Fallback if git is not available
+    res.json({
+      commit: process.env.GIT_COMMIT || 'unknown',
+      builtAt: process.env.BUILD_TIME || new Date().toISOString()
+    });
+  }
+});
+
+app.get('/', (_req, res) => res.type('text/plain').send('Nadar API. Endpoints: /health, /version, POST /describe, /ocr, /qa, /tts'));
 
 
 app.use('/describe', describeRouter);
