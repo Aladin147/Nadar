@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { HybridProvider, TTSProvider } from '../providers/hybridProvider';
 import { TTSBody } from './schemas';
 import { mapGeminiError } from '../providers/geminiProvider';
+import { createTelemetryLogger, calculateRequestSize } from '../utils/telemetry';
 
 
 export const ttsRouter = Router();
@@ -36,16 +37,28 @@ ttsRouter.post('/provider', (req, res) => {
 });
 
 ttsRouter.post('/', async (req, res) => {
+  const telemetry = createTelemetryLogger('tts');
   const parse = TTSBody.safeParse(req.body);
-  if (!parse.success) return res.status(400).json({ error: parse.error.issues[0]?.message || 'invalid body' });
+
+  if (!parse.success) {
+    telemetry.log(false, 0, 0, 0, 'INVALID_INPUT');
+    return res.status(400).json({ error: parse.error.issues[0]?.message || 'invalid body' });
+  }
+
   const { text, voice, rate } = parse.data;
   const { provider: requestProvider } = req.body; // Optional provider override
+  const bytesIn = calculateRequestSize(req.body);
+  const ttsStart = Date.now();
 
   try {
     const result = await provider.tts({ text, voice, provider: requestProvider, rate });
+    const ttsMs = Date.now() - ttsStart;
+    telemetry.log(true, 0, ttsMs, bytesIn, null);
     res.json(result);
   } catch (e: any) {
     const { message, err_code } = mapGeminiError(e);
+    const ttsMs = Date.now() - ttsStart;
+    telemetry.log(false, 0, ttsMs, bytesIn, err_code);
     res.status(500).json({ message, err_code });
   }
 });
