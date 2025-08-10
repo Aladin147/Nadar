@@ -83,17 +83,17 @@ export default function CaptureScreen() {
 
       if (mode === 'scene') {
         console.log('🔍 Calling describe API...');
-        result = await describe(downscaled.base64, downscaled.mimeType, opts);
+        result = await describe(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
       } else if (mode === 'ocr') {
         console.log('📖 Calling OCR API...');
-        result = await ocr(downscaled.base64, downscaled.mimeType, opts);
+        result = await ocr(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
       } else {
         if (!question.trim()) {
           dispatch({ type: 'SET_ERROR', error: 'Please select a question for Q&A mode' });
           return;
         }
         console.log('❓ Calling Q&A API...');
-        result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts);
+        result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts, state.sessionId);
       }
 
       console.log('✅ API call successful, navigating to results...');
@@ -245,17 +245,17 @@ export default function CaptureScreen() {
 
       if (mode === 'scene') {
         console.log('🔍 Calling describe API...');
-        result = await describe(downscaled.base64, downscaled.mimeType, opts);
+        result = await describe(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
       } else if (mode === 'ocr') {
         console.log('📖 Calling OCR API...');
-        result = await ocr(downscaled.base64, downscaled.mimeType, opts);
+        result = await ocr(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
       } else {
         if (!question.trim()) {
           dispatch({ type: 'SET_ERROR', error: 'Please select a question for Q&A mode' });
           return;
         }
         console.log('❓ Calling Q&A API...');
-        result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts);
+        result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts, state.sessionId);
       }
 
       console.log('✅ API call successful, navigating to results...');

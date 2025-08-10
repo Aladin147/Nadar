@@ -2,6 +2,15 @@ import React, { createContext, useContext, useEffect, useReducer, ReactNode } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Route } from '../navigation/AppNavigator';
 
+// Simple UUID generator
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export type CaptureResult = {
   id: string;
   timestamp: number;
@@ -24,6 +33,7 @@ type AppState = {
   currentCapture: CaptureResult | null;
   history: CaptureResult[];
   hasCompletedOnboarding: boolean;
+  sessionId: string;
 };
 
 type AppAction = 
@@ -42,6 +52,7 @@ const initialState: AppState = {
   currentCapture: null,
   history: [],
   hasCompletedOnboarding: false,
+  sessionId: generateUUID(),
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {

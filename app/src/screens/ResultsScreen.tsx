@@ -178,6 +178,14 @@ export default function ResultsScreen() {
           />
 
           <View style={styles.secondaryActions}>
+            <SecondaryButton
+              title="❓ Ask follow-up"
+              onPress={() => {
+                // Navigate to capture screen in QA mode for follow-up
+                dispatch({ type: 'NAVIGATE', route: 'capture' });
+                // TODO: Set QA mode and enable follow-up mode
+              }}
+            />
             <SecondaryButton title="📷 Take Another" onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })} />
             <SecondaryButton
               title="📋 Copy"

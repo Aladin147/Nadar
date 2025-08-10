@@ -8,6 +8,41 @@ import { ocrRouter } from './routes/ocr';
 import { qaRouter } from './routes/qa';
 import { ttsRouter } from './routes/tts';
 
+// Ephemeral image cache for follow-ups (2-minute TTL)
+export const recentImages = new Map<string, { buf: Buffer; ts: number }>();
+
+// Cleanup timer - run every 30 seconds, evict older than 120 seconds
+setInterval(() => {
+  const cutoff = Date.now() - 120_000; // 2 minutes
+  for (const [sessionId, entry] of recentImages.entries()) {
+    if (entry.ts < cutoff) {
+      recentImages.delete(sessionId);
+    }
+  }
+}, 30_000);
+
+// Helper to resolve image from request body
+export function resolveImage(body: any): Buffer | null {
+  if (body.imageBase64) {
+    return Buffer.from(body.imageBase64, 'base64');
+  }
+  if (body.imageRef === 'last' && body.sessionId) {
+    const cached = recentImages.get(body.sessionId);
+    return cached?.buf || null;
+  }
+  return null;
+}
+
+// Helper to cache image if sessionId provided
+export function cacheImage(body: any): void {
+  if (body.sessionId && body.imageBase64) {
+    recentImages.set(body.sessionId, {
+      buf: Buffer.from(body.imageBase64, 'base64'),
+      ts: Date.now()
+    });
+  }
+}
+
 const app = express();
 
 // Trust proxy so rate limiter can read X-Forwarded-For from dev tunnels/reverse proxies

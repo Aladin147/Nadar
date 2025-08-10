@@ -99,29 +99,40 @@ function createDemoResponse(mode: string, question?: string): GenResult {
   };
 }
 
-export async function describe(imageBase64: string, mimeType?: string, options?: any) {
+export async function describe(imageBase64: string, mimeType?: string, options?: any, sessionId?: string) {
   const base = await resolveApiBase();
   if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock scene description');
     return createDemoResponse('describe');
   }
-  return postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options });
+  return postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options, sessionId });
 }
-export async function ocr(imageBase64: string, mimeType?: string, options?: any) {
+
+export async function ocr(imageBase64: string, mimeType?: string, options?: any, sessionId?: string, full?: boolean) {
   const base = await resolveApiBase();
   if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock OCR result');
     return createDemoResponse('ocr');
   }
-  return postJSON<GenResult>(`/ocr`, { imageBase64, mimeType, options });
+  const url = full ? `/ocr?full=true` : `/ocr`;
+  return postJSON<GenResult>(url, { imageBase64, mimeType, options, sessionId });
 }
-export async function qa(imageBase64: string, question: string, mimeType?: string, options?: any) {
+
+export async function qa(imageBase64: string | null, question: string, mimeType?: string, options?: any, sessionId?: string, imageRef?: string) {
   const base = await resolveApiBase();
   if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock Q&A result');
     return createDemoResponse('qa', question);
   }
-  return postJSON<GenResult>(`/qa`, { imageBase64, question, mimeType, options });
+
+  const body: any = { question, mimeType, options, sessionId };
+  if (imageRef) {
+    body.imageRef = imageRef;
+  } else if (imageBase64) {
+    body.imageBase64 = imageBase64;
+  }
+
+  return postJSON<GenResult>(`/qa`, body);
 }
 export async function tts(text: string, voice?: string, provider?: 'gemini' | 'elevenlabs') {
   const base = await resolveApiBase();
