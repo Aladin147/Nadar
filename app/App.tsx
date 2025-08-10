@@ -9,6 +9,7 @@ import ResultsScreen from './src/screens/ResultsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import { isApiConfigured } from './src/config';
+import { Toast } from './src/app/components/Toast';
 
 function AppContent() {
   const { state, dispatch } = useAppState();
@@ -48,9 +49,21 @@ function AppContent() {
   }
 
   return (
-    <AppNavigator currentRoute={state.currentRoute} onNavigate={handleNavigate}>
-      {renderScreen()}
-    </AppNavigator>
+    <>
+      <AppNavigator currentRoute={state.currentRoute} onNavigate={handleNavigate}>
+        {renderScreen()}
+      </AppNavigator>
+
+      {/* Global Toast */}
+      {state.toast && (
+        <Toast
+          message={state.toast.message}
+          type={state.toast.type}
+          visible={state.toast.visible}
+          onHide={() => dispatch({ type: 'HIDE_TOAST' })}
+        />
+      )}
+    </>
   );
 }
 

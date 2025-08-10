@@ -11,6 +11,32 @@ import { useSettings } from '../app/state/useSettings';
 import { describe, ocr, qa, testConnection } from '../api/client';
 import { downscale } from '../utils/downscale';
 
+// Map error codes to friendly messages
+function mapErrorMessage(error: any): string {
+  const err_code = error?.err_code;
+  const message = error?.message;
+
+  if (err_code) {
+    switch (err_code) {
+      case 'NETWORK':
+        return 'No connection. Check internet or server in Settings.';
+      case 'TIMEOUT':
+        return 'The model took too long. Try again.';
+      case 'QUOTA':
+        return 'Daily limit reached. Try later or switch provider in Settings.';
+      case 'UNAUTHORIZED':
+        return 'API key invalid on server.';
+      case 'TOO_LARGE':
+        return 'Image too large. Move closer or try again.';
+      case 'UNKNOWN':
+      default:
+        return message || 'Something went wrong. Please try again.';
+    }
+  }
+
+  return message || error?.message || 'Failed to analyze image';
+}
+
 // Import the updated components
 import { Segmented } from '../app/components/Segmented';
 import { Chip } from '../app/components/Chip';
@@ -115,8 +141,8 @@ export default function CaptureScreen() {
       dispatch({ type: 'NAVIGATE', route: 'results' });
     } catch (error: any) {
       console.error('❌ Processing error:', error);
-      const errorMessage = error?.message || 'Failed to analyze image';
-      dispatch({ type: 'SET_ERROR', error: errorMessage });
+      const errorMessage = mapErrorMessage(error);
+      dispatch({ type: 'SHOW_TOAST', message: errorMessage, toastType: 'error' });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(()=>{});
     } finally {
       // Keep isLoading state managed by success/SET_CAPTURE_RESULT or error above
@@ -282,8 +308,8 @@ export default function CaptureScreen() {
 
     } catch (error: any) {
       console.error('❌ Capture error:', error);
-      const errorMessage = error.message || 'Failed to analyze image';
-      dispatch({ type: 'SET_ERROR', error: `Error: ${errorMessage}. Check server connection.` });
+      const errorMessage = mapErrorMessage(error);
+      dispatch({ type: 'SHOW_TOAST', message: errorMessage, toastType: 'error' });
     }
   }
 

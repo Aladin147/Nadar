@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { HybridProvider } from '../providers/hybridProvider';
 import { QABody } from './schemas';
 import { resolveImage, cacheImage } from '../index';
+import { mapGeminiError } from '../providers/geminiProvider';
 
 
 export const qaRouter = Router();
@@ -32,7 +33,8 @@ qaRouter.post('/', async (req, res) => {
     const result = await provider.qa({ imageBase64, question, mimeType, options });
     res.json(result);
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'unknown error' });
+    const { message, err_code } = mapGeminiError(e);
+    res.status(500).json({ message, err_code });
   }
 });
 

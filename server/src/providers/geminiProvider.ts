@@ -1,6 +1,33 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { IAIProvider, GenOptions, GenResult } from './IAIProvider.js';
 
+// Error code mapping for consistent error handling
+export function mapGeminiError(error: any): { message: string; err_code: string } {
+  const errorMessage = error?.message || 'Unknown error';
+
+  if (errorMessage.includes('timeout') || errorMessage.includes('Request timeout')) {
+    return { message: 'The model took too long. Try again.', err_code: 'TIMEOUT' };
+  }
+
+  if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
+    return { message: 'Daily limit reached. Try later or switch provider in Settings.', err_code: 'QUOTA' };
+  }
+
+  if (errorMessage.includes('unauthorized') || errorMessage.includes('API key')) {
+    return { message: 'API key invalid on server.', err_code: 'UNAUTHORIZED' };
+  }
+
+  if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+    return { message: 'No connection. Check internet or server in Settings.', err_code: 'NETWORK' };
+  }
+
+  if (errorMessage.includes('too large') || errorMessage.includes('size')) {
+    return { message: 'Image too large. Move closer or try again.', err_code: 'TOO_LARGE' };
+  }
+
+  return { message: errorMessage, err_code: 'UNKNOWN' };
+}
+
 export function buildSystemPrompt(mode: 'scene'|'ocr'|'ocr_full'|'qa', options?: GenOptions) {
   const verbosity = options?.verbosity ?? 'brief';
   const language = options?.language ?? 'darija';

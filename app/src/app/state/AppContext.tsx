@@ -34,16 +34,23 @@ type AppState = {
   history: CaptureResult[];
   hasCompletedOnboarding: boolean;
   sessionId: string;
+  toast: {
+    message: string;
+    type: 'error' | 'success' | 'info';
+    visible: boolean;
+  } | null;
 };
 
-type AppAction = 
+type AppAction =
   | { type: 'NAVIGATE'; route: Route }
   | { type: 'SET_LOADING'; loading: boolean }
   | { type: 'SET_ERROR'; error: string | null }
   | { type: 'SET_CAPTURE_RESULT'; result: CaptureResult }
   | { type: 'ADD_TO_HISTORY'; result: CaptureResult }
   | { type: 'COMPLETE_ONBOARDING' }
-  | { type: 'CLEAR_CURRENT_CAPTURE' };
+  | { type: 'CLEAR_CURRENT_CAPTURE' }
+  | { type: 'SHOW_TOAST'; message: string; toastType: 'error' | 'success' | 'info' }
+  | { type: 'HIDE_TOAST' };
 
 const initialState: AppState = {
   currentRoute: 'landing',
@@ -53,6 +60,7 @@ const initialState: AppState = {
   history: [],
   hasCompletedOnboarding: false,
   sessionId: generateUUID(),
+  toast: null,
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -71,6 +79,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, hasCompletedOnboarding: true };
     case 'CLEAR_CURRENT_CAPTURE':
       return { ...state, currentCapture: null };
+    case 'SHOW_TOAST':
+      return {
+        ...state,
+        toast: {
+          message: action.message,
+          type: action.toastType,
+          visible: true
+        }
+      };
+    case 'HIDE_TOAST':
+      return { ...state, toast: null };
     default:
       return state;
   }

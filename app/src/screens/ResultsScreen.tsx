@@ -8,6 +8,32 @@ import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
 import { tts, ocr } from '../api/client';
 import { AudioPlayer, AudioPlayerRef } from '../utils/audioPlayer';
+
+// Map error codes to friendly messages (shared with CaptureScreen)
+function mapErrorMessage(error: any): string {
+  const err_code = error?.err_code;
+  const message = error?.message;
+
+  if (err_code) {
+    switch (err_code) {
+      case 'NETWORK':
+        return 'No connection. Check internet or server in Settings.';
+      case 'TIMEOUT':
+        return 'The model took too long. Try again.';
+      case 'QUOTA':
+        return 'Daily limit reached. Try later or switch provider in Settings.';
+      case 'UNAUTHORIZED':
+        return 'API key invalid on server.';
+      case 'TOO_LARGE':
+        return 'Image too large. Move closer or try again.';
+      case 'UNKNOWN':
+      default:
+        return message || 'Something went wrong. Please try again.';
+    }
+  }
+
+  return message || error?.message || 'Failed to process request';
+}
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
 import { ResultSection } from '../app/components/ResultSection';
@@ -271,7 +297,8 @@ export default function ResultsScreen() {
                   // Chunked TTS for long text
                   await speakChunked(fullResult.text, settings.voice);
                 } catch (error: any) {
-                  dispatch({ type: 'SET_ERROR', error: error.message });
+                  const errorMessage = error?.err_code ? mapErrorMessage(error) : error.message;
+                  dispatch({ type: 'SHOW_TOAST', message: errorMessage, toastType: 'error' });
                 } finally {
                   dispatch({ type: 'SET_LOADING', loading: false });
                 }
