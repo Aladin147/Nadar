@@ -161,9 +161,12 @@ export default function CaptureScreen() {
                 value={question}
                 onChangeText={setQuestion}
                 placeholder="Ask about the image…"
-                 placeholderTextColor={theme.colors.textMut}
+                placeholderTextColor={theme.colors.textMut}
                 style={styles.questionInput}
-                accessibilityLabel="Question input"
+                accessibilityLabel="Ask a question"
+                accessibilityHint="Type your custom question about the image"
+                returnKeyType="send"
+                multiline={false}
               />
             </View>
           )}
@@ -314,6 +317,23 @@ export default function CaptureScreen() {
                   />
                 ))}
               </View>
+              <TextInput
+                value={question}
+                onChangeText={setQuestion}
+                placeholder="Ask a question…"
+                placeholderTextColor={theme.colors.textMut}
+                style={styles.questionInput}
+                accessibilityLabel="Ask a question"
+                accessibilityHint="Type your custom question about the image"
+                returnKeyType="send"
+                multiline={false}
+                onSubmitEditing={() => {
+                  // Auto-capture when user presses send
+                  if (question.trim()) {
+                    handleCapture();
+                  }
+                }}
+              />
             </Card>
           )}
 
