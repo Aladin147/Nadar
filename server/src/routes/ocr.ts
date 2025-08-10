@@ -15,6 +15,7 @@ ocrRouter.post('/', async (req, res) => {
   if (!parse.success) return res.status(400).json({ error: parse.error.issues[0]?.message || 'invalid body' });
 
   const { options } = parse.data;
+  const full = req.query.full === 'true';
 
   // Cache new image if provided
   cacheImage(req.body);
@@ -29,7 +30,7 @@ ocrRouter.post('/', async (req, res) => {
   const mimeType = req.body.mimeType || 'image/jpeg';
 
   try {
-    const result = await provider.ocr({ imageBase64, mimeType, options });
+    const result = await provider.ocr({ imageBase64, mimeType, options, full });
     res.json(result);
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'unknown error' });

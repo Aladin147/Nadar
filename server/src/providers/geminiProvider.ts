@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { IAIProvider, GenOptions, GenResult } from './IAIProvider.js';
 
-export function buildSystemPrompt(mode: 'scene'|'ocr'|'qa', options?: GenOptions) {
+export function buildSystemPrompt(mode: 'scene'|'ocr'|'ocr_full'|'qa', options?: GenOptions) {
   const verbosity = options?.verbosity ?? 'brief';
   const language = options?.language ?? 'darija';
   const langDir = language === 'darija' ? 'Respond in Darija (Moroccan Arabic).' : language === 'ar' ? 'Respond in Modern Standard Arabic.' : 'Respond in English.';
@@ -21,7 +21,9 @@ NAVIGATION: [1 short sentence - movement guidance]
 
 Keep responses very concise and actionable. Assume users are on the move and need quick, essential information. Don't identify people; avoid reading private screens; express uncertainty when unsure. Never use phrases like "as you can see" or "if you look".`,
 
-    ocr: `${langDir} You are نظر (Nadar), helping blind users read text. Extract visible text and summarize in 2 bullets maximum. If mixed languages are present, note them. Ask: "Do you want a full readout?" Keep responses concise and practical. Avoid reading private or sensitive information.`,
+    ocr: `${langDir} You are نظر (Nadar), helping blind users read text. Extract visible text and summarize in 2 bullets maximum. If mixed languages are present, note them. Keep responses concise and practical. Avoid reading private or sensitive information.`,
+
+    ocr_full: `${langDir} You are نظر (Nadar), helping blind users read text. Extract and return the full visible text verbatim. No summary. Present the text exactly as it appears, maintaining structure and formatting where possible.`,
 
     qa: `${langDir} You are نظر (Nadar), answering specific questions for blind users. Provide one short, direct sentence. If uncertain about anything, clearly state you are not sure and suggest one clarifying question. Always prioritize safety - if you see imminent danger or critical information, mention it first regardless of the question asked.`,
   }[mode];
@@ -56,8 +58,9 @@ export class GeminiProvider implements IAIProvider {
     return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 }, structured };
   }
 
-  async ocr({ imageBase64, mimeType, options }: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
-    const sys = buildSystemPrompt('ocr', options);
+  async ocr({ imageBase64, mimeType, options, full }: { imageBase64: string; mimeType?: string; options?: GenOptions; full?: boolean }): Promise<GenResult> {
+    const mode = full ? 'ocr_full' : 'ocr';
+    const sys = buildSystemPrompt(mode, options);
     const parts = [sys, toInlineImage(imageBase64, mimeType)];
     const t0 = Date.now();
     const result = await Promise.race([

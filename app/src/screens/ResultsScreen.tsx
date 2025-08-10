@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { theme, typography } from '../app/theme';
 import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
-import { tts } from '../api/client';
+import { tts, ocr } from '../api/client';
 import { AudioPlayer, AudioPlayerRef } from '../utils/audioPlayer';
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
@@ -45,6 +45,55 @@ export default function ResultsScreen() {
     } catch (error) {
       console.error('❌ TTS error:', error);
     }
+  };
+
+  // Chunked TTS for long text (split on sentence boundaries)
+  const speakChunked = async (text: string, voice?: string) => {
+    try {
+      console.log('🔊 Starting chunked TTS for long text...');
+
+      // Split text into chunks of ~1200-1500 chars on sentence boundaries
+      const chunks = splitTextIntoChunks(text, 1400);
+
+      for (let i = 0; i < chunks.length; i++) {
+        console.log(`🔊 Playing chunk ${i + 1}/${chunks.length}`);
+        await speak(chunks[i], voice);
+
+        // Small pause between chunks
+        if (i < chunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      console.log('✅ Chunked TTS completed');
+    } catch (error) {
+      console.error('❌ Chunked TTS error:', error);
+    }
+  };
+
+  // Helper to split text into chunks on sentence boundaries
+  const splitTextIntoChunks = (text: string, maxChunkSize: number): string[] => {
+    if (text.length <= maxChunkSize) return [text];
+
+    const chunks: string[] = [];
+    let currentChunk = '';
+
+    // Split on sentence boundaries (. ! ?)
+    const sentences = text.split(/([.!?]+\s*)/);
+
+    for (let i = 0; i < sentences.length; i += 2) {
+      const sentence = sentences[i] + (sentences[i + 1] || '');
+
+      if (currentChunk.length + sentence.length <= maxChunkSize) {
+        currentChunk += sentence;
+      } else {
+        if (currentChunk) chunks.push(currentChunk.trim());
+        currentChunk = sentence;
+      }
+    }
+
+    if (currentChunk) chunks.push(currentChunk.trim());
+    return chunks.filter(chunk => chunk.length > 0);
   };
 
   if (!result) {
@@ -166,6 +215,31 @@ export default function ResultsScreen() {
                 { label: 'Model', value: result.timings.model ?? '—' },
                 { label: 'Total', value: result.timings.total ?? '—' },
               ]}
+            />
+          </View>
+        )}
+
+        {/* OCR-specific "Read all" button */}
+        {result.mode === 'ocr' && (
+          <View style={styles.ocrActions}>
+            <SecondaryButton
+              title="📖 Read all"
+              onPress={async () => {
+                try {
+                  dispatch({ type: 'SET_LOADING', loading: true });
+                  const fullResult = await ocr(null, undefined, {
+                    verbosity: settings.verbosity,
+                    language: settings.language
+                  }, state.sessionId, true, 'last');
+
+                  // Chunked TTS for long text
+                  await speakChunked(fullResult.text, settings.voice);
+                } catch (error: any) {
+                  dispatch({ type: 'SET_ERROR', error: error.message });
+                } finally {
+                  dispatch({ type: 'SET_LOADING', loading: false });
+                }
+              }}
             />
           </View>
         )}
@@ -354,6 +428,10 @@ const styles = StyleSheet.create({
     color: theme.colors.textMut,
     fontSize: 12,
     fontWeight: '500',
+  },
+  ocrActions: {
+    marginBottom: theme.spacing(2),
+    alignItems: 'center',
   },
   actions: { gap: theme.spacing(2) },
   audioButton: { width: '100%' },

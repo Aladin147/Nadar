@@ -108,14 +108,23 @@ export async function describe(imageBase64: string, mimeType?: string, options?:
   return postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options, sessionId });
 }
 
-export async function ocr(imageBase64: string, mimeType?: string, options?: any, sessionId?: string, full?: boolean) {
+export async function ocr(imageBase64: string | null, mimeType?: string, options?: any, sessionId?: string, full?: boolean, imageRef?: string) {
   const base = await resolveApiBase();
   if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock OCR result');
     return createDemoResponse('ocr');
   }
+
   const url = full ? `/ocr?full=true` : `/ocr`;
-  return postJSON<GenResult>(url, { imageBase64, mimeType, options, sessionId });
+  const body: any = { mimeType, options, sessionId };
+
+  if (imageRef) {
+    body.imageRef = imageRef;
+  } else if (imageBase64) {
+    body.imageBase64 = imageBase64;
+  }
+
+  return postJSON<GenResult>(url, body);
 }
 
 export async function qa(imageBase64: string | null, question: string, mimeType?: string, options?: any, sessionId?: string, imageRef?: string) {

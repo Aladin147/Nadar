@@ -31,7 +31,7 @@ export class HybridProvider implements IAIProvider {
     return this.geminiProvider.describe(args);
   }
 
-  async ocr(args: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
+  async ocr(args: { imageBase64: string; mimeType?: string; options?: GenOptions; full?: boolean }): Promise<GenResult> {
     return this.geminiProvider.ocr(args);
   }
 
