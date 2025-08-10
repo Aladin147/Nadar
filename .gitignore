@@ -31,6 +31,7 @@ system_prompts.txt
 **/prototypes/**
 **/prototype/**
 prototype.html
+nadar-gemini-prototype.html
 test-*.html
 
 # Development & Testing
