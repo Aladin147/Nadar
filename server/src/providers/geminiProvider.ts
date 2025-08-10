@@ -85,7 +85,7 @@ export class GeminiProvider implements IAIProvider {
     return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 } };
   }
 
-  async tts({ text, voice }: { text: string; voice?: string }): Promise<{ audioBase64: string; mimeType?: string }> {
+  async tts({ text, voice, rate }: { text: string; voice?: string; rate?: number }): Promise<{ audioBase64: string; mimeType?: string }> {
     const result = await Promise.race([
       this.ttsModel.generateContent({
         contents: [{ role: 'user', parts: [{ text }] }],
@@ -96,7 +96,8 @@ export class GeminiProvider implements IAIProvider {
               prebuiltVoiceConfig: {
                 voiceName: voice || 'Kore'
               }
-            }
+            },
+            ...(rate && { speakingRate: rate })
           }
         }
       } as any),

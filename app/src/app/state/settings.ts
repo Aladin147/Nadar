@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type Language = 'darija'|'ar'|'en';
 export type Verbosity = 'brief'|'normal'|'detailed';
 export type TTSProvider = 'gemini'|'elevenlabs';
+export type TTSRate = 0.9 | 1.0 | 1.2;
 
 export type Settings = {
   language: Language;
@@ -10,6 +11,7 @@ export type Settings = {
   voice?: string;
   apiBase?: string;
   ttsProvider?: TTSProvider;
+  ttsRate?: TTSRate;
 };
 
 const KEY = 'nadar.settings.v1';
@@ -17,11 +19,11 @@ const KEY = 'nadar.settings.v1';
 export async function loadSettings(): Promise<Settings> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return { language: 'darija', verbosity: 'brief', ttsProvider: 'gemini' };
+    if (!raw) return { language: 'darija', verbosity: 'brief', ttsProvider: 'elevenlabs', ttsRate: 1.0 };
     const parsed = JSON.parse(raw) as Settings;
-    return { language: 'darija', verbosity: 'brief', ttsProvider: 'gemini', ...parsed };
+    return { language: 'darija', verbosity: 'brief', ttsProvider: 'elevenlabs', ttsRate: 1.0, ...parsed };
   } catch {
-    return { language: 'darija', verbosity: 'brief', ttsProvider: 'gemini' };
+    return { language: 'darija', verbosity: 'brief', ttsProvider: 'elevenlabs', ttsRate: 1.0 };
   }
 }
 

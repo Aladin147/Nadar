@@ -1,5 +1,5 @@
 // File: src/screens/ResultsScreen.tsx (drop-in refactor)
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Share, SafeAreaView, ScrollView } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
@@ -20,21 +20,43 @@ export default function ResultsScreen() {
   const result = state.currentCapture;
   const soundRef = useRef<AudioPlayerRef['current']>(null);
   const audioPlayerRef = useRef<AudioPlayer | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const chunkedTTSQueue = useRef<string[]>([]);
+  const isChunkedPlaying = useRef(false);
 
   // Initialize audio player
   if (!audioPlayerRef.current) {
     audioPlayerRef.current = new AudioPlayer(soundRef);
   }
 
+  // Stop audio playback
+  const stopAudio = async () => {
+    try {
+      setIsPlaying(false);
+      isChunkedPlaying.current = false;
+      chunkedTTSQueue.current = []; // Clear queue
+
+      if (audioPlayerRef.current) {
+        await audioPlayerRef.current.cleanup();
+      }
+
+      console.log('🛑 Audio playback stopped');
+    } catch (error) {
+      console.error('❌ Stop audio error:', error);
+    }
+  };
+
   // Cross-platform TTS function
   const speak = async (text: string, voice?: string) => {
     try {
+      setIsPlaying(true);
       console.log('🔊 Starting TTS for text:', text.substring(0, 50) + '...');
 
-      const res = await tts(text, voice || settings.voice, settings.ttsProvider);
+      const res = await tts(text, voice || settings.voice, settings.ttsProvider, settings.ttsRate);
 
       if (!res.audioBase64) {
         console.error('❌ No audio data received from TTS');
+        setIsPlaying(false);
         return;
       }
 
@@ -42,8 +64,10 @@ export default function ResultsScreen() {
       await audioPlayerRef.current!.playAudio(res.audioBase64, res.mimeType);
 
       console.log('✅ Audio playback started');
+      setIsPlaying(false);
     } catch (error) {
       console.error('❌ TTS error:', error);
+      setIsPlaying(false);
     }
   };
 
@@ -51,23 +75,35 @@ export default function ResultsScreen() {
   const speakChunked = async (text: string, voice?: string) => {
     try {
       console.log('🔊 Starting chunked TTS for long text...');
+      isChunkedPlaying.current = true;
 
       // Split text into chunks of ~1200-1500 chars on sentence boundaries
       const chunks = splitTextIntoChunks(text, 1400);
+      chunkedTTSQueue.current = chunks;
 
       for (let i = 0; i < chunks.length; i++) {
+        // Check if we should stop
+        if (!isChunkedPlaying.current) {
+          console.log('🛑 Chunked TTS stopped by user');
+          break;
+        }
+
         console.log(`🔊 Playing chunk ${i + 1}/${chunks.length}`);
         await speak(chunks[i], voice);
 
-        // Small pause between chunks
-        if (i < chunks.length - 1) {
+        // Small pause between chunks (also check for stop)
+        if (i < chunks.length - 1 && isChunkedPlaying.current) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 
+      isChunkedPlaying.current = false;
+      chunkedTTSQueue.current = [];
       console.log('✅ Chunked TTS completed');
     } catch (error) {
       console.error('❌ Chunked TTS error:', error);
+      isChunkedPlaying.current = false;
+      chunkedTTSQueue.current = [];
     }
   };
 
@@ -246,8 +282,8 @@ export default function ResultsScreen() {
 
         <View style={styles.actions}>
           <PrimaryButton
-            title="🔊 Play Full Audio"
-            onPress={() => speak(result.result, settings.voice)}
+            title={isPlaying ? "🛑 Stop" : "🔊 Play Full Audio"}
+            onPress={isPlaying ? stopAudio : () => speak(result.result, settings.voice)}
             style={styles.audioButton}
           />
 

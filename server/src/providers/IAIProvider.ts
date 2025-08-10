@@ -20,6 +20,6 @@ export interface IAIProvider {
   describe(args: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult>;
   ocr(args: { imageBase64: string; mimeType?: string; options?: GenOptions; full?: boolean }): Promise<GenResult>;
   qa(args: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions }): Promise<GenResult>;
-  tts(args: { text: string; voice?: string }): Promise<{ audioBase64: string; mimeType?: string }>;
+  tts(args: { text: string; voice?: string; rate?: number }): Promise<{ audioBase64: string; mimeType?: string }>;
 }
 

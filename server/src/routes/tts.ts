@@ -37,11 +37,11 @@ ttsRouter.post('/provider', (req, res) => {
 ttsRouter.post('/', async (req, res) => {
   const parse = TTSBody.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: parse.error.issues[0]?.message || 'invalid body' });
-  const { text, voice } = parse.data;
+  const { text, voice, rate } = parse.data;
   const { provider: requestProvider } = req.body; // Optional provider override
 
   try {
-    const result = await provider.tts({ text, voice, provider: requestProvider });
+    const result = await provider.tts({ text, voice, provider: requestProvider, rate });
     res.json(result);
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'unknown error' });

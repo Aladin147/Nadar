@@ -143,14 +143,14 @@ export async function qa(imageBase64: string | null, question: string, mimeType?
 
   return postJSON<GenResult>(`/qa`, body);
 }
-export async function tts(text: string, voice?: string, provider?: 'gemini' | 'elevenlabs') {
+export async function tts(text: string, voice?: string, provider?: 'gemini' | 'elevenlabs', rate?: number) {
   const base = await resolveApiBase();
   if (base === 'DEMO_MODE') {
     console.log('🎭 Demo mode: returning mock TTS audio');
     const silenceBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
     return { audioBase64: silenceBase64 };
   }
-  return postJSON<TTSResult>(`/tts`, { text, voice, provider });
+  return postJSON<TTSResult>(`/tts`, { text, voice, provider, rate });
 }
 
 // Get available TTS providers from server

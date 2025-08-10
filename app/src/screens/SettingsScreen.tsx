@@ -5,7 +5,7 @@ import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
 import { Card } from '../app/components/Card';
 import { theme } from '../app/theme';
-import { loadSettings, saveSettings, Language, Verbosity, TTSProvider } from '../app/state/settings';
+import { loadSettings, saveSettings, Language, Verbosity, TTSProvider, TTSRate } from '../app/state/settings';
 import { testConnection } from '../api/client';
 import { discoverApiBase, getConfigurationHelp } from '../utils/networkDiscovery';
 
@@ -14,7 +14,8 @@ export default function SettingsScreen() {
   const [verbosity, setVerbosity] = useState<Verbosity>('brief');
   const [voice, setVoice] = useState<string>('');
   const [apiBase, setApiBase] = useState<string>('');
-  const [ttsProvider, setTtsProvider] = useState<TTSProvider>('gemini');
+  const [ttsProvider, setTtsProvider] = useState<TTSProvider>('elevenlabs');
+  const [ttsRate, setTtsRate] = useState<TTSRate>(1.0);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isDiscovering, setIsDiscovering] = useState(false);
 
@@ -33,7 +34,8 @@ export default function SettingsScreen() {
       setVerbosity(s.verbosity);
       setVoice(s.voice || '');
       setApiBase(s.apiBase || '');
-      setTtsProvider(s.ttsProvider || 'gemini');
+      setTtsProvider(s.ttsProvider || 'elevenlabs');
+      setTtsRate(s.ttsRate || 1.0);
     })();
   }, []);
 
@@ -43,7 +45,8 @@ export default function SettingsScreen() {
       verbosity,
       voice: voice || undefined,
       apiBase: apiBase || undefined,
-      ttsProvider
+      ttsProvider,
+      ttsRate
     });
 
     // Also update server-side provider if API is available
@@ -88,6 +91,19 @@ export default function SettingsScreen() {
           <TextInput style={styles.input} placeholder="Kore" placeholderTextColor={theme.colors.textMut} value={voice} onChangeText={setVoice} />
           <Text style={styles.helperText}>
             {ttsProvider === 'gemini' ? 'Gemini voices: Kore, Charon, Aoede, Fenrir' : 'ElevenLabs: alloy, echo, fable, onyx, nova, shimmer'}
+          </Text>
+
+          <Text style={styles.label}>TTS Rate</Text>
+          <Segmented
+            options={['0.9×', '1.0×', '1.2×']}
+            value={ttsRate === 0.9 ? '0.9×' : ttsRate === 1.2 ? '1.2×' : '1.0×'}
+            onChange={(v) => {
+              const rate = v === '0.9×' ? 0.9 : v === '1.2×' ? 1.2 : 1.0;
+              setTtsRate(rate);
+            }}
+          />
+          <Text style={styles.helperText}>
+            Adjust speech speed: slower (0.9×), normal (1.0×), or faster (1.2×)
           </Text>
         </Card>
 

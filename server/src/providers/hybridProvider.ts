@@ -40,16 +40,16 @@ export class HybridProvider implements IAIProvider {
   }
 
   // TTS - use selected provider with fallback
-  async tts({ text, voice, provider }: { text: string; voice?: string; provider?: TTSProvider }): Promise<{ audioBase64: string; mimeType?: string }> {
+  async tts({ text, voice, provider, rate }: { text: string; voice?: string; provider?: TTSProvider; rate?: number }): Promise<{ audioBase64: string; mimeType?: string }> {
     const selectedProvider = provider || this.defaultTTSProvider;
     
     try {
       if (selectedProvider === 'elevenlabs' && this.elevenlabsProvider) {
         console.log('🎙️ Using ElevenLabs TTS');
-        return await this.elevenlabsProvider.tts({ text, voice });
+        return await this.elevenlabsProvider.tts({ text, voice, rate });
       } else {
         console.log('🎙️ Using Gemini TTS');
-        return await this.geminiProvider.tts({ text, voice });
+        return await this.geminiProvider.tts({ text, voice, rate });
       }
     } catch (error) {
       console.error(`❌ ${selectedProvider} TTS failed:`, error);
@@ -60,9 +60,9 @@ export class HybridProvider implements IAIProvider {
       
       try {
         if (fallbackProvider === 'elevenlabs' && this.elevenlabsProvider) {
-          return await this.elevenlabsProvider.tts({ text, voice });
+          return await this.elevenlabsProvider.tts({ text, voice, rate });
         } else {
-          return await this.geminiProvider.tts({ text, voice });
+          return await this.geminiProvider.tts({ text, voice, rate });
         }
       } catch (fallbackError) {
         console.error(`❌ Fallback ${fallbackProvider} TTS also failed:`, fallbackError);

@@ -9,7 +9,9 @@ export interface UseSettingsReturn {
 export function useSettings(): UseSettingsReturn {
   const [settings, setSettings] = useState<Settings>({
     language: 'darija',
-    verbosity: 'brief'
+    verbosity: 'brief',
+    ttsProvider: 'elevenlabs',
+    ttsRate: 1.0
   });
 
   useEffect(() => {

@@ -24,6 +24,7 @@ export const QABody = z.intersection(imageInput, z.object({
 export const TTSBody = z.object({
   text: z.string().min(1,'text required'),
   voice: z.string().optional(),
-  provider: z.enum(['gemini', 'elevenlabs']).optional()
+  provider: z.enum(['gemini', 'elevenlabs']).optional(),
+  rate: z.number().min(0.5).max(2.0).optional()
 });
 
