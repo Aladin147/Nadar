@@ -51,10 +51,11 @@ export default function MobileSetupScreen({ onComplete }: { onComplete: () => vo
     }
   }
 
-  function handleManualSetup() {
+  async function handleManualSetup() {
+    const helpText = await getConfigurationHelp();
     Alert.alert(
       'Manual Setup Instructions',
-      getConfigurationHelp(),
+      helpText,
       [
         { text: 'Open Settings', onPress: () => dispatch({ type: 'NAVIGATE', route: 'settings' }) },
         { text: 'OK' }

@@ -145,7 +145,8 @@ export default function SettingsScreen() {
                     setApiBase(discovered);
                     Alert.alert('Server Found!', `Set server address to: ${discovered}`);
                   } else {
-                    Alert.alert('Server Not Found', getConfigurationHelp());
+                    const helpText = await getConfigurationHelp();
+                    Alert.alert('Server Not Found', helpText);
                   }
                 }}
               />
