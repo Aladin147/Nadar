@@ -70,8 +70,8 @@ export class GeminiProvider implements IAIProvider {
   constructor(genAI?: GoogleGenerativeAI) {
     this.gen = genAI || new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-    // Use 2.5 Flash with thinking disabled for optimal speed, or allow override via env var
-    const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    // Use 2.5 Flash-Lite (no thinking by default) for optimal speed, or allow override via env var
+    const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 
     this.visionModel = this.gen.getGenerativeModel({
       model: modelName

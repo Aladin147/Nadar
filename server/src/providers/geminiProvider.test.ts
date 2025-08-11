@@ -50,9 +50,9 @@ describe('GeminiProvider', () => {
   });
 
   describe('initialization', () => {
-    it('should use gemini-2.5-flash model by default', () => {
+    it('should use gemini-2.5-flash-lite model by default', () => {
       expect(mockGetGenerativeModel).toHaveBeenCalledWith({
-        model: 'gemini-2.5-flash'
+        model: 'gemini-2.5-flash-lite'
       });
     });
 
