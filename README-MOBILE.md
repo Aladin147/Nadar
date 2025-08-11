@@ -1,113 +1,77 @@
 # Nadar Mobile Testing Guide
 
-## 🚀 Quick Start for Mobile Testing
+## 🚀 Quick Start for Mobile Development
+
+The development workflow has been streamlined. You can now start both the server and the app with a single command from the root of the project.
 
 ### Prerequisites
-1. **Install Expo Go** on your mobile device:
-   - [Android: Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
-   - [iOS: App Store](https://apps.apple.com/app/expo-go/id982107779)
+1. **Install Expo Go** on your mobile device.
+2. **Ensure your computer and mobile device are on the same WiFi network.**
 
-2. **Ensure both devices are connected** to the same WiFi network
-
-### Method 1: Tunnel Mode (Recommended for Testing)
-
+### Single-Command Development
+In a terminal at the project root, run:
 ```bash
-# Terminal 1: Start the server
-cd server
 npm run dev
-
-# Terminal 2: Start the app with tunnel
-cd app  
-npm run mobile
 ```
+This command starts both the backend server and the Expo development server for the mobile app.
 
-1. **Scan the QR code** with Expo Go app on your mobile device
-2. **App will load** - no additional configuration needed!
-3. **Test the flow**: Landing → Start Using Nadar → Capture Screen
+### Connecting the App
+1. **Scan the QR code** from the terminal using the Expo Go app on your phone.
+2. The app will load and automatically discover the server running on your local network.
+3. If the server is not found, the app will guide you through a quick manual setup, providing helpful hints based on your network.
 
-### Method 2: Local Network (Faster Performance)
-
-```bash
-# Terminal 1: Start the server
-cd server
-npm run dev
-
-# Terminal 2: Start the app normally
-cd app
-npm start
-```
-
-1. **Find your computer's IP address**:
-   - Windows: Open Command Prompt, run `ipconfig`
-   - Mac: Open Terminal, run `ifconfig`
-   - Look for IPv4/inet address (usually starts with 192.168 or 10.0)
-
-2. **Scan QR code** with Expo Go app
-
-3. **Configure server in app**:
-   - App will show "Mobile Setup Required" screen
-   - Tap "Auto-Discover Server" (tries to find server automatically)
-   - OR tap "Manual Setup" and enter `http://YOUR_IP:4000`
+---
 
 ## 🔧 Mobile-Specific Features
 
-### Consolidated Onboarding
-- **Single landing screen** explains all three modes
-- **One-click setup** requests all permissions at once
-- **Direct transition** to capture screen (no multi-step onboarding)
-
 ### Smart Server Discovery
-- **Auto-discovery** scans common IP ranges to find the server
-- **Manual configuration** with helpful IP suggestions
-- **Connection testing** before allowing app usage
+The app's server discovery is now much more robust:
+- **Intelligent Scan:** The app gets its own IP address and intelligently scans the entire local subnet to find the server almost instantly.
+- **Reliable Connection:** This new method is significantly more reliable than the previous version and should work on most network configurations without manual setup.
+- **Helpful Fallbacks:** In the rare case that auto-discovery fails, the manual setup screen provides improved instructions to help you connect.
 
-### Mobile-Optimized Settings
-- **Server IP configuration** with common address suggestions
-- **Auto-discovery button** for easy setup
-- **Clear instructions** for finding computer's IP address
+### Consolidated Onboarding
+- A single landing screen explains all modes.
+- One-click setup requests all necessary permissions.
+- Direct transition to the main capture screen.
+
+---
 
 ## 📱 Testing Checklist
 
 ### Core Flow
-- [ ] Landing screen shows properly on mobile
-- [ ] "Start Using Nadar" button works
-- [ ] Permissions are requested correctly
-- [ ] Transitions to capture screen
-- [ ] Camera view loads properly
-- [ ] Mode switching (Scene/OCR/QA) works
-- [ ] Image capture and analysis works
-- [ ] Results screen displays correctly
-- [ ] Audio playback works
-- [ ] Navigation between screens works
+- [ ] Landing screen shows properly on mobile.
+- [ ] "Start Using Nadar" button works.
+- [ ] Permissions are requested correctly.
+- [ ] Transitions to capture screen.
+- [ ] Camera view loads properly.
+- [ ] Image capture and analysis works.
+- [ ] Results screen displays correctly.
+- [ ] Audio playback works.
 
 ### Mobile-Specific
-- [ ] Server connectivity check works
-- [ ] Auto-discovery finds the server
-- [ ] Manual IP configuration works
-- [ ] Connection testing provides clear feedback
-- [ ] Error messages are helpful
-- [ ] App works without tunnel mode (local network)
+- [ ] **Auto-discovery finds the server quickly and reliably.**
+- [ ] Manual IP configuration works if needed.
+- [ ] Connection testing provides clear feedback.
+- [ ] The app works correctly on the local network.
+
+---
 
 ## 🐛 Common Issues & Solutions
 
 ### "Cannot reach server"
-- Ensure server is running: `cd server && npm run dev`
-- Check both devices are on same WiFi
-- Try auto-discovery in Settings
-- Verify IP address is correct
+- **Ensure the server is running:** The `npm run dev` command should be running in your terminal.
+- **Check WiFi:** Verify that both your computer and mobile device are on the same WiFi network.
+- **Firewall:** Check that your computer's firewall isn't blocking incoming connections on port 4000.
 
 ### "Camera not working"
-- Grant camera permissions when prompted
-- Check device camera permissions in system settings
-- Restart the app if needed
+- Grant camera permissions when prompted in the app.
+- Check camera permissions in your device's system settings.
 
-### "App won't load"
-- Check Expo Go app is updated
-- Ensure QR code is scanned correctly
-- Try refreshing the app in Expo Go
+---
 
 ## 📊 Performance Notes
 
-- **Tunnel Mode**: Slower but works anywhere (good for testing)
-- **Local Network**: Faster, direct connection (better for development)
-- **Server Response**: Should be under 3-5 seconds for most operations
+- **Local Network**: The `npm run dev` command sets up a direct, fast connection. This is the recommended way for development and testing.
+- **Tunnel Mode**: For testing on external networks, you can still use `cd app && npm run mobile`. This is slower but does not require being on the same WiFi.
+- **Server Response**: Should be under 3-5 seconds for most operations.

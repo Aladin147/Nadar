@@ -1,50 +1,36 @@
 # Nadar Mobile Setup Guide
 
-## Quick Start (Recommended)
+## 🚀 Recommended Development Setup
 
-### Option 1: Tunnel Mode (Easiest)
-1. **Start the server**: `cd server && npm run dev`
-2. **Start the app with tunnel**: `cd app && npm run mobile`
-3. **Scan QR code** with Expo Go app on your mobile device
-4. **Use Nadar** - no additional configuration needed!
+The easiest and most reliable way to develop for mobile is to run the unified `dev` command from the project root.
 
-### Option 2: Local Network (Faster)
-1. **Start the server**: `cd server && npm run dev`
-2. **Find your computer's IP address**:
-   - Windows: `ipconfig` (look for IPv4 Address)
-   - Mac/Linux: `ifconfig` (look for inet address)
-3. **Start the app**: `cd app && npm start`
-4. **Scan QR code** with Expo Go app
-5. **Configure server** in Nadar Settings:
-   - Go to Settings → Server IP Address
-   - Enter `http://YOUR_IP:4000` (e.g., `http://192.168.1.100:4000`)
-   - Tap "Test Connection" to verify
+1. **Connect to WiFi**: Ensure your computer and mobile device are on the **same WiFi network**.
+2. **Start Everything**: Open a terminal in the project's root directory and run:
+   ```bash
+   npm run dev
+   ```
+3. **Scan the QR Code**: Use the Expo Go app on your mobile device to scan the QR code that appears in your terminal.
+
+The mobile app will load and automatically discover the server on your network. Manual configuration is generally not needed anymore due to the improved discovery mechanism.
+
+---
 
 ## Troubleshooting
 
-### "Cannot reach server" error
-- Make sure the Nadar server is running (`npm run dev` in server folder)
-- Check your IP address is correct
-- Ensure your mobile device and computer are on the same WiFi network
-- Try the auto-discovery feature in Settings
+### "Cannot reach server"
+- **Is the server running?** Make sure the `npm run dev` command is still active in your terminal.
+- **Are you on the same WiFi?** This is the most common issue. Double-check the network on both your computer and your mobile device.
+- **Is a firewall blocking the connection?** Check your computer's firewall settings to ensure that connections to port 4000 are not being blocked.
 
-### Camera not working
-- Grant camera permissions when prompted
-- Check device camera permissions in system settings
+### Camera / Audio Issues
+- **Permissions:** Ensure you have granted camera and microphone permissions to the Expo Go app, both when prompted and in your phone's system settings.
 
-### Audio not playing
-- Check device volume
-- Ensure audio permissions are granted
-- Try different TTS providers in Settings
+---
 
-## Network Requirements
+## Alternative: Tunnel Mode
 
-- **Same WiFi Network**: Mobile device and computer must be connected to the same network
-- **Firewall**: Ensure port 4000 is not blocked by firewall
-- **Server Binding**: Server runs on 0.0.0.0:4000 (accessible from network)
+If you cannot be on the same WiFi network, you can use Expo's tunnel service. This is slower but works from anywhere.
 
-## Development Notes
-
-- **Tunnel Mode**: Uses Expo's tunnel service, slower but works anywhere
-- **Local Network**: Direct connection, faster but requires network configuration
-- **Demo Mode**: Removed - all functionality now works on mobile with proper server connection
+1. **Start the server**: `cd server && npm run dev`
+2. **Start the app with tunnel**: `cd app && npm run mobile`
+3. **Scan the QR code**. The app will connect through an Expo relay service.
