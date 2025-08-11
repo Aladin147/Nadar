@@ -4,7 +4,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme, buttons } from '../theme';
 import { StyledText } from './StyledText';
 
-export function PrimaryButton({ title, onPress, disabled, style }: { title: string; onPress: () => void; disabled?: boolean; style?: ViewStyle }) {
+export function PrimaryButton({
+  title,
+  onPress,
+  disabled,
+  style,
+}: {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  style?: ViewStyle;
+}) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -42,4 +52,3 @@ const styles = StyleSheet.create({
     fontWeight: '700', // Matches section variant
   },
 });
-

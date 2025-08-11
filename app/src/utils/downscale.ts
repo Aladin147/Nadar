@@ -6,24 +6,32 @@ export async function downscale(uri: string, maxDim = 1024, compress = 0.8) {
   if (Platform.OS !== 'web') {
     try {
       // Determine original dimensions to maintain aspect ratio
-      const { width, height } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-        RNImage.getSize(
-          uri,
-          (w, h) => resolve({ width: w, height: h }),
-          (e) => reject(e)
-        );
-      });
+      const { width, height } = await new Promise<{ width: number; height: number }>(
+        (resolve, reject) => {
+          RNImage.getSize(
+            uri,
+            (w, h) => resolve({ width: w, height: h }),
+            e => reject(e)
+          );
+        }
+      );
       const scale = Math.min(1, maxDim / Math.max(width, height));
       const targetW = Math.round(width * scale);
       const targetH = Math.round(height * scale);
 
-      const actions: ImageManipulator.Action[] = [{ resize: { width: targetW || undefined, height: targetH || undefined } }];
+      const actions: ImageManipulator.Action[] = [
+        { resize: { width: targetW || undefined, height: targetH || undefined } },
+      ];
       const result = await ImageManipulator.manipulateAsync(uri, actions, {
         compress,
         format: ImageManipulator.SaveFormat.JPEG,
         base64: true,
       });
-      const base64 = result.base64 || (await FileSystem.readAsStringAsync(result.uri, { encoding: FileSystem.EncodingType.Base64 }));
+      const base64 =
+        result.base64 ||
+        (await FileSystem.readAsStringAsync(result.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        }));
       return { base64, mimeType: 'image/jpeg', uri: result.uri };
     } catch (e: any) {
       throw new Error(`Failed to process image: ${e?.message || 'unknown error'}`);
@@ -38,7 +46,8 @@ export async function downscale(uri: string, maxDim = 1024, compress = 0.8) {
       const w = Math.round(width * scale);
       const h = Math.round(height * scale);
       const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
+      canvas.width = w;
+      canvas.height = h;
       const ctx = canvas.getContext('2d');
       if (!ctx) return reject(new Error('Canvas 2D context not available'));
       ctx.drawImage(img, 0, 0, w, h);
@@ -46,12 +55,11 @@ export async function downscale(uri: string, maxDim = 1024, compress = 0.8) {
       const base64 = dataUrl.split(',')[1] || '';
       resolve({ base64, mimeType: 'image/jpeg', uri: dataUrl });
     };
-    img.onerror = (e) => {
+    img.onerror = e => {
       console.error('Downscale image load error:', e);
       reject(new Error('Failed to load image for downscale'));
     };
     // If already a data URL, load directly; else add origin hint
-    img.src = uri.startsWith('data:') ? uri : uri + (uri.includes('?') ? '&' : '?') + 'origin=*';
+    img.src = uri.startsWith('data:') ? uri : `${uri + (uri.includes('?') ? '&' : '?')}origin=*`;
   });
 }
-

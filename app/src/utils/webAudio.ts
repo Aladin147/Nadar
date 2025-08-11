@@ -5,14 +5,17 @@
 
 let currentAudio: HTMLAudioElement | null = null;
 
-export async function playWebAudio(audioBase64: string, mimeType: string = 'audio/mpeg'): Promise<void> {
+export async function playWebAudio(
+  audioBase64: string,
+  mimeType: string = 'audio/mpeg'
+): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
       console.log('🌐 Starting web audio playback...');
       console.log('📊 Audio data info:', {
         base64Length: audioBase64.length,
-        mimeType: mimeType,
-        firstChars: audioBase64.substring(0, 50) + '...'
+        mimeType,
+        firstChars: `${audioBase64.substring(0, 50)}...`,
       });
 
       // Stop any currently playing audio
@@ -37,7 +40,7 @@ export async function playWebAudio(audioBase64: string, mimeType: string = 'audi
       console.log('📊 Blob info:', {
         blobSize: blob.size,
         blobType: blob.type,
-        audioUrl: audioUrl
+        audioUrl,
       });
 
       console.log('🎵 Creating audio element...');
@@ -46,7 +49,9 @@ export async function playWebAudio(audioBase64: string, mimeType: string = 'audi
 
       // Add comprehensive event logging
       audio.addEventListener('loadstart', () => console.log('📥 Audio: loadstart'));
-      audio.addEventListener('durationchange', () => console.log('⏱️ Audio: durationchange, duration:', audio.duration));
+      audio.addEventListener('durationchange', () =>
+        console.log('⏱️ Audio: durationchange, duration:', audio.duration)
+      );
       audio.addEventListener('loadedmetadata', () => console.log('📋 Audio: loadedmetadata'));
       audio.addEventListener('loadeddata', () => console.log('✅ Audio: loadeddata'));
       audio.addEventListener('progress', () => console.log('📈 Audio: progress'));
@@ -60,12 +65,12 @@ export async function playWebAudio(audioBase64: string, mimeType: string = 'audi
         URL.revokeObjectURL(audioUrl);
         currentAudio = null;
       });
-      audio.addEventListener('error', (e) => {
+      audio.addEventListener('error', e => {
         console.error('❌ Audio: error event:', e);
         console.error('❌ Audio error details:', {
           error: audio.error,
           networkState: audio.networkState,
-          readyState: audio.readyState
+          readyState: audio.readyState,
         });
         reject(new Error(`Audio error: ${audio.error?.message || 'Unknown error'}`));
       });
@@ -73,12 +78,13 @@ export async function playWebAudio(audioBase64: string, mimeType: string = 'audi
       // Try to play when ready
       audio.oncanplay = () => {
         console.log('🔊 Audio ready, attempting to play...');
-        audio.play()
+        audio
+          .play()
           .then(() => {
             console.log('✅ Audio.play() promise resolved');
             resolve();
           })
-          .catch((playError) => {
+          .catch(playError => {
             console.error('❌ Audio.play() promise rejected:', playError);
             reject(new Error(`Audio playback failed: ${playError.message}`));
           });
@@ -88,7 +94,6 @@ export async function playWebAudio(audioBase64: string, mimeType: string = 'audi
       console.log('🔗 Setting audio source...');
       audio.src = audioUrl;
       audio.load();
-
     } catch (error) {
       console.error('❌ Web audio setup failed:', error);
       reject(error);
@@ -109,7 +114,7 @@ export function stopWebAudio(): void {
 export async function testWebAudio(): Promise<void> {
   try {
     console.log('🧪 Testing web audio with ElevenLabs...');
-    
+
     const response = await fetch('http://localhost:4000/tts', {
       method: 'POST',
       headers: {
@@ -117,8 +122,8 @@ export async function testWebAudio(): Promise<void> {
       },
       body: JSON.stringify({
         text: 'مرحبا، هذا اختبار للصوت من نظر',
-        provider: 'elevenlabs'
-      })
+        provider: 'elevenlabs',
+      }),
     });
 
     if (!response.ok) {
@@ -129,12 +134,11 @@ export async function testWebAudio(): Promise<void> {
     console.log('📦 Received audio data:', {
       hasAudio: !!data.audioBase64,
       audioLength: data.audioBase64?.length || 0,
-      mimeType: data.mimeType
+      mimeType: data.mimeType,
     });
 
     await playWebAudio(data.audioBase64, data.mimeType);
     console.log('✅ Web audio test completed');
-    
   } catch (error) {
     console.error('❌ Web audio test failed:', error);
     throw error;

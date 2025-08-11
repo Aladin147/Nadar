@@ -11,7 +11,7 @@ export function useSettings(): UseSettingsReturn {
     language: 'darija',
     verbosity: 'brief',
     ttsProvider: 'elevenlabs',
-    ttsRate: 1.0
+    ttsRate: 1.0,
   });
 
   useEffect(() => {
@@ -33,4 +33,3 @@ export function useSettings(): UseSettingsReturn {
 
   return { settings, update };
 }
-

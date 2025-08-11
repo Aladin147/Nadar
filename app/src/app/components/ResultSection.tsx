@@ -12,16 +12,19 @@ export interface ResultSectionProps {
   style?: ViewStyle;
 }
 
-export function ResultSection({ 
-  title, 
-  content, 
-  onPlayPress, 
+export function ResultSection({
+  title,
+  content,
+  onPlayPress,
   variant = 'default',
-  style 
+  style,
 }: ResultSectionProps) {
   const isEmphasis = variant === 'boldLight' || title.toUpperCase() === 'IMMEDIATE';
   return (
-    <Card variant={variant} style={[style, isEmphasis && styles.emphasisCard]}>
+    <Card
+      variant={variant}
+      style={[style, isEmphasis && styles.emphasisCard].filter(Boolean) as ViewStyle[]}
+    >
       <View style={styles.header}>
         <Text style={[styles.title, isEmphasis && styles.titleEmphasis]}>{title}</Text>
         {onPlayPress && (
@@ -31,7 +34,11 @@ export function ResultSection({
             accessibilityLabel={`Play ${title}`}
             accessibilityRole="button"
           >
-            <Ionicons name="volume-high" size={18} color={isEmphasis ? '#fff' : theme.colors.text} />
+            <Ionicons
+              name="volume-high"
+              size={18}
+              color={isEmphasis ? '#fff' : theme.colors.text}
+            />
           </TouchableOpacity>
         )}
       </View>

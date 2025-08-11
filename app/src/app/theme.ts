@@ -141,4 +141,3 @@ export const buttons = {
     alignItems: 'center' as const,
   },
 };
-

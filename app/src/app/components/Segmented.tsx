@@ -2,20 +2,30 @@ import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 
-export function Segmented({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
+export function Segmented({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <View style={styles.wrap}>
-      {options.map((opt) => (
+      {options.map(opt => (
         <TouchableOpacity
           key={opt}
           onPress={() => onChange(opt)}
-          style={[styles.item, value===opt && styles.active]}
+          style={[styles.item, value === opt && styles.active]}
           accessibilityRole="tab"
-          accessibilityState={{ selected: value===opt }}
+          accessibilityState={{ selected: value === opt }}
           accessibilityLabel={`${opt} mode`}
           accessibilityHint={`Switch to ${opt} mode`}
         >
-          <Text style={[styles.label, value===opt && styles.labelActive]}>{opt.toUpperCase()}</Text>
+          <Text style={[styles.label, value === opt && styles.labelActive]}>
+            {opt.toUpperCase()}
+          </Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -61,4 +71,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

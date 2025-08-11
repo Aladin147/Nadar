@@ -5,17 +5,13 @@ import { theme, ui } from '../theme';
 export interface CardProps {
   children: React.ReactNode;
   variant?: 'default' | 'boldLight';
-  style?: ViewStyle;
+  style?: ViewStyle | ViewStyle[];
 }
 
 export function Card({ children, variant = 'default', style }: CardProps) {
   const cardStyle = variant === 'boldLight' ? styles.boldLight : styles.default;
-  
-  return (
-    <View style={[cardStyle, style]}>
-      {children}
-    </View>
-  );
+
+  return <View style={[cardStyle, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({

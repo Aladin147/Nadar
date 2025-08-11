@@ -80,22 +80,18 @@ export class AudioPlayer {
 
     if (mimeType === 'audio/mpeg') {
       // ElevenLabs returns MP3 - save directly
-      audioPath = FileSystem.cacheDirectory + 'tts.mp3';
-      await FileSystem.writeAsStringAsync(
-        audioPath,
-        audioBase64,
-        { encoding: FileSystem.EncodingType.Base64 }
-      );
+      audioPath = `${FileSystem.cacheDirectory}tts.mp3`;
+      await FileSystem.writeAsStringAsync(audioPath, audioBase64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
     } else {
       // Gemini returns PCM - convert to WAV
       const pcm = base64ToUint8Array(audioBase64);
       const wav = pcm16ToWavBytes(pcm);
-      audioPath = FileSystem.cacheDirectory + 'tts.wav';
-      await FileSystem.writeAsStringAsync(
-        audioPath,
-        Buffer.from(wav).toString('base64'),
-        { encoding: FileSystem.EncodingType.Base64 }
-      );
+      audioPath = `${FileSystem.cacheDirectory}tts.wav`;
+      await FileSystem.writeAsStringAsync(audioPath, Buffer.from(wav).toString('base64'), {
+        encoding: FileSystem.EncodingType.Base64,
+      });
     }
 
     console.log('🔊 Creating native audio object...');

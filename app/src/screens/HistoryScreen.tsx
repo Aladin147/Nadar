@@ -22,8 +22,12 @@ export default function HistoryScreen() {
     return (
       <ScreenWrapper style={styles.emptyState}>
         <StyledText style={styles.emptyIcon}>📋</StyledText>
-        <StyledText variant="title" style={styles.emptyTitle}>No History Yet</StyledText>
-        <StyledText color="textMut" style={styles.emptyText}>Your analyzed images will appear here</StyledText>
+        <StyledText variant="title" style={styles.emptyTitle}>
+          No History Yet
+        </StyledText>
+        <StyledText color="textMut" style={styles.emptyText}>
+          Your analyzed images will appear here
+        </StyledText>
         <PrimaryButton
           title="Take First Photo"
           onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
@@ -45,7 +49,7 @@ export default function HistoryScreen() {
         }
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {state.history.map((item) => (
+        {state.history.map(item => (
           <TouchableOpacity
             key={item.id}
             onPress={() => handleViewResult(item)}

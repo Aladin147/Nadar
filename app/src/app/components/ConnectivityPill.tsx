@@ -23,9 +23,11 @@ export function ConnectivityPill({ style }: { style?: ViewStyle }) {
   }, []);
 
   const bg =
-    status === 'online' ? theme.colors.success :
-    status === 'offline' ? theme.colors.danger :
-    '#374151'; // Unknown state
+    status === 'online'
+      ? theme.colors.success
+      : status === 'offline'
+        ? theme.colors.danger
+        : '#374151'; // Unknown state
 
   return (
     <TouchableOpacity
@@ -35,7 +37,9 @@ export function ConnectivityPill({ style }: { style?: ViewStyle }) {
       style={[styles.wrap, { backgroundColor: bg }, style]}
     >
       <View style={styles.dot} />
-      <Text style={styles.text}>{status === 'unknown' ? 'Unknown' : status === 'online' ? 'Online' : 'Offline'}</Text>
+      <Text style={styles.text}>
+        {status === 'unknown' ? 'Unknown' : status === 'online' ? 'Online' : 'Offline'}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -63,6 +67,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
-
-

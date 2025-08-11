@@ -27,7 +27,7 @@ export default function AccessibilityTestScreen() {
   React.useEffect(() => {
     // Check if screen reader is enabled
     AccessibilityInfo.isScreenReaderEnabled().then(setIsScreenReaderEnabled);
-    
+
     // Listen for screen reader changes
     const subscription = AccessibilityInfo.addEventListener(
       'screenReaderChanged',
@@ -39,11 +39,16 @@ export default function AccessibilityTestScreen() {
 
   const runFocusOrderTest = () => {
     setCurrentTest('Focus Order Test');
-    
+
     // Simulate focus order enumeration
     const mockFocusOrder: FocusableElement[] = [
       { id: 'header', label: 'Accessibility Test Mode', role: 'header', focused: false },
-      { id: 'status', label: `Screen Reader: ${isScreenReaderEnabled ? 'Enabled' : 'Disabled'}`, role: 'text', focused: false },
+      {
+        id: 'status',
+        label: `Screen Reader: ${isScreenReaderEnabled ? 'Enabled' : 'Disabled'}`,
+        role: 'text',
+        focused: false,
+      },
       { id: 'focus-test', label: 'Test Focus Order', role: 'button', focused: false },
       { id: 'gesture-test', label: 'Test Gestures', role: 'button', focused: false },
       { id: 'tts-test', label: 'Test TTS Announcements', role: 'button', focused: false },
@@ -51,45 +56,49 @@ export default function AccessibilityTestScreen() {
     ];
 
     setFocusOrder(mockFocusOrder);
-    
+
     // Announce test start
-    AccessibilityInfo.announceForAccessibility('Focus order test started. Navigating through elements.');
+    AccessibilityInfo.announceForAccessibility(
+      'Focus order test started. Navigating through elements.'
+    );
   };
 
   const runGestureTest = () => {
     setCurrentTest('Gesture Test');
-    
+
     Alert.alert(
       'Gesture Test',
       'Try these gestures:\n\n' +
-      '• Single tap: Select element\n' +
-      '• Double tap: Activate element\n' +
-      '• Swipe right: Next element\n' +
-      '• Swipe left: Previous element\n' +
-      '• Three-finger swipe: Scroll\n\n' +
-      'This alert should be announced by screen reader.',
+        '• Single tap: Select element\n' +
+        '• Double tap: Activate element\n' +
+        '• Swipe right: Next element\n' +
+        '• Swipe left: Previous element\n' +
+        '• Three-finger swipe: Scroll\n\n' +
+        'This alert should be announced by screen reader.',
       [
         {
           text: 'Test Passed',
           onPress: () => {
             AccessibilityInfo.announceForAccessibility('Gesture test completed successfully');
             setCurrentTest(null);
-          }
+          },
         },
         {
           text: 'Test Failed',
           onPress: () => {
-            AccessibilityInfo.announceForAccessibility('Gesture test failed. Check accessibility settings.');
+            AccessibilityInfo.announceForAccessibility(
+              'Gesture test failed. Check accessibility settings.'
+            );
             setCurrentTest(null);
-          }
-        }
+          },
+        },
       ]
     );
   };
 
   const runTTSTest = () => {
     setCurrentTest('TTS Test');
-    
+
     const testMessages = [
       'Testing text-to-speech announcement',
       'This is a longer message to test speech clarity and pacing',
@@ -98,7 +107,7 @@ export default function AccessibilityTestScreen() {
     ];
 
     let messageIndex = 0;
-    
+
     const announceNext = () => {
       if (messageIndex < testMessages.length) {
         AccessibilityInfo.announceForAccessibility(testMessages[messageIndex]);
@@ -115,16 +124,22 @@ export default function AccessibilityTestScreen() {
 
   const runNavigationTest = () => {
     setCurrentTest('Navigation Test');
-    
+
     // Test navigation announcements
-    AccessibilityInfo.announceForAccessibility('Navigation test started. Testing screen transitions and focus management.');
-    
+    AccessibilityInfo.announceForAccessibility(
+      'Navigation test started. Testing screen transitions and focus management.'
+    );
+
     setTimeout(() => {
-      AccessibilityInfo.announceForAccessibility('Simulating screen change. Focus should move to main content.');
+      AccessibilityInfo.announceForAccessibility(
+        'Simulating screen change. Focus should move to main content.'
+      );
     }, 2000);
-    
+
     setTimeout(() => {
-      AccessibilityInfo.announceForAccessibility('Navigation test completed. Check that focus moved appropriately.');
+      AccessibilityInfo.announceForAccessibility(
+        'Navigation test completed. Check that focus moved appropriately.'
+      );
       setCurrentTest(null);
     }, 4000);
   };
@@ -137,12 +152,12 @@ export default function AccessibilityTestScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         accessibilityLabel="Accessibility test screen content"
       >
-        <Text 
+        <Text
           style={styles.header}
           accessibilityRole="header"
           accessibilityLabel="Accessibility Test Mode"
@@ -151,34 +166,37 @@ export default function AccessibilityTestScreen() {
         </Text>
 
         <View style={styles.statusContainer}>
-          <Text 
+          <Text
             style={styles.statusText}
             accessibilityLabel={`Screen Reader Status: ${isScreenReaderEnabled ? 'Enabled' : 'Disabled'}`}
           >
-            Screen Reader: {isScreenReaderEnabled === null ? 'Checking...' : isScreenReaderEnabled ? 'Enabled' : 'Disabled'}
+            Screen Reader:{' '}
+            {isScreenReaderEnabled === null
+              ? 'Checking...'
+              : isScreenReaderEnabled
+                ? 'Enabled'
+                : 'Disabled'}
           </Text>
-          
-          <Text 
-            style={styles.statusText}
-            accessibilityLabel={`Platform: ${Platform.OS}`}
-          >
+
+          <Text style={styles.statusText} accessibilityLabel={`Platform: ${Platform.OS}`}>
             Platform: {Platform.OS}
           </Text>
         </View>
 
         {!isScreenReaderEnabled && (
           <View style={styles.warningContainer}>
-            <Text 
+            <Text
               style={styles.warningText}
               accessibilityLabel="Warning: Screen reader is not enabled. Enable VoiceOver on iOS or TalkBack on Android to test accessibility features."
             >
-              ⚠️ Screen reader not enabled. Enable VoiceOver (iOS) or TalkBack (Android) for full testing.
+              ⚠️ Screen reader not enabled. Enable VoiceOver (iOS) or TalkBack (Android) for full
+              testing.
             </Text>
           </View>
         )}
 
         <View style={styles.testContainer}>
-          <Text 
+          <Text
             style={styles.sectionHeader}
             accessibilityRole="header"
             accessibilityLabel="Available Tests"
@@ -234,7 +252,7 @@ export default function AccessibilityTestScreen() {
 
         {currentTest && (
           <View style={styles.currentTestContainer}>
-            <Text 
+            <Text
               style={styles.currentTestText}
               accessibilityLiveRegion="polite"
               accessibilityLabel={`Currently running: ${currentTest}`}
@@ -246,7 +264,7 @@ export default function AccessibilityTestScreen() {
 
         {focusOrder.length > 0 && (
           <View style={styles.resultsContainer}>
-            <Text 
+            <Text
               style={styles.sectionHeader}
               accessibilityRole="header"
               accessibilityLabel="Focus Order Results"
@@ -255,7 +273,7 @@ export default function AccessibilityTestScreen() {
             </Text>
             {focusOrder.map((element, index) => (
               <View key={element.id} style={styles.focusItem}>
-                <Text 
+                <Text
                   style={styles.focusItemText}
                   accessibilityLabel={`${index + 1}. ${element.label}, Role: ${element.role}`}
                 >

@@ -4,4 +4,3 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js'],
   roots: ['<rootDir>/src'],
 };
-

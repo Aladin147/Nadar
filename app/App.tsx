@@ -22,20 +22,12 @@ function AppContent() {
   function renderScreen() {
     // Show mobile setup screen if on mobile and no API is configured
     if (Platform.OS !== 'web' && !isApiConfigured() && state.currentRoute !== 'settings') {
-      return (
-        <MobileSetupScreen
-          onComplete={() => handleNavigate('capture')}
-        />
-      );
+      return <MobileSetupScreen onComplete={() => handleNavigate('capture')} />;
     }
 
     switch (state.currentRoute) {
       case 'landing':
-        return (
-          <LandingScreen
-            onSettings={() => handleNavigate('settings')}
-          />
-        );
+        return <LandingScreen onSettings={() => handleNavigate('settings')} />;
       case 'capture':
         return <CaptureScreen />;
       case 'results':
@@ -79,4 +71,3 @@ export default function App() {
     </SafeAreaView>
   );
 }
-

@@ -8,7 +8,11 @@ import { PrimaryButton } from '../app/components/PrimaryButton';
 import { useAppState } from '../app/state/AppContext';
 import { testConnection } from '../api/client';
 
-export default function LandingScreen() {
+interface LandingScreenProps {
+  onSettings: () => void;
+}
+
+export default function LandingScreen({ onSettings }: LandingScreenProps) {
   const { dispatch } = useAppState();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
@@ -25,8 +29,11 @@ export default function LandingScreen() {
             'Server Not Found',
             'Cannot connect to the Nadar server. Please configure the server IP address in Settings first.',
             [
-              { text: 'Go to Settings', onPress: () => dispatch({ type: 'NAVIGATE', route: 'settings' }) },
-              { text: 'Cancel', style: 'cancel' }
+              {
+                text: 'Go to Settings',
+                onPress: () => dispatch({ type: 'NAVIGATE', route: 'settings' }),
+              },
+              { text: 'Cancel', style: 'cancel' },
             ]
           );
           return;
@@ -38,7 +45,10 @@ export default function LandingScreen() {
         const cameraResult = await requestCameraPermission();
         if (!cameraResult.granted) {
           setIsRequestingPermissions(false);
-          Alert.alert('Camera Access Required', 'Nadar needs camera access to analyze your surroundings.');
+          Alert.alert(
+            'Camera Access Required',
+            'Nadar needs camera access to analyze your surroundings.'
+          );
           return;
         }
       }
@@ -47,7 +57,10 @@ export default function LandingScreen() {
       const mediaResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!mediaResult.granted) {
         setIsRequestingPermissions(false);
-        Alert.alert('Photo Library Access Required', 'Nadar needs photo library access to analyze existing images.');
+        Alert.alert(
+          'Photo Library Access Required',
+          'Nadar needs photo library access to analyze existing images.'
+        );
         return;
       }
 
@@ -137,4 +150,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-

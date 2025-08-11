@@ -14,7 +14,11 @@ export function Header({ title, subtitle, right }: HeaderProps) {
     <View style={styles.container}>
       <View style={styles.titleContainer}>
         <StyledText variant="title">{title}</StyledText>
-        {subtitle && <StyledText variant="body" color="textMut">{subtitle}</StyledText>}
+        {subtitle && (
+          <StyledText variant="body" color="textMut">
+            {subtitle}
+          </StyledText>
+        )}
       </View>
       {right && <View>{right}</View>}
     </View>

@@ -1,5 +1,6 @@
 export function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = typeof atob === 'function' ? atob(base64) : Buffer.from(base64, 'base64').toString('binary');
+  const binary =
+    typeof atob === 'function' ? atob(base64) : Buffer.from(base64, 'base64').toString('binary');
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
@@ -30,11 +31,13 @@ export function pcm16ToWavBytes(pcm: Uint8Array, sampleRate = 24000, channels = 
   }
 
   function writeUint32(val: number) {
-    view.setUint32(offset, val, true); offset += 4;
+    view.setUint32(offset, val, true);
+    offset += 4;
   }
 
   function writeUint16(val: number) {
-    view.setUint16(offset, val, true); offset += 2;
+    view.setUint16(offset, val, true);
+    offset += 2;
   }
 
   writeString('RIFF');
@@ -55,4 +58,3 @@ export function pcm16ToWavBytes(pcm: Uint8Array, sampleRate = 24000, channels = 
   out.set(pcm, 44);
   return out;
 }
-

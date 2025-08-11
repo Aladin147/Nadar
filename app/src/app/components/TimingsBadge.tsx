@@ -10,10 +10,12 @@ export interface TimingsBadgeProps {
 
 export function TimingsBadge({ label, value, style }: TimingsBadgeProps) {
   const displayValue = typeof value === 'number' ? `${value}ms` : value;
-  
+
   return (
     <View style={[styles.badge, style]}>
-      <Text style={styles.text}>{label}: {displayValue}</Text>
+      <Text style={styles.text}>
+        {label}: {displayValue}
+      </Text>
     </View>
   );
 }
@@ -27,11 +29,7 @@ export function TimingsGroup({ timings, style }: TimingsGroupProps) {
   return (
     <View style={[styles.group, style]}>
       {timings.map((timing, index) => (
-        <TimingsBadge
-          key={index}
-          label={timing.label}
-          value={timing.value}
-        />
+        <TimingsBadge key={index} label={timing.label} value={timing.value} />
       ))}
     </View>
   );

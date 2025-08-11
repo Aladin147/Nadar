@@ -27,6 +27,10 @@ export class HybridProvider implements IAIProvider {
     console.log(`🔄 TTS provider switched to: ${provider}`);
   }
 
+  getCurrentTTSProvider(): TTSProvider {
+    return this.defaultTTSProvider;
+  }
+
   // Vision capabilities - always use Gemini
   async describe(args: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
     return this.geminiProvider.describe(args);
@@ -81,7 +85,4 @@ export class HybridProvider implements IAIProvider {
     return providers;
   }
 
-  getCurrentTTSProvider(): TTSProvider {
-    return this.defaultTTSProvider;
-  }
 }

@@ -4,23 +4,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { ConnectivityPill } from '../components/ConnectivityPill';
 
-export type Route = 'landing' | 'capture' | 'results' | 'settings' | 'history' | 'accessibility-test';
+export type Route =
+  | 'landing'
+  | 'capture'
+  | 'results'
+  | 'settings'
+  | 'history'
+  | 'accessibility-test';
 
-export function AppNavigator({ 
-  currentRoute, 
-  onNavigate, 
-  children 
-}: { 
-  currentRoute: Route; 
-  onNavigate: (route: Route) => void; 
+export function AppNavigator({
+  currentRoute,
+  onNavigate,
+  children,
+}: {
+  currentRoute: Route;
+  onNavigate: (route: Route) => void;
   children: React.ReactNode;
 }) {
   const title =
-    currentRoute === 'results' ? 'Results' :
-    currentRoute === 'history' ? 'History' :
-    currentRoute === 'settings' ? 'Settings' :
-    currentRoute === 'accessibility-test' ? 'Accessibility Test' :
-    'نظر';
+    currentRoute === 'results'
+      ? 'Results'
+      : currentRoute === 'history'
+        ? 'History'
+        : currentRoute === 'settings'
+          ? 'Settings'
+          : currentRoute === 'accessibility-test'
+            ? 'Accessibility Test'
+            : 'نظر';
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -47,26 +57,26 @@ export function AppNavigator({
         )}
         {children}
       </View>
-      
+
       {currentRoute !== 'landing' && (
         <View style={styles.tabBar}>
-          <TabButton 
-            icon={<Ionicons name="camera-outline" size={22} color={theme.colors.textMut} />} 
-            label="Capture" 
-            active={currentRoute === 'capture'} 
-            onPress={() => onNavigate('capture')} 
+          <TabButton
+            icon={<Ionicons name="camera-outline" size={22} color={theme.colors.textMut} />}
+            label="Capture"
+            active={currentRoute === 'capture'}
+            onPress={() => onNavigate('capture')}
           />
-          <TabButton 
-            icon={<Ionicons name="time-outline" size={22} color={theme.colors.textMut} />} 
-            label="History" 
-            active={currentRoute === 'history'} 
-            onPress={() => onNavigate('history')} 
+          <TabButton
+            icon={<Ionicons name="time-outline" size={22} color={theme.colors.textMut} />}
+            label="History"
+            active={currentRoute === 'history'}
+            onPress={() => onNavigate('history')}
           />
-          <TabButton 
-            icon={<Ionicons name="settings-outline" size={22} color={theme.colors.textMut} />} 
-            label="Settings" 
-            active={currentRoute === 'settings'} 
-            onPress={() => onNavigate('settings')} 
+          <TabButton
+            icon={<Ionicons name="settings-outline" size={22} color={theme.colors.textMut} />}
+            label="Settings"
+            active={currentRoute === 'settings'}
+            onPress={() => onNavigate('settings')}
           />
         </View>
       )}
@@ -74,18 +84,26 @@ export function AppNavigator({
   );
 }
 
-function TabButton({ icon, label, active, onPress }: { icon: React.ReactNode; label: string; active: boolean; onPress: () => void }) {
+function TabButton({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
   return (
-    <TouchableOpacity 
-      style={[styles.tab, active && styles.tabActive]} 
+    <TouchableOpacity
+      style={[styles.tab, active && styles.tabActive]}
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
     >
-      <View style={styles.iconWrap}>
-        {icon}
-      </View>
+      <View style={styles.iconWrap}>{icon}</View>
       <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
     </TouchableOpacity>
   );

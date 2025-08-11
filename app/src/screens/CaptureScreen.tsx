@@ -1,5 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, Platform, TextInput, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  Dimensions,
+  Platform,
+  TextInput,
+  ActivityIndicator,
+} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ScreenWrapper } from '../app/components/ScreenWrapper';
 import { StyledText } from '../app/components/StyledText';
@@ -8,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { theme } from '../app/theme';                     // ✅ correct for screens
+import { theme } from '../app/theme'; // ✅ correct for screens
 import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
 import { describe, ocr, qa, testConnection } from '../api/client';
@@ -72,9 +82,8 @@ export default function CaptureScreen() {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem('nadar.lastQuestion.v1', question).catch(()=>{});
+    AsyncStorage.setItem('nadar.lastQuestion.v1', question).catch(() => {});
   }, [question]);
-
 
   async function processImage(imageUri: string, source: 'camera' | 'library') {
     dispatch({ type: 'SET_LOADING', loading: true });
@@ -100,11 +109,17 @@ export default function CaptureScreen() {
           return;
         }
         console.log('❓ Calling Q&A API...');
-        result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts, state.sessionId);
+        result = await qa(
+          downscaled.base64,
+          question.trim(),
+          downscaled.mimeType,
+          opts,
+          state.sessionId
+        );
       }
 
       console.log('✅ API call successful, navigating to results...');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(()=>{});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
       const captureResult = {
         id: Date.now().toString(),
@@ -124,12 +139,11 @@ export default function CaptureScreen() {
       console.error('❌ Processing error:', error);
       const errorMessage = mapErrorMessage(error);
       dispatch({ type: 'SHOW_TOAST', message: errorMessage, toastType: 'error' });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(()=>{});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
     } finally {
       // Keep isLoading state managed by success/SET_CAPTURE_RESULT or error above
     }
   }
-
 
   // Web is not supported in this refactor, so we return a placeholder.
   if (Platform.OS === 'web') {
@@ -142,14 +156,23 @@ export default function CaptureScreen() {
   }
 
   if (!permission) {
-    return <ScreenWrapper><StyledText>Loading camera...</StyledText></ScreenWrapper>;
+    return (
+      <ScreenWrapper>
+        <StyledText>Loading camera...</StyledText>
+      </ScreenWrapper>
+    );
   }
 
   if (!permission.granted) {
     return (
       <ScreenWrapper style={styles.permissionContainer}>
-        <StyledText variant="title" style={{ textAlign: 'center' }}>Camera Access Required</StyledText>
-        <StyledText variant="body" style={{ textAlign: 'center', marginVertical: theme.spacing(2) }}>
+        <StyledText variant="title" style={{ textAlign: 'center' }}>
+          Camera Access Required
+        </StyledText>
+        <StyledText
+          variant="body"
+          style={{ textAlign: 'center', marginVertical: theme.spacing(2) }}
+        >
           Nadar needs camera access to analyze your surroundings.
         </StyledText>
         <PrimaryButton title="Enable Camera" onPress={requestPermission} />
@@ -186,7 +209,13 @@ export default function CaptureScreen() {
           return;
         }
         console.log('❓ Calling Q&A API...');
-        result = await qa(downscaled.base64, question.trim(), downscaled.mimeType, opts, state.sessionId);
+        result = await qa(
+          downscaled.base64,
+          question.trim(),
+          downscaled.mimeType,
+          opts,
+          state.sessionId
+        );
       }
 
       console.log('✅ API call successful, navigating to results...');
@@ -199,7 +228,11 @@ export default function CaptureScreen() {
         question: mode === 'qa' ? question : undefined,
         result: result.text,
         timings: result.timings
-          ? { prep: undefined, model: (result.timings as any).modelMs ?? (result.timings as any).model ?? undefined, total: undefined }
+          ? {
+              prep: undefined,
+              model: (result.timings as any).modelMs ?? (result.timings as any).model ?? undefined,
+              total: undefined,
+            }
           : undefined,
         structured: (result as any).structured,
       };
@@ -207,7 +240,6 @@ export default function CaptureScreen() {
       dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
       dispatch({ type: 'ADD_TO_HISTORY', result: captureResult });
       dispatch({ type: 'NAVIGATE', route: 'results' });
-
     } catch (error: any) {
       console.error('❌ Capture error:', error);
       const errorMessage = mapErrorMessage(error);
@@ -221,7 +253,9 @@ export default function CaptureScreen() {
         <View style={styles.overlay}>
           {/* Header */}
           <View style={styles.header}>
-            <StyledText variant="title" style={styles.title}>Nadar</StyledText>
+            <StyledText variant="title" style={styles.title}>
+              Nadar
+            </StyledText>
             <ConnectivityPill style={styles.connectivityPill} />
           </View>
 
@@ -234,7 +268,7 @@ export default function CaptureScreen() {
               <Segmented
                 options={['scene', 'ocr', 'qa']}
                 value={mode}
-                onChange={(v) => setMode(v as any)}
+                onChange={v => setMode(v as any)}
               />
             </View>
 

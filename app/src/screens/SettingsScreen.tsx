@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity, Alert, Platform, ScrollView } from 'react-native';
+import {
+  View,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { Segmented } from '../app/components/Segmented';
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
@@ -8,7 +16,14 @@ import { theme } from '../app/theme';
 import { ScreenWrapper } from '../app/components/ScreenWrapper';
 import { StyledText } from '../app/components/StyledText';
 import { Header } from '../app/components/Header';
-import { loadSettings, saveSettings, Language, Verbosity, TTSProvider, TTSRate } from '../app/state/settings';
+import {
+  loadSettings,
+  saveSettings,
+  Language,
+  Verbosity,
+  TTSProvider,
+  TTSRate,
+} from '../app/state/settings';
 import { testConnection, setTTSProvider } from '../api/client';
 import { discoverApiBase, getConfigurationHelp } from '../utils/networkDiscovery';
 import { useAppState } from '../app/state/AppContext';
@@ -29,7 +44,7 @@ export default function SettingsScreen() {
     'http://192.168.1.100:4000',
     'http://192.168.0.100:4000',
     'http://10.0.0.100:4000',
-    'http://172.16.0.100:4000'
+    'http://172.16.0.100:4000',
   ];
 
   useEffect(() => {
@@ -51,7 +66,7 @@ export default function SettingsScreen() {
       voice: voice || undefined,
       apiBase: apiBase || undefined,
       ttsProvider,
-      ttsRate
+      ttsRate,
     });
 
     // Also update server-side provider if API is available
@@ -68,43 +83,73 @@ export default function SettingsScreen() {
       <Header title="Settings" />
       <ScrollView contentContainerStyle={styles.content}>
         <Card>
-          <StyledText variant="section" style={styles.cardTitle}>Assistant</StyledText>
+          <StyledText variant="section" style={styles.cardTitle}>
+            Assistant
+          </StyledText>
           <View style={styles.field}>
-            <StyledText variant="meta" color="textMut" style={styles.label}>Language</StyledText>
-            <Segmented options={['darija', 'ar', 'en']} value={language} onChange={(v) => setLanguage(v as Language)} />
+            <StyledText variant="meta" color="textMut" style={styles.label}>
+              Language
+            </StyledText>
+            <Segmented
+              options={['darija', 'ar', 'en']}
+              value={language}
+              onChange={v => setLanguage(v as Language)}
+            />
           </View>
           <View style={styles.field}>
-            <StyledText variant="meta" color="textMut" style={styles.label}>Verbosity</StyledText>
-            <Segmented options={['brief', 'normal', 'detailed']} value={verbosity} onChange={(v) => setVerbosity(v as Verbosity)} />
+            <StyledText variant="meta" color="textMut" style={styles.label}>
+              Verbosity
+            </StyledText>
+            <Segmented
+              options={['brief', 'normal', 'detailed']}
+              value={verbosity}
+              onChange={v => setVerbosity(v as Verbosity)}
+            />
           </View>
         </Card>
 
         <Card>
-          <StyledText variant="section" style={styles.cardTitle}>Text-to-Speech (TTS)</StyledText>
+          <StyledText variant="section" style={styles.cardTitle}>
+            Text-to-Speech (TTS)
+          </StyledText>
           <View style={styles.field}>
-            <StyledText variant="meta" color="textMut" style={styles.label}>TTS Provider</StyledText>
+            <StyledText variant="meta" color="textMut" style={styles.label}>
+              TTS Provider
+            </StyledText>
             <Segmented
               options={['gemini', 'elevenlabs']}
               value={ttsProvider}
-              onChange={(v) => setTtsProvider(v as TTSProvider)}
+              onChange={v => setTtsProvider(v as TTSProvider)}
             />
             <StyledText style={styles.helperText}>
               Gemini is free with a daily limit. ElevenLabs offers higher quality and quota.
             </StyledText>
           </View>
           <View style={styles.field}>
-            <StyledText variant="meta" color="textMut" style={styles.label}>TTS Voice</StyledText>
-            <TextInput style={styles.input} placeholder="Enter voice name" placeholderTextColor={theme.colors.textMut} value={voice} onChangeText={setVoice} />
+            <StyledText variant="meta" color="textMut" style={styles.label}>
+              TTS Voice
+            </StyledText>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter voice name"
+              placeholderTextColor={theme.colors.textMut}
+              value={voice}
+              onChangeText={setVoice}
+            />
             <StyledText style={styles.helperText}>
-              {ttsProvider === 'gemini' ? 'Voices: Kore, Charon, etc.' : 'Voices: alloy, echo, etc.'}
+              {ttsProvider === 'gemini'
+                ? 'Voices: Kore, Charon, etc.'
+                : 'Voices: alloy, echo, etc.'}
             </StyledText>
           </View>
           <View style={styles.field}>
-            <StyledText variant="meta" color="textMut" style={styles.label}>TTS Rate</StyledText>
+            <StyledText variant="meta" color="textMut" style={styles.label}>
+              TTS Rate
+            </StyledText>
             <Segmented
               options={['0.9×', '1.0×', '1.2×']}
               value={ttsRate === 0.9 ? '0.9×' : ttsRate === 1.2 ? '1.2×' : '1.0×'}
-              onChange={(v) => {
+              onChange={v => {
                 const rate = v === '0.9×' ? 0.9 : v === '1.2×' ? 1.2 : 1.0;
                 setTtsRate(rate);
               }}
@@ -113,7 +158,9 @@ export default function SettingsScreen() {
         </Card>
 
         <Card>
-          <StyledText variant="section" style={styles.cardTitle}>Server</StyledText>
+          <StyledText variant="section" style={styles.cardTitle}>
+            Server
+          </StyledText>
           <View style={styles.field}>
             <StyledText variant="meta" color="textMut" style={styles.label}>
               {Platform.OS === 'web' ? 'API Base (override)' : 'Server IP Address'}
@@ -131,7 +178,7 @@ export default function SettingsScreen() {
           {Platform.OS !== 'web' && (
             <View style={styles.field}>
               <SecondaryButton
-                title={isDiscovering ? "Searching..." : "Auto-Discover Server"}
+                title={isDiscovering ? 'Searching...' : 'Auto-Discover Server'}
                 disabled={isDiscovering}
                 onPress={async () => {
                   setIsDiscovering(true);
@@ -150,7 +197,7 @@ export default function SettingsScreen() {
           )}
           <View>
             <SecondaryButton
-              title={isTestingConnection ? "Testing..." : "Test Connection"}
+              title={isTestingConnection ? 'Testing...' : 'Test Connection'}
               disabled={isTestingConnection}
               onPress={async () => {
                 setIsTestingConnection(true);
@@ -159,7 +206,9 @@ export default function SettingsScreen() {
                 setIsTestingConnection(false);
                 Alert.alert(
                   ok ? 'Connection Successful' : 'Connection Failed',
-                  ok ? 'The app can connect to the server.' : 'Please check the IP address and your network connection.'
+                  ok
+                    ? 'The app can connect to the server.'
+                    : 'Please check the IP address and your network connection.'
                 );
               }}
             />
@@ -167,7 +216,9 @@ export default function SettingsScreen() {
         </Card>
 
         <Card>
-          <StyledText variant="section" style={styles.cardTitle}>Developer Tools</StyledText>
+          <StyledText variant="section" style={styles.cardTitle}>
+            Developer Tools
+          </StyledText>
           <View style={styles.field}>
             <SecondaryButton
               title="Accessibility Test Mode"
@@ -179,8 +230,11 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
-        <PrimaryButton title="Save Settings" onPress={save} style={{ marginTop: theme.spacing(2) }} />
-
+        <PrimaryButton
+          title="Save Settings"
+          onPress={save}
+          style={{ marginTop: theme.spacing(2) }}
+        />
       </ScrollView>
     </ScreenWrapper>
   );
@@ -216,4 +270,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-

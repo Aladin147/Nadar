@@ -83,17 +83,33 @@ function generatePrioritizedIps(deviceSubnet?: string): string[] {
 
   // Common development IPs (highest priority)
   const commonDevIps = [
-    '192.168.1.1', '192.168.1.2', '192.168.1.10', '192.168.1.100',
-    '192.168.0.1', '192.168.0.2', '192.168.0.10', '192.168.0.100',
-    '10.0.0.1', '10.0.0.2', '10.0.0.10', '10.0.0.100',
-    '172.16.0.1', '172.16.0.2', '172.16.0.10', '172.16.0.100'
+    '192.168.1.1',
+    '192.168.1.2',
+    '192.168.1.10',
+    '192.168.1.100',
+    '192.168.0.1',
+    '192.168.0.2',
+    '192.168.0.10',
+    '192.168.0.100',
+    '10.0.0.1',
+    '10.0.0.2',
+    '10.0.0.10',
+    '10.0.0.100',
+    '172.16.0.1',
+    '172.16.0.2',
+    '172.16.0.10',
+    '172.16.0.100',
   ];
 
   if (deviceSubnet) {
     // Add device subnet common IPs first
     const subnetCommon = [
-      `${deviceSubnet}.1`, `${deviceSubnet}.2`, `${deviceSubnet}.10`,
-      `${deviceSubnet}.100`, `${deviceSubnet}.101`, `${deviceSubnet}.102`
+      `${deviceSubnet}.1`,
+      `${deviceSubnet}.2`,
+      `${deviceSubnet}.10`,
+      `${deviceSubnet}.100`,
+      `${deviceSubnet}.101`,
+      `${deviceSubnet}.102`,
     ];
     ips.push(...subnetCommon);
 
@@ -163,7 +179,9 @@ export async function discoverApiBase(): Promise<string | null> {
   // Generate prioritized IP list
   const prioritizedIps = generatePrioritizedIps(subnet);
 
-  console.log(`🔍 Scanning ${prioritizedIps.length} IPs with ${MAX_CONCURRENT_CHECKS} concurrent checks...`);
+  console.log(
+    `🔍 Scanning ${prioritizedIps.length} IPs with ${MAX_CONCURRENT_CHECKS} concurrent checks...`
+  );
 
   // Scan with bounded concurrency and early termination
   const foundUrl = await scanIpsWithConcurrency(prioritizedIps);
@@ -193,7 +211,9 @@ export async function getConfigurationHelp(): Promise<string> {
     const ipAddress = await Network.getIpAddressAsync();
     if (ipAddress) {
       const subnet = ipAddress.split('.').slice(0, 3).join('.');
-      helpText = `Your phone's IP is ${ipAddress}.\nYour computer's IP address likely starts with "${subnet}".\n\n` + helpText;
+      helpText = `Your phone's IP is ${ipAddress}.\nYour computer's IP address likely starts with "${subnet}".\n\n${
+        helpText
+      }`;
     }
   } catch (e) {
     // Ignore error, just show generic help

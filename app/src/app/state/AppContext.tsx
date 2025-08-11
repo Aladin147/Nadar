@@ -4,9 +4,9 @@ import { Route } from '../navigation/AppNavigator';
 
 // Simple UUID generator
 function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
@@ -85,8 +85,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
         toast: {
           message: action.message,
           type: action.toastType,
-          visible: true
-        }
+          visible: true,
+        },
       };
     case 'HIDE_TOAST':
       return { ...state, toast: null };
@@ -122,11 +122,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       AsyncStorage.setItem('nadar.onboarding.v1', '1').catch(() => {});
     }
   }, [state.hasCompletedOnboarding]);
-  return (
-    <AppContext.Provider value={{ state, dispatch }}>
-      {children}
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 }
 
 export function useAppState() {

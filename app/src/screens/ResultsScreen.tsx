@@ -42,7 +42,6 @@ import { ResultSection } from '../app/components/ResultSection';
 import { TimingsGroup } from '../app/components/TimingsBadge';
 import { Card } from '../app/components/Card';
 
-
 export default function ResultsScreen() {
   const { state, dispatch } = useAppState();
   const { settings } = useSettings();
@@ -79,7 +78,7 @@ export default function ResultsScreen() {
   const speak = async (text: string, voice?: string) => {
     try {
       setIsPlaying(true);
-      console.log('🔊 Starting TTS for text:', text.substring(0, 50) + '...');
+      console.log('🔊 Starting TTS for text:', `${text.substring(0, 50)}...`);
 
       const res = await tts(text, voice || settings.voice, settings.ttsProvider, settings.ttsRate);
 
@@ -164,7 +163,9 @@ export default function ResultsScreen() {
   if (!result) {
     return (
       <ScreenWrapper style={styles.emptyContainer}>
-        <StyledText variant="title" style={styles.emptyTitle}>No Results</StyledText>
+        <StyledText variant="title" style={styles.emptyTitle}>
+          No Results
+        </StyledText>
         <StyledText style={styles.emptyText}>Your latest analysis will appear here.</StyledText>
         <PrimaryButton
           title="Take Photo"
@@ -176,7 +177,7 @@ export default function ResultsScreen() {
 
   function parseStructuredResult(text: string) {
     const sections: { title: string; content: string }[] = [];
-    const lines = text.split('\n').filter((line) => line.trim());
+    const lines = text.split('\n').filter(line => line.trim());
     let currentSection = { title: '', content: '' };
 
     for (const line of lines) {
@@ -192,9 +193,9 @@ export default function ResultsScreen() {
           content: contentParts.join(':').trim(),
         };
       } else if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
-        currentSection.content += '\n' + line;
+        currentSection.content += `\n${line}`;
       } else if (currentSection.title) {
-        currentSection.content += ' ' + line;
+        currentSection.content += ` ${line}`;
       } else {
         sections.push({ title: 'Result', content: line });
       }
@@ -209,7 +210,8 @@ export default function ResultsScreen() {
     const arr: { title: string; content: string }[] = [];
     if (!s) return null;
     if (s.immediate) arr.push({ title: 'IMMEDIATE', content: s.immediate });
-    if (s.objects && s.objects.length) arr.push({ title: 'OBJECTS', content: s.objects.map((o: string) => `• ${o}`).join('\n') });
+    if (s.objects && s.objects.length)
+      arr.push({ title: 'OBJECTS', content: s.objects.map((o: string) => `• ${o}`).join('\n') });
     if (s.navigation) arr.push({ title: 'NAVIGATION', content: s.navigation });
     return arr.length ? arr : null;
   }
@@ -248,7 +250,9 @@ export default function ResultsScreen() {
 
           {result.question && (
             <Card style={styles.questionCard}>
-              <StyledText variant="meta" color="textMut">Question:</StyledText>
+              <StyledText variant="meta" color="textMut">
+                Question:
+              </StyledText>
               <StyledText variant="body">{result.question}</StyledText>
             </Card>
           )}
@@ -268,7 +272,9 @@ export default function ResultsScreen() {
 
         {result.timings && (
           <Card style={styles.timingsContainer}>
-            <StyledText variant="meta" color="textMut" style={{ marginBottom: theme.spacing(1) }}>Performance</StyledText>
+            <StyledText variant="meta" color="textMut" style={{ marginBottom: theme.spacing(1) }}>
+              Performance
+            </StyledText>
             <TimingsGroup
               timings={[
                 { label: 'Prep', value: result.timings.prep ?? '—' },
@@ -290,7 +296,9 @@ export default function ResultsScreen() {
               onPress={async () => {
                 try {
                   await Clipboard.setStringAsync(result.result);
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+                    () => {}
+                  );
                 } catch {}
               }}
             />
@@ -302,7 +310,10 @@ export default function ResultsScreen() {
                 } catch {}
               }}
             />
-            <SecondaryButton title="New" onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })} />
+            <SecondaryButton
+              title="New"
+              onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
+            />
           </View>
         </View>
       </ScrollView>

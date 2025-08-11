@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { HybridProvider, TTSProvider } from '../providers/hybridProvider';
 import { TTSBody } from './schemas';
 import { mapGeminiError } from '../providers/geminiProvider';
-import { createTelemetryLogger, calculateRequestSize } from '../utils/telemetry';
+import { createTelemetryLogger, calculateRequestSize, extractTelemetryContext } from '../utils/telemetry';
 
 
 export const ttsRouter = Router();
@@ -37,7 +37,8 @@ ttsRouter.post('/provider', (req, res) => {
 });
 
 ttsRouter.post('/', async (req, res) => {
-  const telemetry = createTelemetryLogger('tts');
+  const telemetryContext = extractTelemetryContext(req);
+  const telemetry = createTelemetryLogger('tts', telemetryContext);
   const parse = TTSBody.safeParse(req.body);
 
   if (!parse.success) {
@@ -53,13 +54,17 @@ ttsRouter.post('/', async (req, res) => {
   try {
     const result = await provider.tts({ text, voice, provider: requestProvider, rate });
     const ttsMs = Date.now() - ttsStart;
-    telemetry.log(true, 0, ttsMs, bytesIn, null);
+    const actualProvider = requestProvider || provider.getCurrentTTSProvider();
+    const modelName = actualProvider === 'elevenlabs' ? 'eleven-multilingual-v2' : 'gemini-1.5-flash';
+    telemetry.log(true, 0, ttsMs, bytesIn, null, modelName, actualProvider);
     res.json(result);
   } catch (e: any) {
     // Preserve ProviderError codes; fallback to mapping for unknown errors
     const { message, err_code } = e?.err_code ? { message: e.message, err_code: e.err_code } : mapGeminiError(e);
     const ttsMs = Date.now() - ttsStart;
-    telemetry.log(false, 0, ttsMs, bytesIn, err_code);
+    const actualProvider = requestProvider || provider.getCurrentTTSProvider();
+    const modelName = actualProvider === 'elevenlabs' ? 'eleven-multilingual-v2' : 'gemini-1.5-flash';
+    telemetry.log(false, 0, ttsMs, bytesIn, err_code, modelName, actualProvider);
     res.status(500).json({ message, err_code });
   }
 });

@@ -17,18 +17,9 @@ export function Chip({ title, selected = false, onPress, style }: ChipProps) {
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityState={{ selected }}
-      style={[
-        styles.chip,
-        selected && styles.chipSelected,
-        style
-      ]}
+      style={[styles.chip, selected && styles.chipSelected, style]}
     >
-      <Text style={[
-        styles.text,
-        selected && styles.textSelected
-      ]}>
-        {title}
-      </Text>
+      <Text style={[styles.text, selected && styles.textSelected]}>{title}</Text>
     </TouchableOpacity>
   );
 }

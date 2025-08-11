@@ -65,7 +65,9 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
         else if (res.status === 400) friendly = 'Invalid request';
         else if (res.status === 401 || res.status === 403) friendly = 'Unauthorized';
 
-        const error = new Error(errorPayload.message || `${friendly}: ${errorPayload.message || 'Unknown error'}`);
+        const error = new Error(
+          errorPayload.message || `${friendly}: ${errorPayload.message || 'Unknown error'}`
+        );
         // Propagate err_code if available from server
         if (errorPayload.err_code) {
           (error as any).err_code = errorPayload.err_code;
@@ -129,7 +131,9 @@ async function getJSON<T>(path: string, attempts = 2): Promise<T> {
         else if (res.status === 400) friendly = 'Invalid request';
         else if (res.status === 401 || res.status === 403) friendly = 'Unauthorized';
 
-        const error = new Error(errorPayload.message || `${friendly}: ${errorPayload.message || 'Unknown error'}`);
+        const error = new Error(
+          errorPayload.message || `${friendly}: ${errorPayload.message || 'Unknown error'}`
+        );
         // Propagate err_code if available from server
         if (errorPayload.err_code) {
           (error as any).err_code = errorPayload.err_code;
@@ -154,11 +158,23 @@ type Timings = { modelMs: number };
 export type GenResult = { text: string; timings?: Timings };
 export type TTSResult = { audioBase64: string; mimeType?: string };
 
-export async function describe(imageBase64: string, mimeType?: string, options?: any, sessionId?: string) {
+export async function describe(
+  imageBase64: string,
+  mimeType?: string,
+  options?: any,
+  sessionId?: string
+) {
   return postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options, sessionId });
 }
 
-export async function ocr(imageBase64: string | null, mimeType?: string, options?: any, sessionId?: string, full?: boolean, imageRef?: string) {
+export async function ocr(
+  imageBase64: string | null,
+  mimeType?: string,
+  options?: any,
+  sessionId?: string,
+  full?: boolean,
+  imageRef?: string
+) {
   const url = full ? `/ocr?full=true` : `/ocr`;
   const body: any = { mimeType, options, sessionId };
 
@@ -171,7 +187,14 @@ export async function ocr(imageBase64: string | null, mimeType?: string, options
   return postJSON<GenResult>(url, body);
 }
 
-export async function qa(imageBase64: string | null, question: string, mimeType?: string, options?: any, sessionId?: string, imageRef?: string) {
+export async function qa(
+  imageBase64: string | null,
+  question: string,
+  mimeType?: string,
+  options?: any,
+  sessionId?: string,
+  imageRef?: string
+) {
   const body: any = { question, mimeType, options, sessionId };
   if (imageRef) {
     body.imageRef = imageRef;
@@ -181,7 +204,12 @@ export async function qa(imageBase64: string | null, question: string, mimeType?
 
   return postJSON<GenResult>(`/qa`, body);
 }
-export async function tts(text: string, voice?: string, provider?: 'gemini' | 'elevenlabs', rate?: number) {
+export async function tts(
+  text: string,
+  voice?: string,
+  provider?: 'gemini' | 'elevenlabs',
+  rate?: number
+) {
   return postJSON<TTSResult>(`/tts`, { text, voice, provider, rate });
 }
 
@@ -217,4 +245,3 @@ export async function testConnection() {
     return false;
   }
 }
-

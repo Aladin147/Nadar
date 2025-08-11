@@ -7,6 +7,7 @@ import { describeRouter } from './routes/describe';
 import { ocrRouter } from './routes/ocr';
 import { qaRouter } from './routes/qa';
 import { ttsRouter } from './routes/tts';
+import { logTelemetry, extractTelemetryContext } from './utils/telemetry';
 import { execSync } from 'child_process';
 
 // LRU Image Cache with TTL and memory cap
@@ -167,12 +168,36 @@ app.set('trust proxy', true);
 
 app.use(morgan('combined'));
 
+// Rate limit handler with telemetry logging
+function createRateLimitHandler(errCode: string, message: string) {
+  return (req: any, res: any) => {
+    // Log rate limit violation to telemetry
+    const context = extractTelemetryContext(req);
+    logTelemetry({
+      ts: new Date().toISOString(),
+      mode: 'describe', // Default mode for rate limits
+      route_path: context.route_path,
+      bytes_in: 0,
+      total_ms: 0,
+      model_ms: 0,
+      tts_ms: 0,
+      ok: false,
+      err_code: errCode,
+      remote_addr: context.remote_addr,
+      user_agent: context.user_agent,
+      request_id: context.request_id
+    });
+
+    res.status(429).json({ error: message, err_code: errCode });
+  };
+}
+
 // Tiered rate limiting strategy
 const generalLimiter = rateLimit({
   windowMs: 60_000, // 1 minute
   limit: 120, // 120 requests per minute (2 per second) - increased for legitimate usage
   standardHeaders: true,
-  message: { error: 'Too many requests, please try again later', err_code: 'RATE_LIMIT_GENERAL' }
+  handler: createRateLimitHandler('RATE_LIMIT_GENERAL', 'Too many requests, please try again later')
 });
 
 // Stricter limits for heavy compute endpoints
@@ -180,7 +205,7 @@ const visionLimiter = rateLimit({
   windowMs: 60_000, // 1 minute
   limit: 30, // 30 vision requests per minute - reasonable for photo sessions
   standardHeaders: true,
-  message: { error: 'Too many vision requests, please slow down', err_code: 'RATE_LIMIT_VISION' },
+  handler: createRateLimitHandler('RATE_LIMIT_VISION', 'Too many vision requests, please slow down'),
   keyGenerator: (req) => `vision:${req.ip}` // Separate counter for vision endpoints
 });
 
@@ -189,7 +214,7 @@ const healthLimiter = rateLimit({
   windowMs: 60_000, // 1 minute
   limit: 300, // 300 health checks per minute - supports network discovery
   standardHeaders: true,
-  message: { error: 'Too many health checks', err_code: 'RATE_LIMIT_HEALTH' },
+  handler: createRateLimitHandler('RATE_LIMIT_HEALTH', 'Too many health checks'),
   keyGenerator: (req) => `health:${req.ip}`
 });
 
@@ -225,13 +250,43 @@ const port = Number(process.env.PORT) || 4000;
 // Centralized error handler (must be before listen)
 import type { NextFunction, Request, Response } from 'express';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  const context = extractTelemetryContext(req);
+  let errCode = 'SERVER_ERROR';
+  let status = 500;
+  let message = 'Internal server error';
+
   if (err?.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'Payload too large' });
+    errCode = 'PAYLOAD_TOO_LARGE';
+    status = 413;
+    message = 'Payload too large';
+  } else if (typeof err?.status === 'number') {
+    status = err.status;
+    message = err.message || message;
+    errCode = status === 400 ? 'BAD_REQUEST' :
+              status === 401 ? 'UNAUTHORIZED' :
+              status === 403 ? 'FORBIDDEN' :
+              status === 404 ? 'NOT_FOUND' :
+              'SERVER_ERROR';
   }
-  const status = typeof err?.status === 'number' ? err.status : 500;
-  const message = err?.message || 'Internal server error';
-  res.status(status).json({ error: message });
+
+  // Log server error to telemetry
+  logTelemetry({
+    ts: new Date().toISOString(),
+    mode: 'describe', // Default mode for server errors
+    route_path: context.route_path,
+    bytes_in: 0,
+    total_ms: 0,
+    model_ms: 0,
+    tts_ms: 0,
+    ok: false,
+    err_code: errCode,
+    remote_addr: context.remote_addr,
+    user_agent: context.user_agent,
+    request_id: context.request_id
+  });
+
+  res.status(status).json({ error: message, err_code: errCode });
 });
 
 app.listen(port, '0.0.0.0', () => {

@@ -3,7 +3,7 @@ import { ZodSchema } from 'zod';
 import { HybridProvider } from '../providers/hybridProvider';
 import { resolveImage, cacheImage } from '../index';
 import { mapGeminiError } from '../providers/geminiProvider';
-import { createTelemetryLogger, calculateRequestSize } from '../utils/telemetry';
+import { createTelemetryLogger, calculateRequestSize, extractTelemetryContext } from '../utils/telemetry';
 import { GenOptions, GenResult } from '../providers/IAIProvider';
 
 export type VisionMode = 'describe' | 'ocr' | 'qa';
@@ -30,7 +30,8 @@ export async function handleVisionRoute(
   config: VisionRouteConfig
 ): Promise<void> {
   const { mode, schema, providerCall } = config;
-  const telemetry = createTelemetryLogger(mode);
+  const telemetryContext = extractTelemetryContext(req);
+  const telemetry = createTelemetryLogger(mode, telemetryContext);
   const parse = schema.safeParse(req.body);
 
   if (!parse.success) {
@@ -64,12 +65,12 @@ export async function handleVisionRoute(
     });
     
     const modelMs = result.timings?.model || 0;
-    telemetry.log(true, modelMs, 0, bytesIn, null);
+    telemetry.log(true, modelMs, 0, bytesIn, null, 'gemini-1.5-flash', 'gemini');
     res.json(result);
   } catch (e: any) {
     // Preserve ProviderError codes; fallback to mapping for unknown errors
     const { message, err_code } = e?.err_code ? { message: e.message, err_code: e.err_code } : mapGeminiError(e);
-    telemetry.log(false, 0, 0, bytesIn, err_code);
+    telemetry.log(false, 0, 0, bytesIn, err_code, 'gemini-1.5-flash', 'gemini');
     res.status(500).json({ message, err_code });
   }
 }

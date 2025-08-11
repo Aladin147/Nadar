@@ -11,13 +11,13 @@ export interface ToastProps {
   style?: ViewStyle;
 }
 
-export function Toast({ 
-  message, 
-  type = 'error', 
-  visible, 
-  onHide, 
+export function Toast({
+  message,
+  type = 'error',
+  visible,
+  onHide,
   duration = 4000,
-  style 
+  style,
 }: ToastProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-100)).current;
@@ -65,12 +65,15 @@ export function Toast({
     });
   };
 
-  if (!visible && fadeAnim._value === 0) return null;
+  // Don't render if not visible
+  if (!visible) return null;
 
-  const backgroundColor = 
-    type === 'error' ? theme.colors.danger :
-    type === 'success' ? theme.colors.success :
-    theme.colors.surface;
+  const backgroundColor =
+    type === 'error'
+      ? theme.colors.danger
+      : type === 'success'
+        ? theme.colors.success
+        : theme.colors.surface;
 
   return (
     <Animated.View
@@ -101,7 +104,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     padding: theme.spacing(3),
     zIndex: 1000,
-    ...theme.shadows.elev3,
+    ...theme.shadows.elev2,
   },
   message: {
     color: '#FFF',

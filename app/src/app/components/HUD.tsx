@@ -10,7 +10,7 @@ export interface HUDProps {
 
 export function HUD({ message, visible = true, style }: HUDProps) {
   if (!visible) return null;
-  
+
   return (
     <View style={[styles.overlay, style]}>
       <View style={styles.content}>

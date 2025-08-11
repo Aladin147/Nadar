@@ -18,7 +18,11 @@ export function StyledText({
   ...props
 }: StyledTextProps) {
   const textStyle = theme.typography[variant];
-  const textColor = color ? theme.colors[color] : (variant === 'meta' ? theme.colors.textMut : theme.colors.text);
+  const textColor = color
+    ? theme.colors[color]
+    : variant === 'meta'
+      ? theme.colors.textMut
+      : theme.colors.text;
 
   return (
     <Text style={[textStyle, { color: textColor }, style]} {...props}>

@@ -4,6 +4,44 @@ Nadar is a voice‑first assistive application that helps blind and low‑vision
 
 This README provides a technical overview for developers: architecture, setup, build, testing, endpoints, and operational guidance.
 
+## 🎯 Recent Improvements (2024)
+
+### Phase 1: Critical Bug Fixes
+
+- ✅ Fixed server routes error code mapping to preserve ProviderError codes
+- ✅ Resolved Jest process leak in server tests with timer cleanup
+- ✅ Fixed client HTTP method mismatch for getTTSProviders()
+- ✅ Removed broken package scripts from app/package.json
+
+### Phase 2: API & Error Handling
+
+- ✅ Enhanced client error parsing to propagate server err_code values
+- ✅ Fixed SettingsScreen server communication for mobile devices
+- ✅ Optimized server version endpoint with cached git information
+- ✅ Improved error handling consistency across client-server communication
+
+### Phase 3: Code Quality & Testing
+
+- ✅ DRY vision routes implementation with shared handler
+- ✅ Added comprehensive GitHub Actions CI workflow for app package
+- ✅ Fixed dependencies classification (moved @types/cors to devDependencies)
+- ✅ Added environment configuration examples with server/.env.example
+
+### Phase 4: Performance & UX
+
+- ✅ Optimized network discovery with bounded concurrency and early termination
+- ✅ Added image cache memory cap with LRU eviction
+- ✅ Reviewed and adjusted rate limits based on usage patterns
+- ✅ Enhanced resource utilization efficiency
+
+### Phase 5: Infrastructure & Documentation
+
+- ✅ Complete accessibility testing framework with VoiceOver/TalkBack procedures
+- ✅ Production-ready Docker configurations with multi-stage builds
+- ✅ Comprehensive deployment guide covering cloud platforms and VPS setup
+- ✅ Enhanced telemetry system with consistent error codes and debugging info
+- ✅ App linting and formatting setup with ESLint + Prettier integration
+
 ---
 
 ## Repository layout
@@ -33,6 +71,34 @@ This README provides a technical overview for developers: architecture, setup, b
 - History — minimal in-memory history recording on client for MVP
 - Accessibility — consolidated onboarding, large touch targets, focused flows
 
+## 📚 Enhanced Documentation
+
+- **[Accessibility Testing Guide](docs/accessibility-testing.md)** — Comprehensive VoiceOver/TalkBack testing procedures, performance targets, and systematic validation
+- **[API Reference](docs/api-reference.md)** — Complete endpoint documentation with examples, error codes, rate limits, and SDK integration patterns
+- **[Deployment Guide](docs/deployment-guide.md)** — Production deployment instructions for Docker, cloud platforms, VPS setup, and monitoring
+
+## 🐳 Docker Support
+
+Nadar now includes production-ready Docker configurations:
+
+- **Multi-stage builds** with security hardening and health checks
+- **Development environment** with hot reload and debugging support
+- **Docker Compose** orchestration with networking, monitoring, and scaling options
+- **Automated setup script** (`docker-setup.sh`) for easy environment management
+
+Quick start with Docker:
+
+```bash
+# Development environment
+./docker-setup.sh dev
+
+# Production environment
+./docker-setup.sh prod
+
+# With monitoring (Prometheus + Grafana)
+./docker-setup.sh monitoring
+```
+
 ---
 
 ## Architecture overview
@@ -52,6 +118,16 @@ Server (Express + TypeScript)
   - HybridProvider — orchestrates provider selection/fallback
 - Routes: /describe, /ocr, /qa, /tts (zod input validation)
 - Ops: morgan logging, express-rate-limit, CORS, JSON body parser
+- Enhanced telemetry with consistent error codes, route paths, and debugging info
+- Comprehensive error handling with ProviderError preservation
+
+## 🧪 Testing & Quality Assurance
+
+- **Server**: 27 comprehensive tests covering providers, error handling, and telemetry
+- **App**: Jest + Expo testing setup with utility function validation
+- **CI/CD**: GitHub Actions workflows for both server and app packages
+- **Code Quality**: ESLint + Prettier integration with consistent formatting rules
+- **Type Safety**: Strict TypeScript configuration with comprehensive type checking
 
 ---
 
