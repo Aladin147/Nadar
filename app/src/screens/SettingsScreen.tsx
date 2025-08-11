@@ -9,7 +9,7 @@ import { ScreenWrapper } from '../app/components/ScreenWrapper';
 import { StyledText } from '../app/components/StyledText';
 import { Header } from '../app/components/Header';
 import { loadSettings, saveSettings, Language, Verbosity, TTSProvider, TTSRate } from '../app/state/settings';
-import { testConnection } from '../api/client';
+import { testConnection, setTTSProvider } from '../api/client';
 import { discoverApiBase, getConfigurationHelp } from '../utils/networkDiscovery';
 
 export default function SettingsScreen() {
@@ -54,14 +54,8 @@ export default function SettingsScreen() {
 
     // Also update server-side provider if API is available
     try {
-      const response = await fetch(`${apiBase || 'http://localhost:4000'}/tts/provider`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: ttsProvider })
-      });
-      if (response.ok) {
-        console.log(`✅ Server TTS provider updated to: ${ttsProvider}`);
-      }
+      await setTTSProvider(ttsProvider);
+      console.log(`✅ Server TTS provider updated to: ${ttsProvider}`);
     } catch (error) {
       console.log('⚠️ Could not update server TTS provider:', error);
     }

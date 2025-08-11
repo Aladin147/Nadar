@@ -40,18 +40,37 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        const errorText = await res.text();
+        const contentType = res.headers.get('content-type') || '';
         const is5xx = res.status >= 500;
+
+        // Try to parse JSON error response first
+        let errorPayload: any = { message: await res.text() };
+        if (contentType.includes('application/json')) {
+          try {
+            const text = errorPayload.message;
+            errorPayload = JSON.parse(text);
+          } catch {
+            // Keep the text as message if JSON parsing fails
+          }
+        }
+
         if (is5xx && i < attempts - 1) {
           await new Promise(r => setTimeout(r, 400 * (i + 1)));
           continue;
         }
+
         let friendly = `Server error (${res.status})`;
         if (res.status === 413) friendly = 'Image too large';
         else if (res.status === 429) friendly = 'Too many requests';
         else if (res.status === 400) friendly = 'Invalid request';
         else if (res.status === 401 || res.status === 403) friendly = 'Unauthorized';
-        throw new Error(`${friendly}: ${errorText}`);
+
+        const error = new Error(errorPayload.message || `${friendly}: ${errorPayload.message || 'Unknown error'}`);
+        // Propagate err_code if available from server
+        if (errorPayload.err_code) {
+          (error as any).err_code = errorPayload.err_code;
+        }
+        throw error;
       }
 
       return await res.json();
@@ -85,16 +104,37 @@ async function getJSON<T>(path: string, attempts = 2): Promise<T> {
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        const errorText = await res.text();
+        const contentType = res.headers.get('content-type') || '';
         const is5xx = res.status >= 500;
+
+        // Try to parse JSON error response first
+        let errorPayload: any = { message: await res.text() };
+        if (contentType.includes('application/json')) {
+          try {
+            const text = errorPayload.message;
+            errorPayload = JSON.parse(text);
+          } catch {
+            // Keep the text as message if JSON parsing fails
+          }
+        }
+
         if (is5xx && i < attempts - 1) {
           await new Promise(r => setTimeout(r, 400 * (i + 1)));
           continue;
         }
+
         let friendly = `Server error (${res.status})`;
         if (res.status === 413) friendly = 'Image too large';
-        if (res.status === 429) friendly = 'Rate limited - please wait';
-        throw new Error(`${friendly}: ${errorText}`);
+        else if (res.status === 429) friendly = 'Rate limited - please wait';
+        else if (res.status === 400) friendly = 'Invalid request';
+        else if (res.status === 401 || res.status === 403) friendly = 'Unauthorized';
+
+        const error = new Error(errorPayload.message || `${friendly}: ${errorPayload.message || 'Unknown error'}`);
+        // Propagate err_code if available from server
+        if (errorPayload.err_code) {
+          (error as any).err_code = errorPayload.err_code;
+        }
+        throw error;
       }
 
       return res.json();

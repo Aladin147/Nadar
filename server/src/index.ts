@@ -12,6 +12,20 @@ import { execSync } from 'child_process';
 // Ephemeral image cache for follow-ups (2-minute TTL)
 export const recentImages = new Map<string, { buf: Buffer; ts: number }>();
 
+// Cache git info at startup to avoid execSync on every /version request
+let cachedVersionInfo: { commit: string; builtAt: string } | null = null;
+try {
+  const commit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+  const builtAt = new Date().toISOString();
+  cachedVersionInfo = { commit, builtAt };
+} catch (error) {
+  // Fallback if git is not available
+  cachedVersionInfo = {
+    commit: process.env.GIT_COMMIT || 'unknown',
+    builtAt: process.env.BUILD_TIME || new Date().toISOString()
+  };
+}
+
 // Cleanup timer - run every 30 seconds, evict older than 120 seconds
 const cleanupInterval = setInterval(() => {
   const cutoff = Date.now() - 120_000; // 2 minutes
@@ -60,19 +74,9 @@ app.use(express.json({ limit: '50mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// Version endpoint with git commit and build time
+// Version endpoint with cached git commit and build time
 app.get('/version', (_req, res) => {
-  try {
-    const commit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
-    const builtAt = new Date().toISOString();
-    res.json({ commit, builtAt });
-  } catch (error) {
-    // Fallback if git is not available
-    res.json({
-      commit: process.env.GIT_COMMIT || 'unknown',
-      builtAt: process.env.BUILD_TIME || new Date().toISOString()
-    });
-  }
+  res.json(cachedVersionInfo);
 });
 
 app.get('/', (_req, res) => res.type('text/plain').send('Nadar API. Endpoints: /health, /version, POST /describe, /ocr, /qa, /tts'));
