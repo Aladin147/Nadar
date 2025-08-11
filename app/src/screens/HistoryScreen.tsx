@@ -1,11 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../app/theme';
 import { useAppState } from '../app/state/AppContext';
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { Card } from '../app/components/Card';
 import { ConnectivityPill } from '../app/components/ConnectivityPill';
+import { ScreenWrapper } from '../app/components/ScreenWrapper';
+import { StyledText } from '../app/components/StyledText';
+import { Header } from '../app/components/Header';
 
 export default function HistoryScreen() {
   const { state, dispatch } = useAppState();
@@ -17,35 +20,31 @@ export default function HistoryScreen() {
 
   if (state.history.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📋</Text>
-          <Text style={styles.emptyTitle}>No History Yet</Text>
-          <Text style={styles.emptyText}>Your analyzed images will appear here</Text>
-          <PrimaryButton 
-            title="Take First Photo" 
-            onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
-            style={styles.emptyButton}
-          />
-        </View>
-      </SafeAreaView>
+      <ScreenWrapper style={styles.emptyState}>
+        <StyledText style={styles.emptyIcon}>📋</StyledText>
+        <StyledText variant="title" style={styles.emptyTitle}>No History Yet</StyledText>
+        <StyledText color="textMut" style={styles.emptyText}>Your analyzed images will appear here</StyledText>
+        <PrimaryButton
+          title="Take First Photo"
+          onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
+          style={styles.emptyButton}
+        />
+      </ScreenWrapper>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.titleGroup}>
-            <Text style={styles.title}>نظر</Text>
-            <Text style={styles.titleSub}>History</Text>
-          </View>
-          <ConnectivityPill />
-        </View>
-        <Text style={styles.subtitle}>{state.history.length} analyzed images</Text>
-      </View>
-      
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+    <ScreenWrapper>
+      <Header
+        title="History"
+        subtitle={`${state.history.length} analyzed images`}
+        right={
+          <TouchableOpacity onPress={() => dispatch({ type: 'NAVIGATE', route: 'settings' })}>
+            <Ionicons name="settings-outline" size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+        }
+      />
+      <ScrollView contentContainerStyle={styles.content}>
         {state.history.map((item) => (
           <TouchableOpacity
             key={item.id}
@@ -60,28 +59,22 @@ export default function HistoryScreen() {
                 <View style={styles.itemContent}>
                   <View style={styles.itemHeader}>
                     <View style={styles.modePill}>
-                      <Text style={styles.itemMode}>{item.mode.toUpperCase()}</Text>
+                      <StyledText style={styles.itemMode}>{item.mode.toUpperCase()}</StyledText>
                     </View>
-                    <Text style={styles.itemDate}>
+                    <StyledText color="textMut" style={styles.itemDate}>
                       {new Date(item.timestamp).toLocaleDateString()}
-                    </Text>
+                    </StyledText>
                   </View>
 
                   {item.question && (
-                    <Text style={styles.itemQuestion} numberOfLines={1}>
+                    <StyledText color="textMut" style={styles.itemQuestion} numberOfLines={1}>
                       Q: {item.question}
-                    </Text>
+                    </StyledText>
                   )}
 
-                  <Text style={styles.itemResult} numberOfLines={2}>
+                  <StyledText style={styles.itemResult} numberOfLines={2}>
                     {item.structured?.immediate || item.result}
-                  </Text>
-
-                  {item.timings && (
-                    <Text style={styles.itemTiming}>
-                      {item.timings.total}ms
-                    </Text>
-                  )}
+                  </StyledText>
                 </View>
 
                 <View style={styles.itemArrow}>
@@ -92,105 +85,62 @@ export default function HistoryScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.bg },
-  header: {
-    padding: theme.spacing(3),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+  content: {
+    padding: theme.spacing(2),
   },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing(1),
-  },
-  titleGroup: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: theme.spacing(1),
-  },
-  titleSub: {
-    ...theme.typography.body,
-    color: theme.colors.textMut,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  title: {
-    ...theme.typography.title,
-    color: theme.colors.text,
-    marginBottom: theme.spacing(0.5),
-  },
-  subtitle: {
-    ...theme.typography.body,
-    color: theme.colors.textMut,
-    fontSize: 14,
-  },
-  scrollView: { flex: 1 },
-  content: { padding: theme.spacing(2) },
   historyItem: {
     marginBottom: theme.spacing(2),
     backgroundColor: theme.colors.surfaceAlt,
-    borderColor: theme.colors.border,
   },
   itemLayout: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: theme.spacing(2),
   },
   thumbnail: {
     width: 60,
     height: 60,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surface,
   },
   itemContent: {
     flex: 1,
-    marginLeft: theme.spacing(2),
+    gap: theme.spacing(0.5),
   },
   itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing(0.5),
   },
   modePill: {
     backgroundColor: theme.colors.primary,
     paddingHorizontal: theme.spacing(1),
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: theme.radius.full,
   },
   itemMode: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 0.5,
   },
   itemDate: {
-    color: theme.colors.textMut,
     fontSize: 12,
   },
   itemQuestion: {
-    color: theme.colors.textMut,
-    fontSize: 12,
     fontStyle: 'italic',
-    marginBottom: theme.spacing(0.5),
   },
   itemResult: {
-    color: theme.colors.text,
     fontSize: 14,
-    lineHeight: 18,
-    marginBottom: theme.spacing(0.5),
-  },
-  itemTiming: {
-    color: theme.colors.textMut,
-    fontSize: 11,
+    lineHeight: 20,
   },
   itemArrow: {
-    marginLeft: theme.spacing(1),
+    marginLeft: 'auto',
   },
   emptyState: {
     flex: 1,
@@ -203,17 +153,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing(2),
   },
   emptyTitle: {
-    ...theme.typography.title,
-    color: theme.colors.text,
     marginBottom: theme.spacing(1),
   },
   emptyText: {
-    ...theme.typography.body,
-    color: theme.colors.textMut,
     textAlign: 'center',
     marginBottom: theme.spacing(3),
   },
   emptyButton: {
-    width: 200,
+    width: '80%',
+    maxWidth: 300,
   },
 });

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Alert, Platform } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../app/theme';
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
 import { Card } from '../app/components/Card';
+import { ScreenWrapper } from '../app/components/ScreenWrapper';
+import { StyledText } from '../app/components/StyledText';
 import { useAppState } from '../app/state/AppContext';
 import { discoverApiBase, getConfigurationHelp } from '../utils/networkDiscovery';
 import { saveSettings } from '../app/state/settings';
@@ -61,125 +63,78 @@ export default function MobileSetupScreen({ onComplete }: { onComplete: () => vo
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenWrapper style={styles.container}>
       <LinearGradient
-        colors={[theme.colors.bg, '#0A1224', theme.colors.bg]}
-        locations={[0, 0.55, 1]}
+        colors={[theme.colors.surface, theme.colors.bg]}
         style={StyleSheet.absoluteFillObject}
       />
-      <View style={styles.inner}>
-        <View style={styles.header}>
-          <Text style={styles.logo}>نظر</Text>
-          <Text style={styles.subtitle}>Nadar</Text>
-          <Text style={styles.tagline}>Mobile Setup Required</Text>
-        </View>
-
-        <Card variant="boldLight" style={styles.setupCard}>
-          <Text style={styles.setupTitle}>Connect to Server</Text>
-          <Text style={styles.setupDesc}>
-            Nadar needs to connect to the server running on your computer to provide AI analysis.
-          </Text>
-          
-          <View style={styles.setupOptions}>
-            <PrimaryButton
-              title={isDiscovering ? "Searching..." : "🔍 Auto-Discover Server"}
-              onPress={handleAutoDiscover}
-              disabled={isDiscovering}
-              style={styles.setupButton}
-            />
-            
-            <SecondaryButton
-              title="⚙️ Manual Setup"
-              onPress={handleManualSetup}
-              style={styles.setupButton}
-            />
-          </View>
-        </Card>
-
-        <View style={styles.instructions}>
-          <Text style={styles.instructionTitle}>Quick Setup:</Text>
-          <Text style={styles.instructionText}>
-            1. Make sure the Nadar server is running on your computer{'\n'}
-            2. Ensure both devices are on the same WiFi network{'\n'}
-            3. Tap "Auto-Discover Server" to find it automatically
-          </Text>
-        </View>
+      <View style={styles.header}>
+        <StyledText variant="display" style={styles.logo}>📡</StyledText>
+        <StyledText variant="title">Connection Required</StyledText>
+        <StyledText color="textMut" style={styles.tagline}>
+          Nadar needs to connect to the server app on your computer.
+        </StyledText>
       </View>
-    </SafeAreaView>
+
+      <Card variant="boldLight" style={styles.setupCard}>
+        <StyledText variant="section" style={styles.setupTitle}>1. Start the Server</StyledText>
+        <StyledText color="textMut" style={styles.setupDesc}>
+          Open a terminal on your computer, navigate to the project's `server` directory, and run `npm run dev`.
+        </StyledText>
+
+        <StyledText variant="section" style={styles.setupTitle}>2. Connect</StyledText>
+        <StyledText color="textMut" style={styles.setupDesc}>
+          Make sure your phone and computer are on the **same WiFi network**.
+        </StyledText>
+
+        <PrimaryButton
+          title={isDiscovering ? "Searching..." : "Find My Server"}
+          onPress={handleAutoDiscover}
+          disabled={isDiscovering}
+        />
+      </Card>
+
+      <View style={styles.footer}>
+        <SecondaryButton
+          title="Manual Setup"
+          onPress={handleManualSetup}
+        />
+      </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
-  inner: {
-    padding: theme.spacing(3),
-    flex: 1,
     justifyContent: 'center',
+    padding: theme.spacing(3),
   },
   header: {
     alignItems: 'center',
     marginBottom: theme.spacing(4),
+    textAlign: 'center',
   },
   logo: {
-    ...theme.typography.display,
-    color: theme.colors.text,
-    fontSize: 42,
-    textAlign: 'center',
-    marginBottom: theme.spacing(1),
-  },
-  subtitle: {
-    ...theme.typography.body,
-    color: theme.colors.textMut,
-    fontSize: 20,
-    marginBottom: theme.spacing(1),
-    fontWeight: '600',
-  },
-  tagline: {
-    ...theme.typography.body,
-    color: theme.colors.warning,
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  setupCard: {
-    marginBottom: theme.spacing(4),
-  },
-  setupTitle: {
-    ...theme.typography.section,
-    color: theme.colors.text,
-    textAlign: 'center',
+    fontSize: 48,
     marginBottom: theme.spacing(2),
   },
-  setupDesc: {
-    ...theme.typography.body,
-    color: theme.colors.textMut,
+  tagline: {
+    marginTop: theme.spacing(1),
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: theme.spacing(3),
+    maxWidth: '80%',
   },
-  setupOptions: {
-    gap: theme.spacing(2),
+  setupCard: {
+    padding: theme.spacing(3),
   },
-  setupButton: {
-    width: '100%',
-  },
-  instructions: {
-    alignItems: 'center',
-  },
-  instructionTitle: {
-    ...theme.typography.body,
-    color: theme.colors.text,
-    fontWeight: '700',
+  setupTitle: {
     marginBottom: theme.spacing(1),
   },
-  instructionText: {
-    ...theme.typography.meta,
-    color: theme.colors.textMut,
-    textAlign: 'center',
-    lineHeight: 18,
-    fontSize: 13,
+  setupDesc: {
+    lineHeight: 22,
+    marginBottom: theme.spacing(3),
+  },
+  footer: {
+    marginTop: theme.spacing(4),
+    alignItems: 'center',
   },
 });

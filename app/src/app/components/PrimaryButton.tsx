@@ -1,7 +1,8 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { theme, buttons, typography } from '../theme';
+import { theme, buttons } from '../theme';
+import { StyledText } from './StyledText';
 
 export function PrimaryButton({ title, onPress, disabled, style }: { title: string; onPress: () => void; disabled?: boolean; style?: ViewStyle }) {
   return (
@@ -13,12 +14,14 @@ export function PrimaryButton({ title, onPress, disabled, style }: { title: stri
       style={[styles.btn, disabled && styles.disabled, style]}
     >
       <LinearGradient
-        colors={["#1E40AF", "#3B82F6", "#60A5FA"]}
+        colors={['#1E40AF', '#3B82F6', '#60A5FA']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      <Text style={styles.text}>{title}</Text>
+      <StyledText variant="section" style={styles.text}>
+        {title}
+      </StyledText>
     </TouchableOpacity>
   );
 }
@@ -35,10 +38,8 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.6 },
   text: {
-    color: '#FFF',
-    fontWeight: '800',
-    letterSpacing: 0.2,
-    fontSize: 16
+    color: '#FFFFFF',
+    fontWeight: '700', // Matches section variant
   },
 });
 

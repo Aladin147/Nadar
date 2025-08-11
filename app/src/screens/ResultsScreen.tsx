@@ -1,9 +1,11 @@
 // File: src/screens/ResultsScreen.tsx (drop-in refactor)
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Share, SafeAreaView, ScrollView } from 'react-native';
+import { View, StyleSheet, Image, Share, ScrollView } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { theme, typography } from '../app/theme';
+import { theme } from '../app/theme';
+import { ScreenWrapper } from '../app/components/ScreenWrapper';
+import { StyledText } from '../app/components/StyledText';
 import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
 import { tts, ocr } from '../api/client';
@@ -38,6 +40,7 @@ import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
 import { ResultSection } from '../app/components/ResultSection';
 import { TimingsGroup } from '../app/components/TimingsBadge';
+import { Card } from '../app/components/Card';
 
 
 export default function ResultsScreen() {
@@ -160,18 +163,14 @@ export default function ResultsScreen() {
 
   if (!result) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No results to display</Text>
-          <Text style={styles.emptyText}>Your latest analysis will appear here.</Text>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
-          >
-            <Text style={styles.buttonText}>Take Photo</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <ScreenWrapper style={styles.emptyContainer}>
+        <StyledText variant="title" style={styles.emptyTitle}>No Results</StyledText>
+        <StyledText style={styles.emptyText}>Your latest analysis will appear here.</StyledText>
+        <PrimaryButton
+          title="Take Photo"
+          onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
+        />
+      </ScreenWrapper>
     );
   }
 
@@ -237,21 +236,21 @@ export default function ResultsScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <ScreenWrapper>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.imageContainer}>
             <Image source={{ uri: result.imageUri }} style={styles.image} />
             <View style={styles.modeTag}>
-              <Text style={styles.modeText}>{result.mode.toUpperCase()}</Text>
+              <StyledText style={styles.modeText}>{result.mode.toUpperCase()}</StyledText>
             </View>
           </View>
 
           {result.question && (
-            <View style={styles.questionCard}>
-              <Text style={styles.questionLabel}>Question:</Text>
-              <Text style={styles.questionText}>{result.question}</Text>
-            </View>
+            <Card style={styles.questionCard}>
+              <StyledText variant="meta" color="textMut">Question:</StyledText>
+              <StyledText variant="body">{result.question}</StyledText>
+            </Card>
           )}
         </View>
 
@@ -263,14 +262,13 @@ export default function ResultsScreen() {
               content={section.content}
               variant={section.title?.toUpperCase() === 'IMMEDIATE' ? 'boldLight' : 'default'}
               onPlayPress={() => speak(section.content, settings.voice)}
-              style={styles.resultSection}
             />
           ))}
         </View>
 
         {result.timings && (
-          <View style={styles.timingsContainer}>
-            <Text style={styles.timingsTitle}>Performance</Text>
+          <Card style={styles.timingsContainer}>
+            <StyledText variant="meta" color="textMut" style={{ marginBottom: theme.spacing(1) }}>Performance</StyledText>
             <TimingsGroup
               timings={[
                 { label: 'Prep', value: result.timings.prep ?? '—' },
@@ -278,54 +276,17 @@ export default function ResultsScreen() {
                 { label: 'Total', value: result.timings.total ?? '—' },
               ]}
             />
-          </View>
-        )}
-
-        {/* OCR-specific "Read all" button */}
-        {result.mode === 'ocr' && (
-          <View style={styles.ocrActions}>
-            <SecondaryButton
-              title="📖 Read all"
-              onPress={async () => {
-                try {
-                  dispatch({ type: 'SET_LOADING', loading: true });
-                  const fullResult = await ocr(null, undefined, {
-                    verbosity: settings.verbosity,
-                    language: settings.language
-                  }, state.sessionId, true, 'last');
-
-                  // Chunked TTS for long text
-                  await speakChunked(fullResult.text, settings.voice);
-                } catch (error: any) {
-                  const errorMessage = error?.err_code ? mapErrorMessage(error) : error.message;
-                  dispatch({ type: 'SHOW_TOAST', message: errorMessage, toastType: 'error' });
-                } finally {
-                  dispatch({ type: 'SET_LOADING', loading: false });
-                }
-              }}
-            />
-          </View>
+          </Card>
         )}
 
         <View style={styles.actions}>
           <PrimaryButton
-            title={isPlaying ? "🛑 Stop" : "🔊 Play Full Audio"}
+            title={isPlaying ? 'Stop' : 'Play Full Audio'}
             onPress={isPlaying ? stopAudio : () => speak(result.result, settings.voice)}
-            style={styles.audioButton}
           />
-
           <View style={styles.secondaryActions}>
             <SecondaryButton
-              title="❓ Ask follow-up"
-              onPress={() => {
-                // Navigate to capture screen in QA mode for follow-up
-                dispatch({ type: 'NAVIGATE', route: 'capture' });
-                // TODO: Set QA mode and enable follow-up mode
-              }}
-            />
-            <SecondaryButton title="📷 Take Another" onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })} />
-            <SecondaryButton
-              title="📋 Copy"
+              title="Copy"
               onPress={async () => {
                 try {
                   await Clipboard.setStringAsync(result.result);
@@ -334,169 +295,85 @@ export default function ResultsScreen() {
               }}
             />
             <SecondaryButton
-              title="📤 Share"
+              title="Share"
               onPress={async () => {
                 try {
                   await Share.share({ message: result.result });
                 } catch {}
               }}
             />
+            <SecondaryButton title="New" onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })} />
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg
-  },
-  scrollView: {
-    flex: 1
-  },
   scrollContent: {
-    padding: theme.spacing(2)
+    padding: theme.spacing(2),
   },
-
-  // Empty state styles
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing(3)
+    padding: theme.spacing(3),
   },
   emptyTitle: {
-    color: theme.colors.text,
-    fontSize: 24,
-    fontWeight: '800',
     marginBottom: theme.spacing(2),
-    textAlign: 'center'
+    textAlign: 'center',
   },
   emptyText: {
-    color: theme.colors.textMut,
-    fontSize: 16,
     textAlign: 'center',
-    marginBottom: theme.spacing(3)
+    marginBottom: theme.spacing(3),
   },
-
-  // Button styles
-  button: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing(2),
-    paddingHorizontal: theme.spacing(3),
-    borderRadius: theme.radius.xl,
-    alignItems: 'center',
-    minHeight: 56,
-    justifyContent: 'center',
+  header: {
+    marginBottom: theme.spacing(3),
   },
-  buttonText: {
-    color: theme.colors.text,
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  secondaryButton: {
-    backgroundColor: theme.colors.hairline,
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-  },
-  secondaryButtonText: {
-    color: theme.colors.text,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-
-  header: { marginBottom: theme.spacing(3) },
   imageContainer: {
-    position: 'relative',
     borderRadius: theme.radius.lg,
     overflow: 'hidden',
     marginBottom: theme.spacing(2),
+    ...theme.shadows.elev1,
   },
-  image: { width: '100%', height: 200, backgroundColor: theme.colors.surface },
+  image: {
+    width: '100%',
+    height: 200,
+    backgroundColor: theme.colors.surface,
+  },
   modeTag: {
     position: 'absolute',
-    top: theme.spacing(1),
-    right: theme.spacing(1),
+    top: theme.spacing(1.5),
+    right: theme.spacing(1.5),
     backgroundColor: theme.colors.primary,
     paddingHorizontal: theme.spacing(1),
     paddingVertical: theme.spacing(0.5),
     borderRadius: theme.radius.sm,
-    ...theme.shadows.elev1,
   },
-  modeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  modeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   questionCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
     padding: theme.spacing(2),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
-  questionLabel: { color: theme.colors.textMut, fontSize: 12, fontWeight: '600', marginBottom: theme.spacing(0.5) },
-  questionText: { color: theme.colors.text, fontSize: 16 },
-  resultsContainer: { gap: theme.spacing(2), marginBottom: theme.spacing(3) },
-  resultSection: {
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(2),
-    borderWidth: 1,
-  },
-  resultSectionDefault: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-  },
-  resultSectionBoldLight: {},
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing(1),
-  },
-  resultTitle: {
-    color: theme.colors.text,
-    fontSize: theme.typography.section.fontSize,
-    fontWeight: theme.typography.section.fontWeight,
-    letterSpacing: theme.typography.section.letterSpacing,
-    flex: 1,
-  },
-  playButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radius.sm,
-    padding: theme.spacing(1),
-    marginLeft: theme.spacing(1),
-  },
-  playButtonText: {
-    fontSize: 16,
-  },
-  resultContent: {
-    color: theme.colors.text,
-    fontSize: 16,
-    lineHeight: 24,
+  resultsContainer: {
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(3),
   },
   timingsContainer: {
     marginBottom: theme.spacing(3),
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
     padding: theme.spacing(2),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
-  timingsTitle: { color: theme.colors.textMut, fontSize: 14, fontWeight: '600', marginBottom: theme.spacing(1) },
-  timingsBadge: {
-    backgroundColor: '#262626',
-    borderRadius: theme.radius.md,
-    padding: theme.spacing(1),
+  actions: {
+    gap: theme.spacing(2),
+    paddingBottom: theme.spacing(4),
   },
-  timingsText: {
-    color: theme.colors.textMut,
-    fontSize: 12,
-    fontWeight: '500',
+  secondaryActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: theme.spacing(2),
   },
-  ocrActions: {
-    marginBottom: theme.spacing(2),
-    alignItems: 'center',
-  },
-  actions: { gap: theme.spacing(2) },
-  audioButton: { width: '100%' },
-  secondaryActions: { flexDirection: 'row', gap: theme.spacing(2) },
 });

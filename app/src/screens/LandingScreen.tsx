@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Platform, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { theme, ui } from '../app/theme';
+import { theme } from '../app/theme';
 import { PrimaryButton } from '../app/components/PrimaryButton';
-import { SecondaryButton } from '../app/components/SecondaryButton';
-import { Card } from '../app/components/Card';
 import { useAppState } from '../app/state/AppContext';
 import { testConnection } from '../api/client';
-import { getConfigurationHelp } from '../utils/networkDiscovery';
 
-export default function LandingScreen({ onSettings }: { onSettings: () => void }) {
+export default function LandingScreen() {
   const { dispatch } = useAppState();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
@@ -73,77 +70,21 @@ export default function LandingScreen({ onSettings }: { onSettings: () => void }
         style={StyleSheet.absoluteFillObject}
       />
       <View style={styles.inner}>
-        <View style={styles.header}>
+        <View style={styles.content}>
           <Text style={styles.logo}>نظر</Text>
           <Text style={styles.subtitle}>Nadar</Text>
-          <Text style={styles.tagline}>AI-powered visual assistance for everyone</Text>
+          <Text style={styles.tagline}>AI-powered visual assistance.</Text>
         </View>
 
-        <View style={styles.modesSection}>
-          <Card variant="boldLight" style={styles.modesCard}>
-            <Text style={styles.modesTitle}>Three Ways to See</Text>
-
-            <View style={styles.modesList}>
-              <View style={styles.modeItem}>
-                <Text style={styles.modeIcon}>📷</Text>
-                <View style={styles.modeContent}>
-                  <Text style={styles.modeLabel}>Scene</Text>
-                  <Text style={styles.modeDesc}>Instant description of your surroundings</Text>
-                </View>
-              </View>
-
-              <View style={styles.modeItem}>
-                <Text style={styles.modeIcon}>📖</Text>
-                <View style={styles.modeContent}>
-                  <Text style={styles.modeLabel}>Read</Text>
-                  <Text style={styles.modeDesc}>Text recognition for signs and documents</Text>
-                </View>
-              </View>
-
-              <View style={styles.modeItem}>
-                <Text style={styles.modeIcon}>❓</Text>
-                <View style={styles.modeContent}>
-                  <Text style={styles.modeLabel}>Ask</Text>
-                  <Text style={styles.modeDesc}>Get answers about what you're looking at</Text>
-                </View>
-              </View>
-            </View>
-          </Card>
-        </View>
-
-        <View style={styles.ctas}>
+        <View style={styles.footer}>
           <PrimaryButton
-            title={isRequestingPermissions ? "Setting up..." : "Start Using Nadar"}
+            title={isRequestingPermissions ? 'Checking permissions...' : 'Start'}
             onPress={handleStartNadar}
             disabled={isRequestingPermissions}
           />
           <Text style={styles.permissionNote}>
-            {Platform.OS === 'web'
-              ? 'We\'ll request camera and photo access to get started'
-              : 'Make sure the Nadar server is running on your computer first'
-            }
+            We'll request camera and photo library access to begin.
           </Text>
-        </View>
-
-        <View style={styles.bottomActions}>
-          {Platform.OS !== 'web' && (
-            <SecondaryButton
-              title="📡 Setup Server Connection"
-              onPress={onSettings}
-              style={styles.setupButton}
-            />
-          )}
-
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={onSettings}
-            accessibilityRole="button"
-            accessibilityLabel="Settings"
-          >
-            <Text style={styles.settingsText}>
-              {Platform.OS === 'web' ? 'Settings' : 'Advanced Settings'}
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -155,105 +96,45 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.bg,
   },
   inner: {
-    padding: theme.spacing(3),
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    padding: theme.spacing(4),
   },
-  header: {
+  content: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: theme.spacing(8),
   },
   logo: {
     ...theme.typography.display,
     color: theme.colors.text,
-    fontSize: 42,
+    fontSize: 48,
     textAlign: 'center',
-    marginBottom: theme.spacing(1),
   },
   subtitle: {
-    ...theme.typography.body,
-    color: theme.colors.textMut,
-    fontSize: 20,
-    marginBottom: theme.spacing(1),
-    fontWeight: '600',
+    ...theme.typography.title,
+    color: theme.colors.text,
+    fontSize: 28,
+    textAlign: 'center',
+    marginTop: theme.spacing(1),
   },
   tagline: {
     ...theme.typography.body,
     color: theme.colors.textMut,
     textAlign: 'center',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 18,
+    marginTop: theme.spacing(1.5),
   },
-  modesSection: {
-    flex: 1,
-    justifyContent: 'center',
-    marginVertical: theme.spacing(4),
-  },
-  modesCard: {
-    marginHorizontal: theme.spacing(2),
-  },
-  modesTitle: {
-    ...theme.typography.section,
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: theme.spacing(3),
-  },
-  modesList: {
-    gap: theme.spacing(3),
-  },
-  modeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing(2),
-  },
-  modeIcon: {
-    fontSize: 24,
-    width: 32,
-    textAlign: 'center',
-  },
-  modeContent: {
-    flex: 1,
-  },
-  modeLabel: {
-    ...theme.typography.body,
-    color: theme.colors.text,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  modeDesc: {
-    ...theme.typography.meta,
-    color: theme.colors.textMut,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  ctas: {
-    alignItems: 'center',
-    marginBottom: theme.spacing(2),
+  footer: {
+    paddingBottom: theme.spacing(4),
   },
   permissionNote: {
     ...theme.typography.meta,
     color: theme.colors.textMut,
     textAlign: 'center',
     marginTop: theme.spacing(2),
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  bottomActions: {
-    alignItems: 'center',
-    gap: theme.spacing(2),
-  },
-  setupButton: {
-    minWidth: 200,
-  },
-  settingsButton: {
-    paddingVertical: theme.spacing(1.5),
-    paddingHorizontal: theme.spacing(3),
-  },
-  settingsText: {
-    ...theme.typography.meta,
-    color: theme.colors.textMut,
-    textAlign: 'center',
     fontSize: 13,
+    lineHeight: 18,
   },
 });
 
