@@ -13,7 +13,6 @@ export function uint8ToBase64(bytes: Uint8Array): string {
     return btoa(binary);
   }
   // Node fallback
-  // @ts-expect-error - Buffer is available in Node.js environment
   return Buffer.from(bytes).toString('base64');
 }
 
