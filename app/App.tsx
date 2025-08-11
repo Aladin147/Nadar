@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView, Platform } from 'react-native';
 import { AppProvider, useAppState } from './src/app/state/AppContext';
 import { AppNavigator } from './src/app/navigation/AppNavigator';
@@ -9,20 +9,54 @@ import ResultsScreen from './src/screens/ResultsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import AccessibilityTestScreen from './src/screens/AccessibilityTestScreen';
-import { isApiConfigured } from './src/config';
+import { isApiConfigured, isApiConfiguredAsync } from './src/config';
 import { Toast } from './src/app/components/Toast';
 
 function AppContent() {
   const { state, dispatch } = useAppState();
+  const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
+
+  // Check API configuration on mount and when returning from settings
+  useEffect(() => {
+    checkApiConfiguration();
+  }, [state.currentRoute]);
+
+  // Also check when the app becomes active (for settings changes)
+  useEffect(() => {
+    if (state.currentRoute === 'capture' || state.currentRoute === 'landing') {
+      checkApiConfiguration();
+    }
+  }, [state.currentRoute]);
+
+  async function checkApiConfiguration() {
+    if (Platform.OS === 'web') {
+      setIsConfigured(isApiConfigured());
+    } else {
+      const configured = await isApiConfiguredAsync();
+      setIsConfigured(configured);
+    }
+  }
 
   function handleNavigate(route: any) {
     dispatch({ type: 'NAVIGATE', route });
   }
 
   function renderScreen() {
+    // Show loading while checking configuration
+    if (isConfigured === null) {
+      return null; // or a loading screen
+    }
+
     // Show mobile setup screen if on mobile and no API is configured
-    if (Platform.OS !== 'web' && !isApiConfigured() && state.currentRoute !== 'settings') {
-      return <MobileSetupScreen onComplete={() => handleNavigate('capture')} />;
+    if (Platform.OS !== 'web' && !isConfigured && state.currentRoute !== 'settings') {
+      return (
+        <MobileSetupScreen
+          onComplete={() => {
+            checkApiConfiguration(); // Refresh configuration state
+            handleNavigate('capture');
+          }}
+        />
+      );
     }
 
     switch (state.currentRoute) {

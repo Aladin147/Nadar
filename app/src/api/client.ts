@@ -3,6 +3,22 @@ import { loadSettings } from '../app/state/settings';
 
 export type Mode = 'scene' | 'ocr' | 'qa';
 
+function normalizeFetchError(e: any): Error {
+  // Normalize AbortError and common network failures to our error codes
+  const msg = (e?.message || '').toLowerCase();
+  if (e?.name === 'AbortError' || msg.includes('abort')) {
+    const err = new Error('Request timed out');
+    (err as any).err_code = 'TIMEOUT';
+    return err;
+  }
+  if (msg.includes('network request failed') || msg.includes('failed to fetch')) {
+    const err = new Error('Network request failed');
+    (err as any).err_code = 'NETWORK';
+    return err;
+  }
+  return e instanceof Error ? e : new Error(String(e));
+}
+
 async function resolveApiBase(): Promise<string> {
   try {
     const s = await loadSettings();
@@ -28,7 +44,7 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
   for (let i = 0; i < attempts; i++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // Increased to 30s for AI processing
 
       const res = await fetch(`${base}${path}`, {
         method: 'POST',
@@ -77,7 +93,7 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
 
       return await res.json();
     } catch (e: any) {
-      lastErr = e;
+      lastErr = normalizeFetchError(e);
       if (i < attempts - 1) {
         await new Promise(r => setTimeout(r, 400 * (i + 1)));
         continue;
@@ -95,7 +111,7 @@ async function getJSON<T>(path: string, attempts = 2): Promise<T> {
   for (let i = 0; i < attempts; i++) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // Increased to 30s for AI processing
 
       const res = await fetch(`${base}${path}`, {
         method: 'GET',
@@ -143,7 +159,7 @@ async function getJSON<T>(path: string, attempts = 2): Promise<T> {
 
       return res.json();
     } catch (e: any) {
-      lastErr = e;
+      lastErr = normalizeFetchError(e);
       if (i < attempts - 1) {
         await new Promise(r => setTimeout(r, 400 * (i + 1)));
         continue;

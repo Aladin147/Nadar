@@ -1,15 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  Dimensions,
-  Platform,
-  TextInput,
-  ActivityIndicator,
-} from 'react-native';
+import { View, StyleSheet, SafeAreaView, Platform, TextInput } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ScreenWrapper } from '../app/components/ScreenWrapper';
 import { StyledText } from '../app/components/StyledText';
@@ -21,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../app/theme'; // ✅ correct for screens
 import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
-import { describe, ocr, qa, testConnection } from '../api/client';
+import { describe, ocr, qa } from '../api/client';
 import { downscale } from '../utils/downscale';
 
 // Map error codes to friendly messages
@@ -53,12 +43,10 @@ function mapErrorMessage(error: any): string {
 // Import the updated components
 import { Segmented } from '../app/components/Segmented';
 import { Chip } from '../app/components/Chip';
-import { Card } from '../app/components/Card';
+
 import { SecondaryButton } from '../app/components/SecondaryButton';
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { ConnectivityPill } from '../app/components/ConnectivityPill';
-
-const { width, height } = Dimensions.get('window');
 
 export default function CaptureScreen() {
   const { state, dispatch } = useAppState();
@@ -66,9 +54,7 @@ export default function CaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<'scene' | 'ocr' | 'qa'>('scene');
   const [question, setQuestion] = useState('');
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const startTimeRef = useRef<number | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const cameraRef = useRef<any>(null);
 
   // Persist last question and restore on mount
@@ -85,30 +71,25 @@ export default function CaptureScreen() {
     AsyncStorage.setItem('nadar.lastQuestion.v1', question).catch(() => {});
   }, [question]);
 
-  async function processImage(imageUri: string, source: 'camera' | 'library') {
+  async function processImage(imageUri: string, _source: 'camera' | 'library') {
     dispatch({ type: 'SET_LOADING', loading: true });
     dispatch({ type: 'SET_ERROR', error: null });
 
     try {
-      console.log(`📷 Processing ${source} image...`);
       const downscaled = await downscale(imageUri, 1024, 0.7);
-      console.log('📷 Image downscaled, calling API...');
 
       const opts = { verbosity: settings.verbosity, language: settings.language };
       let result: any;
 
       if (mode === 'scene') {
-        console.log('🔍 Calling describe API...');
         result = await describe(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
       } else if (mode === 'ocr') {
-        console.log('📖 Calling OCR API...');
         result = await ocr(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
       } else {
         if (!question.trim()) {
           dispatch({ type: 'SET_ERROR', error: 'Please select a question for Q&A mode' });
           return;
         }
-        console.log('❓ Calling Q&A API...');
         result = await qa(
           downscaled.base64,
           question.trim(),
@@ -117,8 +98,6 @@ export default function CaptureScreen() {
           state.sessionId
         );
       }
-
-      console.log('✅ API call successful, navigating to results...');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
       const captureResult = {
@@ -136,12 +115,10 @@ export default function CaptureScreen() {
       dispatch({ type: 'ADD_TO_HISTORY', result: captureResult });
       dispatch({ type: 'NAVIGATE', route: 'results' });
     } catch (error: any) {
-      console.error('❌ Processing error:', error);
       const errorMessage = mapErrorMessage(error);
+      dispatch({ type: 'SET_LOADING', loading: false });
       dispatch({ type: 'SHOW_TOAST', message: errorMessage, toastType: 'error' });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-    } finally {
-      // Keep isLoading state managed by success/SET_CAPTURE_RESULT or error above
     }
   }
 
@@ -187,28 +164,21 @@ export default function CaptureScreen() {
     dispatch({ type: 'SET_ERROR', error: null });
 
     try {
-      console.log('📷 Taking photo...');
       const photo = await cameraRef.current.takePictureAsync({ base64: true });
-      console.log('📷 Photo taken, downscaling...');
-
       const downscaled = await downscale(photo.uri, 1024, 0.7);
-      console.log('📷 Image downscaled, calling API...');
 
       const opts = { verbosity: settings.verbosity, language: settings.language };
       let result;
 
       if (mode === 'scene') {
-        console.log('🔍 Calling describe API...');
         result = await describe(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
       } else if (mode === 'ocr') {
-        console.log('📖 Calling OCR API...');
         result = await ocr(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
       } else {
         if (!question.trim()) {
           dispatch({ type: 'SET_ERROR', error: 'Please select a question for Q&A mode' });
           return;
         }
-        console.log('❓ Calling Q&A API...');
         result = await qa(
           downscaled.base64,
           question.trim(),
@@ -217,8 +187,6 @@ export default function CaptureScreen() {
           state.sessionId
         );
       }
-
-      console.log('✅ API call successful, navigating to results...');
 
       const captureResult = {
         id: Date.now().toString(),
@@ -241,8 +209,8 @@ export default function CaptureScreen() {
       dispatch({ type: 'ADD_TO_HISTORY', result: captureResult });
       dispatch({ type: 'NAVIGATE', route: 'results' });
     } catch (error: any) {
-      console.error('❌ Capture error:', error);
       const errorMessage = mapErrorMessage(error);
+      dispatch({ type: 'SET_LOADING', loading: false });
       dispatch({ type: 'SHOW_TOAST', message: errorMessage, toastType: 'error' });
     }
   }

@@ -29,13 +29,14 @@ describe('buildSystemPrompt', () => {
 describe('GeminiProvider', () => {
   let provider: GeminiProvider;
   let mockGenerateContent: jest.Mock;
+  let mockGetGenerativeModel: jest.Mock;
   let mockGenAIInstance: jest.Mocked<GoogleGenerativeAI>;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
     mockGenerateContent = jest.fn();
-    const mockGetGenerativeModel = jest.fn().mockReturnValue({
+    mockGetGenerativeModel = jest.fn().mockReturnValue({
       generateContent: mockGenerateContent,
     });
 
@@ -46,6 +47,27 @@ describe('GeminiProvider', () => {
     mockGoogleGenerativeAI.mockImplementation(() => mockGenAIInstance);
 
     provider = new GeminiProvider();
+  });
+
+  describe('initialization', () => {
+    it('should use gemini-2.5-flash model by default', () => {
+      expect(mockGetGenerativeModel).toHaveBeenCalledWith({
+        model: 'gemini-2.5-flash'
+      });
+    });
+
+    it('should respect GEMINI_MODEL environment variable', () => {
+      const originalEnv = process.env.GEMINI_MODEL;
+      process.env.GEMINI_MODEL = 'gemini-1.5-pro';
+
+      new GeminiProvider();
+
+      expect(mockGetGenerativeModel).toHaveBeenCalledWith({
+        model: 'gemini-1.5-pro'
+      });
+
+      process.env.GEMINI_MODEL = originalEnv;
+    });
   });
 
   describe('tts', () => {

@@ -69,7 +69,14 @@ export class GeminiProvider implements IAIProvider {
 
   constructor(genAI?: GoogleGenerativeAI) {
     this.gen = genAI || new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    this.visionModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    // Use 2.5 Flash with thinking disabled for optimal speed, or allow override via env var
+    const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
+    this.visionModel = this.gen.getGenerativeModel({
+      model: modelName
+    });
+
     this.ttsModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash-preview-tts' });
     this.timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 30000;
     this.ttsTimeoutMs = Number(process.env.GEMINI_TTS_TIMEOUT_MS) || 20000;

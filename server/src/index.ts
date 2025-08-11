@@ -205,8 +205,7 @@ const visionLimiter = rateLimit({
   windowMs: 60_000, // 1 minute
   limit: 30, // 30 vision requests per minute - reasonable for photo sessions
   standardHeaders: true,
-  handler: createRateLimitHandler('RATE_LIMIT_VISION', 'Too many vision requests, please slow down'),
-  keyGenerator: (req) => `vision:${req.ip}` // Separate counter for vision endpoints
+  handler: createRateLimitHandler('RATE_LIMIT_VISION', 'Too many vision requests, please slow down')
 });
 
 // Very permissive for health/debug endpoints
@@ -214,8 +213,7 @@ const healthLimiter = rateLimit({
   windowMs: 60_000, // 1 minute
   limit: 300, // 300 health checks per minute - supports network discovery
   standardHeaders: true,
-  handler: createRateLimitHandler('RATE_LIMIT_HEALTH', 'Too many health checks'),
-  keyGenerator: (req) => `health:${req.ip}`
+  handler: createRateLimitHandler('RATE_LIMIT_HEALTH', 'Too many health checks')
 });
 
 app.use(generalLimiter);
