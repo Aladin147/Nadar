@@ -8,34 +8,9 @@ import { ScreenWrapper } from '../app/components/ScreenWrapper';
 import { StyledText } from '../app/components/StyledText';
 import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
-import { tts, ocr } from '../api/client';
+import { tts } from '../api/client';
 import { AudioPlayer, AudioPlayerRef } from '../utils/audioPlayer';
 
-// Map error codes to friendly messages (shared with CaptureScreen)
-function mapErrorMessage(error: any): string {
-  const err_code = error?.err_code;
-  const message = error?.message;
-
-  if (err_code) {
-    switch (err_code) {
-      case 'NETWORK':
-        return 'No connection. Check internet or server in Settings.';
-      case 'TIMEOUT':
-        return 'The model took too long. Try again.';
-      case 'QUOTA':
-        return 'Daily limit reached. Try later or switch provider in Settings.';
-      case 'UNAUTHORIZED':
-        return 'API key invalid on server.';
-      case 'TOO_LARGE':
-        return 'Image too large. Move closer or try again.';
-      case 'UNKNOWN':
-      default:
-        return message || 'Something went wrong. Please try again.';
-    }
-  }
-
-  return message || error?.message || 'Failed to process request';
-}
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
 import { ResultSection } from '../app/components/ResultSection';
@@ -46,11 +21,48 @@ export default function ResultsScreen() {
   const { state, dispatch } = useAppState();
   const { settings } = useSettings();
   const result = state.currentCapture;
+
+  // All hooks must be called before any conditional logic
   const soundRef = useRef<AudioPlayerRef['current']>(null);
   const audioPlayerRef = useRef<AudioPlayer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const chunkedTTSQueue = useRef<string[]>([]);
   const isChunkedPlaying = useRef(false);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      audioPlayerRef.current?.cleanup().catch(() => {});
+    };
+  }, []);
+
+  // Autospeak first section (brief) - temporarily disabled to prevent quota exhaustion
+  useEffect(() => {
+    // TODO: Re-enable auto-play once TTS quota issues are resolved
+    // try {
+    //   const first = sections[0]?.content || result.result;
+    //   const brief = first.slice(0, 200);
+    //   speak(brief, settings.voice);
+    // } catch {}
+    // run once per mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Early return after all hooks
+  if (!result) {
+    return (
+      <ScreenWrapper style={styles.emptyContainer}>
+        <StyledText variant="title" style={styles.emptyTitle}>
+          No Results
+        </StyledText>
+        <StyledText style={styles.emptyText}>Your latest analysis will appear here.</StyledText>
+        <PrimaryButton
+          title="Take Photo"
+          onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
+        />
+      </ScreenWrapper>
+    );
+  }
 
   // Initialize audio player
   if (!audioPlayerRef.current) {
@@ -68,9 +80,9 @@ export default function ResultsScreen() {
         await audioPlayerRef.current.cleanup();
       }
 
-      console.log('🛑 Audio playback stopped');
-    } catch (error) {
-      console.error('❌ Stop audio error:', error);
+      // Audio playback stopped
+    } catch {
+      // Ignore stop audio errors
     }
   };
 
@@ -78,102 +90,21 @@ export default function ResultsScreen() {
   const speak = async (text: string, voice?: string) => {
     try {
       setIsPlaying(true);
-      console.log('🔊 Starting TTS for text:', `${text.substring(0, 50)}...`);
+      // Starting TTS
 
       const res = await tts(text, voice || settings.voice, settings.ttsProvider, settings.ttsRate);
 
       if (!res.audioBase64) {
-        console.error('❌ No audio data received from TTS');
         setIsPlaying(false);
         return;
       }
 
-      console.log('🔊 Playing audio with cross-platform player...');
       await audioPlayerRef.current!.playAudio(res.audioBase64, res.mimeType);
-
-      console.log('✅ Audio playback started');
       setIsPlaying(false);
-    } catch (error) {
-      console.error('❌ TTS error:', error);
+    } catch {
       setIsPlaying(false);
     }
   };
-
-  // Chunked TTS for long text (split on sentence boundaries)
-  const speakChunked = async (text: string, voice?: string) => {
-    try {
-      console.log('🔊 Starting chunked TTS for long text...');
-      isChunkedPlaying.current = true;
-
-      // Split text into chunks of ~1200-1500 chars on sentence boundaries
-      const chunks = splitTextIntoChunks(text, 1400);
-      chunkedTTSQueue.current = chunks;
-
-      for (let i = 0; i < chunks.length; i++) {
-        // Check if we should stop
-        if (!isChunkedPlaying.current) {
-          console.log('🛑 Chunked TTS stopped by user');
-          break;
-        }
-
-        console.log(`🔊 Playing chunk ${i + 1}/${chunks.length}`);
-        await speak(chunks[i], voice);
-
-        // Small pause between chunks (also check for stop)
-        if (i < chunks.length - 1 && isChunkedPlaying.current) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-
-      isChunkedPlaying.current = false;
-      chunkedTTSQueue.current = [];
-      console.log('✅ Chunked TTS completed');
-    } catch (error) {
-      console.error('❌ Chunked TTS error:', error);
-      isChunkedPlaying.current = false;
-      chunkedTTSQueue.current = [];
-    }
-  };
-
-  // Helper to split text into chunks on sentence boundaries
-  const splitTextIntoChunks = (text: string, maxChunkSize: number): string[] => {
-    if (text.length <= maxChunkSize) return [text];
-
-    const chunks: string[] = [];
-    let currentChunk = '';
-
-    // Split on sentence boundaries (. ! ?)
-    const sentences = text.split(/([.!?]+\s*)/);
-
-    for (let i = 0; i < sentences.length; i += 2) {
-      const sentence = sentences[i] + (sentences[i + 1] || '');
-
-      if (currentChunk.length + sentence.length <= maxChunkSize) {
-        currentChunk += sentence;
-      } else {
-        if (currentChunk) chunks.push(currentChunk.trim());
-        currentChunk = sentence;
-      }
-    }
-
-    if (currentChunk) chunks.push(currentChunk.trim());
-    return chunks.filter(chunk => chunk.length > 0);
-  };
-
-  if (!result) {
-    return (
-      <ScreenWrapper style={styles.emptyContainer}>
-        <StyledText variant="title" style={styles.emptyTitle}>
-          No Results
-        </StyledText>
-        <StyledText style={styles.emptyText}>Your latest analysis will appear here.</StyledText>
-        <PrimaryButton
-          title="Take Photo"
-          onPress={() => dispatch({ type: 'NAVIGATE', route: 'capture' })}
-        />
-      </ScreenWrapper>
-    );
-  }
 
   function parseStructuredResult(text: string) {
     const sections: { title: string; content: string }[] = [];
@@ -217,25 +148,6 @@ export default function ResultsScreen() {
   }
 
   const sections = sectionsFromStructured() || parseStructuredResult(result.result);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      audioPlayerRef.current?.cleanup().catch(() => {});
-    };
-  }, []);
-
-  // Autospeak first section (brief) - temporarily disabled to prevent quota exhaustion
-  useEffect(() => {
-    // TODO: Re-enable auto-play once TTS quota issues are resolved
-    // try {
-    //   const first = sections[0]?.content || result.result;
-    //   const brief = first.slice(0, 200);
-    //   speak(brief, settings.voice);
-    // } catch {}
-    // run once per mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <ScreenWrapper>
@@ -296,10 +208,12 @@ export default function ResultsScreen() {
               onPress={async () => {
                 try {
                   await Clipboard.setStringAsync(result.result);
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-                    () => {}
-                  );
-                } catch {}
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {
+                    // Ignore haptics errors
+                  });
+                } catch {
+                  // Ignore clipboard errors
+                }
               }}
             />
             <SecondaryButton
@@ -307,7 +221,9 @@ export default function ResultsScreen() {
               onPress={async () => {
                 try {
                   await Share.share({ message: result.result });
-                } catch {}
+                } catch {
+                  // Ignore share errors
+                }
               }}
             />
             <SecondaryButton

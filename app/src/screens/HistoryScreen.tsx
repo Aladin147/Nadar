@@ -5,7 +5,7 @@ import { theme } from '../app/theme';
 import { useAppState } from '../app/state/AppContext';
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { Card } from '../app/components/Card';
-import { ConnectivityPill } from '../app/components/ConnectivityPill';
+
 import { ScreenWrapper } from '../app/components/ScreenWrapper';
 import { StyledText } from '../app/components/StyledText';
 import { Header } from '../app/components/Header';

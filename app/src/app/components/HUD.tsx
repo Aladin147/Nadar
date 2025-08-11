@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
-import { theme, typography } from '../theme';
+import { theme } from '../theme';
 
 export interface HUDProps {
   message: string;

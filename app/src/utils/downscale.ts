@@ -55,8 +55,7 @@ export async function downscale(uri: string, maxDim = 1024, compress = 0.8) {
       const base64 = dataUrl.split(',')[1] || '';
       resolve({ base64, mimeType: 'image/jpeg', uri: dataUrl });
     };
-    img.onerror = e => {
-      console.error('Downscale image load error:', e);
+    img.onerror = () => {
       reject(new Error('Failed to load image for downscale'));
     };
     // If already a data URL, load directly; else add origin hint

@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) },
   backBtn: { paddingHorizontal: theme.spacing(1), paddingVertical: theme.spacing(0.5) },
-  backIcon: { color: theme.colors.text, fontSize: 18, fontWeight: '700' },
+
   brand: { ...theme.typography.title, color: theme.colors.text },
   brandSub: { color: theme.colors.textMut, fontSize: 12, fontWeight: '700' },
   tabBar: {

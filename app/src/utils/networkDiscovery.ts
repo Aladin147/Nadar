@@ -21,7 +21,7 @@ async function checkUrl(url: string): Promise<boolean> {
       const data = await response.json();
       return data.ok === true;
     }
-  } catch (error) {
+  } catch {
     // Ignore network errors, timeouts, etc.
   }
   return false;
@@ -47,7 +47,7 @@ async function scanIpsWithConcurrency(ips: string[]): Promise<string | null> {
       if (isValid && !foundUrl) {
         foundUrl = url;
       }
-    } catch (error) {
+    } catch {
       // Ignore individual failures
     }
   };
@@ -165,33 +165,19 @@ export async function discoverApiBase(): Promise<string | null> {
     return null;
   }
 
-  console.log('🔍 Starting optimized network discovery for Nadar server...');
-
   const ipAddress = await Network.getIpAddressAsync();
   const subnet = ipAddress?.split('.').slice(0, 3).join('.');
 
-  if (subnet) {
-    console.log(`📱 Device IP detected: ${ipAddress}. Using smart scan strategy...`);
-  } else {
-    console.log(`🟡 Could not determine device subnet. Using fallback strategy...`);
-  }
-
   // Generate prioritized IP list
   const prioritizedIps = generatePrioritizedIps(subnet);
-
-  console.log(
-    `🔍 Scanning ${prioritizedIps.length} IPs with ${MAX_CONCURRENT_CHECKS} concurrent checks...`
-  );
 
   // Scan with bounded concurrency and early termination
   const foundUrl = await scanIpsWithConcurrency(prioritizedIps);
 
   if (foundUrl) {
-    console.log(`✅ Found Nadar server at: ${foundUrl}`);
     return foundUrl;
   }
 
-  console.log('❌ Could not discover Nadar server on local network.');
   return null;
 }
 
@@ -215,7 +201,7 @@ export async function getConfigurationHelp(): Promise<string> {
         helpText
       }`;
     }
-  } catch (e) {
+  } catch {
     // Ignore error, just show generic help
   }
 

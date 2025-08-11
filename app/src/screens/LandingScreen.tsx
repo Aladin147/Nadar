@@ -12,7 +12,7 @@ interface LandingScreenProps {
   onSettings: () => void;
 }
 
-export default function LandingScreen({ onSettings }: LandingScreenProps) {
+export default function LandingScreen({ onSettings: _onSettings }: LandingScreenProps) {
   const { dispatch } = useAppState();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
@@ -67,8 +67,8 @@ export default function LandingScreen({ onSettings }: LandingScreenProps) {
       // Mark onboarding as complete and navigate to capture
       dispatch({ type: 'COMPLETE_ONBOARDING' });
       dispatch({ type: 'NAVIGATE', route: 'capture' });
-    } catch (error) {
-      console.error('Setup failed:', error);
+    } catch {
+      // Setup failed - error will be shown to user via Alert
       Alert.alert('Setup Failed', 'There was an error setting up Nadar. Please try again.');
     } finally {
       setIsRequestingPermissions(false);
@@ -96,7 +96,7 @@ export default function LandingScreen({ onSettings }: LandingScreenProps) {
             disabled={isRequestingPermissions}
           />
           <Text style={styles.permissionNote}>
-            We'll request camera and photo library access to begin.
+            We&apos;ll request camera and photo library access to begin.
           </Text>
         </View>
       </View>

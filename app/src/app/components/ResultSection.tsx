@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme, typography } from '../theme';
+import { theme } from '../theme';
 import { Card } from './Card';
 
 export interface ResultSectionProps {

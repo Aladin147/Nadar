@@ -29,7 +29,7 @@ async function resolveApiBase(): Promise<string> {
     }
 
     return base;
-  } catch (error) {
+  } catch {
     if (!API_BASE) {
       throw new Error('No server configured. Please set up the server connection in Settings.');
     }
@@ -257,7 +257,7 @@ export async function testConnection() {
       return data.ok === true;
     }
     return false;
-  } catch (e: any) {
+  } catch {
     return false;
   }
 }

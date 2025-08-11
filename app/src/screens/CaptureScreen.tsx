@@ -63,7 +63,9 @@ export default function CaptureScreen() {
       try {
         const last = await AsyncStorage.getItem('nadar.lastQuestion.v1');
         if (last) setQuestion(last);
-      } catch {}
+      } catch {
+        // Ignore storage errors
+      }
     })();
   }, []);
 
@@ -278,7 +280,7 @@ export default function CaptureScreen() {
                       if (!result.canceled && result.assets[0]) {
                         await processImage(result.assets[0].uri, 'library');
                       }
-                    } catch (error: any) {
+                    } catch {
                       dispatch({ type: 'SET_ERROR', error: 'Failed to select image' });
                     }
                   }}
@@ -367,21 +369,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  permissionText: {
-    color: theme.colors.textMut,
-    textAlign: 'center',
-    marginBottom: theme.spacing(3),
-  },
-  permissionButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing(2),
-    paddingHorizontal: theme.spacing(3),
-    borderRadius: theme.radius.lg,
-  },
-  permissionButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
   },
 });

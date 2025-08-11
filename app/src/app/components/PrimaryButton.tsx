@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { theme, buttons } from '../theme';
+import { buttons } from '../theme';
 import { StyledText } from './StyledText';
 
 export function PrimaryButton({

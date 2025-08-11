@@ -1,21 +1,24 @@
 import { Platform } from 'react-native';
 import { playWebAudio, stopWebAudio } from './webAudio';
 
-// Conditional imports for native platforms only
+// Dynamic imports for native platforms only
 let Audio: any = null;
 let FileSystem: any = null;
 let base64ToUint8Array: any = null;
 let pcm16ToWavBytes: any = null;
 
-if (Platform.OS !== 'web') {
-  try {
-    Audio = require('expo-av').Audio;
-    FileSystem = require('expo-file-system');
-    const pcmUtils = require('./pcmToWav');
-    base64ToUint8Array = pcmUtils.base64ToUint8Array;
-    pcm16ToWavBytes = pcmUtils.pcm16ToWavBytes;
-  } catch (error) {
-    console.warn('Native audio modules not available:', error);
+async function loadNativeModules() {
+  if (Platform.OS !== 'web' && !Audio) {
+    try {
+      const expoAv = await import('expo-av');
+      Audio = expoAv.Audio;
+      FileSystem = await import('expo-file-system');
+      const pcmUtils = await import('./pcmToWav');
+      base64ToUint8Array = pcmUtils.base64ToUint8Array;
+      pcm16ToWavBytes = pcmUtils.pcm16ToWavBytes;
+    } catch {
+      // Native audio modules not available
+    }
   }
 }
 
@@ -32,6 +35,8 @@ export class AudioPlayer {
 
   constructor(soundRef: AudioPlayerRef) {
     this.soundRef = soundRef;
+    // Load native modules asynchronously
+    loadNativeModules();
   }
 
   // Update the ref (needed for React ref updates)
@@ -40,23 +45,20 @@ export class AudioPlayer {
   }
 
   async playAudio(audioBase64: string, mimeType?: string): Promise<void> {
-    try {
-      // Clean up previous audio
-      await this.cleanup();
+    // Ensure native modules are loaded
+    await loadNativeModules();
 
-      if (Platform.OS === 'web') {
-        await this.playWebAudio(audioBase64, mimeType);
-      } else {
-        await this.playNativeAudio(audioBase64, mimeType);
-      }
-    } catch (error) {
-      console.error('❌ Audio playback error:', error);
-      throw error;
+    // Clean up previous audio
+    await this.cleanup();
+
+    if (Platform.OS === 'web') {
+      await this.playWebAudio(audioBase64, mimeType);
+    } else {
+      await this.playNativeAudio(audioBase64, mimeType);
     }
   }
 
   private async playWebAudio(audioBase64: string, mimeType?: string): Promise<void> {
-    console.log('🌐 Using simplified web audio playback...');
     await playWebAudio(audioBase64, mimeType || 'audio/mpeg');
   }
 
@@ -64,8 +66,6 @@ export class AudioPlayer {
     if (!Audio || !FileSystem) {
       throw new Error('Native audio modules not available');
     }
-
-    console.log('📱 Playing audio on native platform...');
 
     // Set audio mode for native playback
     await Audio.setAudioModeAsync({
@@ -94,11 +94,9 @@ export class AudioPlayer {
       });
     }
 
-    console.log('🔊 Creating native audio object...');
     const { sound } = await Audio.Sound.createAsync({ uri: audioPath });
     this.soundRef.current = sound;
     await sound.playAsync();
-    console.log('✅ Native audio playback started');
   }
 
   async cleanup(): Promise<void> {
@@ -111,8 +109,8 @@ export class AudioPlayer {
         await sound.unloadAsync();
         this.soundRef.current = null;
       }
-    } catch (error) {
-      console.log('⚠️ Audio cleanup error:', error);
+    } catch {
+      // Ignore cleanup errors
     }
   }
 }

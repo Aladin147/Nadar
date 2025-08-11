@@ -19,8 +19,8 @@ export function useSettings(): UseSettingsReturn {
       try {
         const loadedSettings = await loadSettings();
         setSettings(loadedSettings);
-      } catch (error) {
-        console.warn('Failed to load settings:', error);
+      } catch {
+        // Ignore settings loading errors - will use defaults
       }
     })();
   }, []);

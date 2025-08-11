@@ -112,7 +112,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'COMPLETE_ONBOARDING' });
           dispatch({ type: 'NAVIGATE', route: 'capture' });
         }
-      } catch {}
+      } catch {
+        // Ignore storage errors
+      }
     })();
   }, []);
 

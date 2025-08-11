@@ -45,7 +45,7 @@ export default function MobileSetupScreen({ onComplete }: { onComplete: () => vo
           ]
         );
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Discovery Failed', 'Network discovery failed. Please configure manually.');
     } finally {
       setIsDiscovering(false);
@@ -81,8 +81,8 @@ export default function MobileSetupScreen({ onComplete }: { onComplete: () => vo
           1. Start the Server
         </StyledText>
         <StyledText color="textMut" style={styles.setupDesc}>
-          Open a terminal on your computer, navigate to the project's `server` directory, and run
-          `npm run dev`.
+          Open a terminal on your computer, navigate to the project&apos;s `server` directory, and
+          run `npm run dev`.
         </StyledText>
 
         <StyledText variant="section" style={styles.setupTitle}>

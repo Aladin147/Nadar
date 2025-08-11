@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import { View, TextInput, StyleSheet, Alert, Platform, ScrollView } from 'react-native';
 import { Segmented } from '../app/components/Segmented';
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
@@ -39,14 +31,6 @@ export default function SettingsScreen() {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isDiscovering, setIsDiscovering] = useState(false);
 
-  // Common IP address suggestions for mobile
-  const commonIPs = [
-    'http://192.168.1.100:4000',
-    'http://192.168.0.100:4000',
-    'http://10.0.0.100:4000',
-    'http://172.16.0.100:4000',
-  ];
-
   useEffect(() => {
     (async () => {
       const s = await loadSettings();
@@ -72,9 +56,9 @@ export default function SettingsScreen() {
     // Also update server-side provider if API is available
     try {
       await setTTSProvider(ttsProvider);
-      console.log(`✅ Server TTS provider updated to: ${ttsProvider}`);
-    } catch (error) {
-      console.log('⚠️ Could not update server TTS provider:', error);
+      // Server TTS provider updated
+    } catch {
+      // Could not update server TTS provider
     }
   }
 
