@@ -191,5 +191,5 @@ Camera/Photo permissions
 
 ## License
 
-TBD. If you plan to open‑source, pick an OSI license and add a LICENSE file.
+TBD. 
 
