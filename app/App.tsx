@@ -8,6 +8,7 @@ import CaptureScreen from './src/screens/CaptureScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import AccessibilityTestScreen from './src/screens/AccessibilityTestScreen';
 import { isApiConfigured } from './src/config';
 import { Toast } from './src/app/components/Toast';
 
@@ -43,6 +44,8 @@ function AppContent() {
         return <HistoryScreen />;
       case 'settings':
         return <SettingsScreen />;
+      case 'accessibility-test':
+        return <AccessibilityTestScreen />;
       default:
         return <CaptureScreen />;
     }

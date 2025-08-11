@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { ConnectivityPill } from '../components/ConnectivityPill';
 
-export type Route = 'landing' | 'capture' | 'results' | 'settings' | 'history';
+export type Route = 'landing' | 'capture' | 'results' | 'settings' | 'history' | 'accessibility-test';
 
 export function AppNavigator({ 
   currentRoute, 
@@ -19,6 +19,7 @@ export function AppNavigator({
     currentRoute === 'results' ? 'Results' :
     currentRoute === 'history' ? 'History' :
     currentRoute === 'settings' ? 'Settings' :
+    currentRoute === 'accessibility-test' ? 'Accessibility Test' :
     'نظر';
   return (
     <View style={styles.container}>

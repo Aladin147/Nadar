@@ -11,8 +11,10 @@ import { Header } from '../app/components/Header';
 import { loadSettings, saveSettings, Language, Verbosity, TTSProvider, TTSRate } from '../app/state/settings';
 import { testConnection, setTTSProvider } from '../api/client';
 import { discoverApiBase, getConfigurationHelp } from '../utils/networkDiscovery';
+import { useAppState } from '../app/state/AppContext';
 
 export default function SettingsScreen() {
+  const { dispatch } = useAppState();
   const [language, setLanguage] = useState<Language>('darija');
   const [verbosity, setVerbosity] = useState<Verbosity>('brief');
   const [voice, setVoice] = useState<string>('');
@@ -161,6 +163,19 @@ export default function SettingsScreen() {
                 );
               }}
             />
+          </View>
+        </Card>
+
+        <Card>
+          <StyledText variant="section" style={styles.cardTitle}>Developer Tools</StyledText>
+          <View style={styles.field}>
+            <SecondaryButton
+              title="Accessibility Test Mode"
+              onPress={() => dispatch({ type: 'NAVIGATE', route: 'accessibility-test' })}
+            />
+            <StyledText variant="meta" color="textMut" style={styles.helperText}>
+              Test screen reader functionality, focus order, and TTS announcements
+            </StyledText>
           </View>
         </Card>
 
