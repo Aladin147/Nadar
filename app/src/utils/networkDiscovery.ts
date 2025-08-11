@@ -2,11 +2,13 @@ import { Platform } from 'react-native';
 import * as Network from 'expo-network';
 
 const PORT = 4000;
+const MAX_CONCURRENT_CHECKS = 10; // Limit concurrent requests to reduce battery drain
+const CHECK_TIMEOUT_MS = 300; // Reduced timeout for faster scanning
 
 async function checkUrl(url: string): Promise<boolean> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 500); // 500ms timeout for LAN is generous
+    const timeoutId = setTimeout(() => controller.abort(), CHECK_TIMEOUT_MS);
 
     const response = await fetch(`${url}/health`, {
       method: 'GET',
@@ -26,9 +28,111 @@ async function checkUrl(url: string): Promise<boolean> {
 }
 
 /**
+ * Scan IPs with bounded concurrency and early termination
+ */
+async function scanIpsWithConcurrency(ips: string[]): Promise<string | null> {
+  let foundUrl: string | null = null;
+  let index = 0;
+  const activePromises = new Set<Promise<void>>();
+
+  const processNext = async (): Promise<void> => {
+    if (foundUrl || index >= ips.length) return;
+
+    const currentIndex = index++;
+    const ip = ips[currentIndex];
+    const url = `http://${ip}:${PORT}`;
+
+    try {
+      const isValid = await checkUrl(url);
+      if (isValid && !foundUrl) {
+        foundUrl = url;
+      }
+    } catch (error) {
+      // Ignore individual failures
+    }
+  };
+
+  // Start initial batch of concurrent checks
+  while (activePromises.size < MAX_CONCURRENT_CHECKS && index < ips.length && !foundUrl) {
+    const promise = processNext().finally(() => activePromises.delete(promise));
+    activePromises.add(promise);
+  }
+
+  // Continue processing until all IPs are checked or server is found
+  while (activePromises.size > 0 && !foundUrl) {
+    await Promise.race(activePromises);
+
+    // Start new checks to maintain concurrency level
+    while (activePromises.size < MAX_CONCURRENT_CHECKS && index < ips.length && !foundUrl) {
+      const promise = processNext().finally(() => activePromises.delete(promise));
+      activePromises.add(promise);
+    }
+  }
+
+  // Wait for remaining promises to complete
+  await Promise.all(activePromises);
+
+  return foundUrl;
+}
+
+/**
+ * Generate prioritized list of IPs to scan
+ */
+function generatePrioritizedIps(deviceSubnet?: string): string[] {
+  const ips: string[] = [];
+
+  // Common development IPs (highest priority)
+  const commonDevIps = [
+    '192.168.1.1', '192.168.1.2', '192.168.1.10', '192.168.1.100',
+    '192.168.0.1', '192.168.0.2', '192.168.0.10', '192.168.0.100',
+    '10.0.0.1', '10.0.0.2', '10.0.0.10', '10.0.0.100',
+    '172.16.0.1', '172.16.0.2', '172.16.0.10', '172.16.0.100'
+  ];
+
+  if (deviceSubnet) {
+    // Add device subnet common IPs first
+    const subnetCommon = [
+      `${deviceSubnet}.1`, `${deviceSubnet}.2`, `${deviceSubnet}.10`,
+      `${deviceSubnet}.100`, `${deviceSubnet}.101`, `${deviceSubnet}.102`
+    ];
+    ips.push(...subnetCommon);
+
+    // Add remaining device subnet IPs
+    for (let i = 1; i < 255; i++) {
+      const ip = `${deviceSubnet}.${i}`;
+      if (!subnetCommon.includes(ip)) {
+        ips.push(ip);
+      }
+    }
+  }
+
+  // Add common dev IPs (excluding device subnet ones already added)
+  const deviceSubnetIps = deviceSubnet ? ips : [];
+  for (const ip of commonDevIps) {
+    if (!deviceSubnetIps.includes(ip)) {
+      ips.push(ip);
+    }
+  }
+
+  // Add remaining common subnets
+  const commonRanges = ['192.168.1', '192.168.0', '10.0.0', '172.16.0'];
+  for (const range of commonRanges) {
+    if (range !== deviceSubnet) {
+      for (let i = 1; i < 255; i++) {
+        const ip = `${range}.${i}`;
+        if (!ips.includes(ip)) {
+          ips.push(ip);
+        }
+      }
+    }
+  }
+
+  return ips;
+}
+
+/**
  * Attempts to discover the correct API base for mobile devices
- * by scanning the local network. It prioritizes the device's own
- * subnet for a much faster and more reliable discovery.
+ * by scanning the local network with optimized strategy and bounded concurrency.
  */
 export async function discoverApiBase(): Promise<string | null> {
   if (Platform.OS === 'web') {
@@ -45,52 +149,28 @@ export async function discoverApiBase(): Promise<string | null> {
     return null;
   }
 
-  console.log('🔍 Starting network discovery for Nadar server...');
+  console.log('🔍 Starting optimized network discovery for Nadar server...');
 
   const ipAddress = await Network.getIpAddressAsync();
   const subnet = ipAddress?.split('.').slice(0, 3).join('.');
 
   if (subnet) {
-    console.log(`📱 Device IP detected: ${ipAddress}. Prioritizing subnet: ${subnet}.*`);
-
-    const promises = [];
-    for (let i = 1; i < 255; i++) {
-      const testIp = `${subnet}.${i}`;
-      const url = `http://${testIp}:${PORT}`;
-      promises.push(checkUrl(url).then(ok => (ok ? url : null)));
-    }
-
-    const results = await Promise.all(promises);
-    const foundUrl = results.find(url => url !== null);
-
-    if (foundUrl) {
-      console.log(`✅ Found Nadar server at: ${foundUrl}`);
-      return foundUrl;
-    }
-    console.log(`🟡 No server found on primary subnet. Checking common fallbacks...`);
+    console.log(`📱 Device IP detected: ${ipAddress}. Using smart scan strategy...`);
   } else {
-    console.log(`🟡 Could not determine device subnet. Checking common fallbacks...`);
+    console.log(`🟡 Could not determine device subnet. Using fallback strategy...`);
   }
 
-  // Fallback to common subnets if primary scan fails
-  const commonRanges = ['192.168.1', '192.168.0', '10.0.0', '172.16.0'];
-  // Filter out the subnet we already checked
-  const rangesToScan = commonRanges.filter(r => r !== subnet);
+  // Generate prioritized IP list
+  const prioritizedIps = generatePrioritizedIps(subnet);
 
-  for (const range of rangesToScan) {
-    const promises = [];
-    for (let i = 1; i < 255; i++) {
-      const testIp = `${range}.${i}`;
-      const url = `http://${testIp}:${PORT}`;
-      promises.push(checkUrl(url).then(ok => (ok ? url : null)));
-    }
-    const results = await Promise.all(promises);
-    const foundUrl = results.find(url => url !== null);
+  console.log(`🔍 Scanning ${prioritizedIps.length} IPs with ${MAX_CONCURRENT_CHECKS} concurrent checks...`);
 
-    if (foundUrl) {
-      console.log(`✅ Found Nadar server at: ${foundUrl} (fallback)`);
-      return foundUrl;
-    }
+  // Scan with bounded concurrency and early termination
+  const foundUrl = await scanIpsWithConcurrency(prioritizedIps);
+
+  if (foundUrl) {
+    console.log(`✅ Found Nadar server at: ${foundUrl}`);
+    return foundUrl;
   }
 
   console.log('❌ Could not discover Nadar server on local network.');
