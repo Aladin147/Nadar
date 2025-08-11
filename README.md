@@ -104,6 +104,7 @@ Quick start with Docker:
 ## Architecture overview
 
 Client (Expo/React Native)
+
 - CameraView (Expo) for capture on mobile; image picker on web
 - Segmented modes: scene | ocr | qa
 - Results screen with structured sections and TTS playback
@@ -112,6 +113,7 @@ Client (Expo/React Native)
 - UI Kit aligned to the design guide (theme.ts, Card/Button/Chip/etc.)
 
 Server (Express + TypeScript)
+
 - Providers implement IAIProvider interface
   - GeminiProvider — vision and TTS (primary)
   - ElevenLabsProvider — optional TTS fallback
@@ -134,6 +136,7 @@ Server (Express + TypeScript)
 ## Server: configuration
 
 Environment variables (server/.env or process env):
+
 - GEMINI_API_KEY — required for Gemini models
 - GEMINI_TIMEOUT_MS — optional, default 30000
 - GEMINI_TTS_TIMEOUT_MS — optional, default 20000
@@ -154,17 +157,20 @@ Server binds to 0.0.0.0:PORT for LAN/tunnel access.
 ## Install & run
 
 Requirements
+
 - Node.js 20+
 - npm 10+
 - Expo Go (for device testing)
 
 Install
+
 - Server
   - cd server && npm install
 - App
   - cd app && npm install
 
 Development
+
 - Server (dev, ts-node):
   - cd server && npm run dev
 - App (web):
@@ -173,12 +179,14 @@ Development
   - cd app && npm run mobile
 
 Build
+
 - Server (TypeScript → dist):
   - cd server && npm run build
 - Start built server:
   - node dist/index.js
 
 Mobile connectivity
+
 - See README-MOBILE.md and docs/mobile-setup.md for LAN vs tunnel setup, auto‑discovery, and troubleshooting.
 
 ---
@@ -206,6 +214,7 @@ Base URL: http://<host>:4000
   - → { audioBase64: string, mimeType?: string }
 
 Notes
+
 - Requests enforce timeouts to keep latency predictable
 - Inputs validated with zod schemas (server/src/routes/schemas.ts)
 - HybridProvider decides how to serve TTS (Gemini primary; ElevenLabs if configured)
@@ -225,10 +234,12 @@ Notes
 ## Testing
 
 Server
+
 - Unit tests (jest, ts-jest configured)
 - Run: cd server && npm test
 
 App
+
 - Jest + jest-expo scaffolded (expand with component tests as features grow)
 - Run: cd app && npm test
 
@@ -237,14 +248,17 @@ App
 ## Troubleshooting
 
 CI: lockfile mismatch
+
 - Regenerate app/server package-lock.json with `npm install` in each package
 
 Mobile cannot reach server
+
 - Ensure both devices on same LAN and server bound to 0.0.0.0
 - Use `npm run mobile` (tunnel) as a fallback for quick tests
 - Use Settings → Test Connection or MobileSetup auto‑discovery
 
 Camera/Photo permissions
+
 - Re‑run onboarding from Landing screen, accept camera & library permissions
 
 ---
@@ -268,4 +282,3 @@ Camera/Photo permissions
 ## License
 
 TBD.
-
