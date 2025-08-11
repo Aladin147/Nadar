@@ -1,5 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { IAIProvider, GenOptions, GenResult } from './IAIProvider.js';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import type { IAIProvider, GenOptions, GenResult } from './IAIProvider';
+import { ProviderError } from './ProviderError';
 
 // Error code mapping for consistent error handling
 export function mapGeminiError(error: any): { message: string; err_code: string } {
@@ -8,23 +9,18 @@ export function mapGeminiError(error: any): { message: string; err_code: string 
   if (errorMessage.includes('timeout') || errorMessage.includes('Request timeout')) {
     return { message: 'The model took too long. Try again.', err_code: 'TIMEOUT' };
   }
-
   if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
     return { message: 'Daily limit reached. Try later or switch provider in Settings.', err_code: 'QUOTA' };
   }
-
   if (errorMessage.includes('unauthorized') || errorMessage.includes('API key')) {
     return { message: 'API key invalid on server.', err_code: 'UNAUTHORIZED' };
   }
-
   if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
     return { message: 'No connection. Check internet or server in Settings.', err_code: 'NETWORK' };
   }
-
   if (errorMessage.includes('too large') || errorMessage.includes('size')) {
     return { message: 'Image too large. Move closer or try again.', err_code: 'TOO_LARGE' };
   }
-
   return { message: errorMessage, err_code: 'UNKNOWN' };
 }
 
@@ -65,75 +61,108 @@ function toInlineImage(imageBase64: string, mimeType: string = 'image/jpeg') {
 }
 
 export class GeminiProvider implements IAIProvider {
-  private gen = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-  private visionModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash' });
-  private ttsModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash-preview-tts' });
-  private timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 30000;
-  private ttsTimeoutMs = Number(process.env.GEMINI_TTS_TIMEOUT_MS) || 20000;
+  private gen: GoogleGenerativeAI;
+  private visionModel: GenerativeModel;
+  private ttsModel: GenerativeModel;
+  private timeoutMs: number;
+  private ttsTimeoutMs: number;
+
+  constructor(genAI?: GoogleGenerativeAI) {
+    this.gen = genAI || new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    this.visionModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    this.ttsModel = this.gen.getGenerativeModel({ model: 'gemini-2.5-flash-preview-tts' });
+    this.timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 30000;
+    this.ttsTimeoutMs = Number(process.env.GEMINI_TTS_TIMEOUT_MS) || 20000;
+  }
 
   async describe({ imageBase64, mimeType, options }: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
-    const sys = buildSystemPrompt('scene', options);
-    const parts = [sys, toInlineImage(imageBase64, mimeType)];
-    const t0 = Date.now();
-    const result = await Promise.race([
-      this.visionModel.generateContent(parts as any),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
-    ]) as any;
-    const t1 = Date.now();
-    const text = result.response.text();
-    const structured = parseSceneStructured(text);
-    return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 }, structured };
+    try {
+      const sys = buildSystemPrompt('scene', options);
+      const parts = [sys, toInlineImage(imageBase64, mimeType)];
+      const t0 = Date.now();
+      const result = await Promise.race([
+        this.visionModel.generateContent(parts as any),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
+      ]) as any;
+      const t1 = Date.now();
+      const text = result.response.text();
+      const structured = parseSceneStructured(text);
+      return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 }, structured };
+    } catch (error) {
+        const { message, err_code } = mapGeminiError(error);
+        throw new ProviderError(err_code, message);
+    }
   }
 
   async ocr({ imageBase64, mimeType, options, full }: { imageBase64: string; mimeType?: string; options?: GenOptions; full?: boolean }): Promise<GenResult> {
-    const mode = full ? 'ocr_full' : 'ocr';
-    const sys = buildSystemPrompt(mode, options);
-    const parts = [sys, toInlineImage(imageBase64, mimeType)];
-    const t0 = Date.now();
-    const result = await Promise.race([
-      this.visionModel.generateContent(parts as any),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
-    ]) as any;
-    const t1 = Date.now();
-    const text = result.response.text();
-    return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 } };
+    try {
+      const mode = full ? 'ocr_full' : 'ocr';
+      const sys = buildSystemPrompt(mode, options);
+      const parts = [sys, toInlineImage(imageBase64, mimeType)];
+      const t0 = Date.now();
+      const result = await Promise.race([
+        this.visionModel.generateContent(parts as any),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
+      ]) as any;
+      const t1 = Date.now();
+      const text = result.response.text();
+      return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 } };
+    } catch (error) {
+        const { message, err_code } = mapGeminiError(error);
+        throw new ProviderError(err_code, message);
+    }
   }
 
   async qa({ imageBase64, question, mimeType, options }: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
-    const sys = buildSystemPrompt('qa', options);
-    const parts = [sys + `\n\nQUESTION: ${question}`, toInlineImage(imageBase64, mimeType)];
-    const t0 = Date.now();
-    const result = await Promise.race([
-      this.visionModel.generateContent(parts as any),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
-    ]) as any;
-    const t1 = Date.now();
-    const text = result.response.text();
-    return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 } };
+    try {
+      const sys = buildSystemPrompt('qa', options);
+      const parts = [sys + `\n\nQUESTION: ${question}`, toInlineImage(imageBase64, mimeType)];
+      const t0 = Date.now();
+      const result = await Promise.race([
+        this.visionModel.generateContent(parts as any),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
+      ]) as any;
+      const t1 = Date.now();
+      const text = result.response.text();
+      return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 } };
+    } catch (error) {
+        const { message, err_code } = mapGeminiError(error);
+        throw new ProviderError(err_code, message);
+    }
   }
 
   async tts({ text, voice, rate }: { text: string; voice?: string; rate?: number }): Promise<{ audioBase64: string; mimeType?: string }> {
-    const result = await Promise.race([
-      this.ttsModel.generateContent({
-        contents: [{ role: 'user', parts: [{ text }] }],
-        generationConfig: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: voice || 'Kore'
+    try {
+      const result = await Promise.race([
+          this.ttsModel.generateContent({
+              contents: [{ role: 'user', parts: [{ text }] }],
+              generationConfig: {
+                  responseModalities: ['AUDIO'],
+                  speechConfig: {
+                      voiceConfig: {
+                          prebuiltVoiceConfig: {
+                              voiceName: voice || 'Kore'
+                          }
+                      },
+                      ...(rate && { speakingRate: rate })
+                  }
               }
-            },
-            ...(rate && { speakingRate: rate })
-          }
-        }
-      } as any),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('TTS timeout')), this.ttsTimeoutMs))
-    ]) as any;
-    const inline = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData || {};
-    const audioBase64 = inline.data || '';
-    const mimeType = inline.mimeType || 'audio/wav';
-    return { audioBase64, mimeType };
+          } as any),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TTS timeout')), this.ttsTimeoutMs))
+      ]) as any;
+
+      const inline = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData || {};
+      const audioBase64 = inline.data || '';
+      if (!audioBase64) {
+          throw new ProviderError('GEMINI_EMPTY_AUDIO', 'Gemini TTS returned empty audio');
+      }
+      const mimeType = inline.mimeType || 'audio/wav';
+      return { audioBase64, mimeType };
+    } catch (error) {
+        if (error instanceof ProviderError) throw error;
+        const { message, err_code } = mapGeminiError(error);
+        throw new ProviderError(err_code, message);
+    }
   }
 }
 
@@ -155,4 +184,3 @@ function parseSceneStructured(text: string): GenResult['structured'] {
   if (!structured.immediate && !structured.objects && !structured.navigation) return undefined;
   return structured;
 }
-
