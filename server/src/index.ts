@@ -13,7 +13,7 @@ import { execSync } from 'child_process';
 export const recentImages = new Map<string, { buf: Buffer; ts: number }>();
 
 // Cleanup timer - run every 30 seconds, evict older than 120 seconds
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const cutoff = Date.now() - 120_000; // 2 minutes
   for (const [sessionId, entry] of recentImages.entries()) {
     if (entry.ts < cutoff) {
@@ -21,6 +21,8 @@ setInterval(() => {
     }
   }
 }, 30_000);
+// Prevent timer from keeping process alive during tests
+cleanupInterval.unref();
 
 // Helper to resolve image from request body
 export function resolveImage(body: any): Buffer | null {

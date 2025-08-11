@@ -67,6 +67,49 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
   throw lastErr || new Error('Network error');
 }
 
+async function getJSON<T>(path: string, attempts = 2): Promise<T> {
+  let lastErr: any;
+  const base = await resolveApiBase();
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const res = await fetch(`${base}${path}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        const is5xx = res.status >= 500;
+        if (is5xx && i < attempts - 1) {
+          await new Promise(r => setTimeout(r, 400 * (i + 1)));
+          continue;
+        }
+        let friendly = `Server error (${res.status})`;
+        if (res.status === 413) friendly = 'Image too large';
+        if (res.status === 429) friendly = 'Rate limited - please wait';
+        throw new Error(`${friendly}: ${errorText}`);
+      }
+
+      return res.json();
+    } catch (e: any) {
+      lastErr = e;
+      if (i < attempts - 1) {
+        await new Promise(r => setTimeout(r, 400 * (i + 1)));
+        continue;
+      }
+    }
+  }
+
+  throw lastErr || new Error('Network error');
+}
+
 type Timings = { modelMs: number };
 export type GenResult = { text: string; timings?: Timings };
 export type TTSResult = { audioBase64: string; mimeType?: string };
@@ -104,7 +147,7 @@ export async function tts(text: string, voice?: string, provider?: 'gemini' | 'e
 
 // Get available TTS providers from server
 export async function getTTSProviders() {
-  return postJSON<{ available: string[]; current: string }>(`/tts/providers`);
+  return getJSON<{ available: string[]; current: string }>(`/tts/providers`);
 }
 
 // Set TTS provider on server

@@ -191,5 +191,5 @@ Camera/Photo permissions
 
 ## License
 
-TBD. 
+TBD.
 

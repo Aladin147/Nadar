@@ -76,13 +76,16 @@ export class GeminiProvider implements IAIProvider {
   }
 
   async describe({ imageBase64, mimeType, options }: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
+    let timeoutId: NodeJS.Timeout;
     try {
       const sys = buildSystemPrompt('scene', options);
       const parts = [sys, toInlineImage(imageBase64, mimeType)];
       const t0 = Date.now();
       const result = await Promise.race([
         this.visionModel.generateContent(parts as any),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs);
+        })
       ]) as any;
       const t1 = Date.now();
       const text = result.response.text();
@@ -91,10 +94,13 @@ export class GeminiProvider implements IAIProvider {
     } catch (error) {
         const { message, err_code } = mapGeminiError(error);
         throw new ProviderError(err_code, message);
+    } finally {
+      if (timeoutId!) clearTimeout(timeoutId);
     }
   }
 
   async ocr({ imageBase64, mimeType, options, full }: { imageBase64: string; mimeType?: string; options?: GenOptions; full?: boolean }): Promise<GenResult> {
+    let timeoutId: NodeJS.Timeout;
     try {
       const mode = full ? 'ocr_full' : 'ocr';
       const sys = buildSystemPrompt(mode, options);
@@ -102,7 +108,9 @@ export class GeminiProvider implements IAIProvider {
       const t0 = Date.now();
       const result = await Promise.race([
         this.visionModel.generateContent(parts as any),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs);
+        })
       ]) as any;
       const t1 = Date.now();
       const text = result.response.text();
@@ -110,17 +118,22 @@ export class GeminiProvider implements IAIProvider {
     } catch (error) {
         const { message, err_code } = mapGeminiError(error);
         throw new ProviderError(err_code, message);
+    } finally {
+      if (timeoutId!) clearTimeout(timeoutId);
     }
   }
 
   async qa({ imageBase64, question, mimeType, options }: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
+    let timeoutId: NodeJS.Timeout;
     try {
       const sys = buildSystemPrompt('qa', options);
       const parts = [sys + `\n\nQUESTION: ${question}`, toInlineImage(imageBase64, mimeType)];
       const t0 = Date.now();
       const result = await Promise.race([
         this.visionModel.generateContent(parts as any),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs))
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Request timeout')), this.timeoutMs);
+        })
       ]) as any;
       const t1 = Date.now();
       const text = result.response.text();
@@ -128,10 +141,13 @@ export class GeminiProvider implements IAIProvider {
     } catch (error) {
         const { message, err_code } = mapGeminiError(error);
         throw new ProviderError(err_code, message);
+    } finally {
+      if (timeoutId!) clearTimeout(timeoutId);
     }
   }
 
   async tts({ text, voice, rate }: { text: string; voice?: string; rate?: number }): Promise<{ audioBase64: string; mimeType?: string }> {
+    let timeoutId: NodeJS.Timeout;
     try {
       const result = await Promise.race([
           this.ttsModel.generateContent({
@@ -148,7 +164,9 @@ export class GeminiProvider implements IAIProvider {
                   }
               }
           } as any),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('TTS timeout')), this.ttsTimeoutMs))
+          new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('TTS timeout')), this.ttsTimeoutMs);
+          })
       ]) as any;
 
       const inline = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData || {};
@@ -162,6 +180,8 @@ export class GeminiProvider implements IAIProvider {
         if (error instanceof ProviderError) throw error;
         const { message, err_code } = mapGeminiError(error);
         throw new ProviderError(err_code, message);
+    } finally {
+      if (timeoutId!) clearTimeout(timeoutId);
     }
   }
 }

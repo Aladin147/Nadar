@@ -56,7 +56,8 @@ ttsRouter.post('/', async (req, res) => {
     telemetry.log(true, 0, ttsMs, bytesIn, null);
     res.json(result);
   } catch (e: any) {
-    const { message, err_code } = mapGeminiError(e);
+    // Preserve ProviderError codes; fallback to mapping for unknown errors
+    const { message, err_code } = e?.err_code ? { message: e.message, err_code: e.err_code } : mapGeminiError(e);
     const ttsMs = Date.now() - ttsStart;
     telemetry.log(false, 0, ttsMs, bytesIn, err_code);
     res.status(500).json({ message, err_code });

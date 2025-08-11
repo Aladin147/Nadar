@@ -9,8 +9,6 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "mobile": "expo start --tunnel",
-    "get-ip": "node ../get-ip.js",
-    "mobile-setup": "node ../get-ip.js",
     "test": "jest"
   },
   "dependencies": {
