@@ -54,7 +54,7 @@ export class AudioRecorder {
 
     try {
       console.log('🎤 Starting audio recording...');
-      
+
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         throw new Error('Audio recording permission not granted');
@@ -67,7 +67,8 @@ export class AudioRecorder {
         staysActiveInBackground: false,
       });
 
-      const recordingConfig: AudioRecordingConfig = {
+      // Simplified recording configuration that should work better
+      const recordingConfig = {
         android: {
           extension: '.m4a',
           outputFormat: Audio.AndroidOutputFormat.MPEG_4,
@@ -83,20 +84,29 @@ export class AudioRecorder {
           sampleRate: 16000,
           numberOfChannels: 1,
           bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
         },
       };
+
+      // Clean up any existing recording first
+      if (this.recording) {
+        try {
+          await this.recording.stopAndUnloadAsync();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        this.recording = null;
+      }
 
       this.recording = new Audio.Recording();
       await this.recording.prepareToRecordAsync(recordingConfig);
       await this.recording.startAsync();
-      
+
       this.isRecording = true;
       console.log('✅ Audio recording started');
     } catch (error) {
       console.error('❌ Failed to start recording:', error);
+      this.isRecording = false;
+      this.recording = null;
       throw error;
     }
   }
