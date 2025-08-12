@@ -111,6 +111,12 @@ export default function ResultsScreen() {
 
   function parseStructuredResult(text: string) {
     const sections: { title: string; content: string }[] = [];
+
+    // Handle undefined or null text
+    if (!text || typeof text !== 'string') {
+      return [{ title: 'Result', content: 'No description available' }];
+    }
+
     const lines = text.split('\n').filter(line => line.trim());
     let currentSection = { title: '', content: '' };
 
