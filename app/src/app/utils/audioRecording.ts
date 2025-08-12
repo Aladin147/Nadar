@@ -55,39 +55,63 @@ export class AudioRecorder {
     try {
       console.log('🎤 Starting audio recording...');
 
+      // Request permissions first
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
         throw new Error('Audio recording permission not granted');
       }
+      console.log('✅ Audio permissions granted');
 
+      // Clean up any existing recording first
+      if (this.recording) {
+        try {
+          await this.recording.stopAndUnloadAsync();
+        } catch (e) {
+          console.log('🧹 Cleaned up previous recording');
+        }
+        this.recording = null;
+      }
+
+      // Set audio mode with minimal settings first
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         playThroughEarpieceAndroid: false,
         staysActiveInBackground: false,
       });
+      console.log('✅ Audio mode configured');
 
-      // Simplified recording configuration that should work better
+      // Wait a bit for audio mode to settle
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Use the absolute minimal recording configuration
       const recordingConfig = {
         android: {
           extension: '.m4a',
           outputFormat: Audio.AndroidOutputFormat.MPEG_4,
           audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 128000,
         },
         ios: {
           extension: '.m4a',
           outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 128000,
+          audioQuality: Audio.IOSAudioQuality.MEDIUM,
         },
       };
 
-      // Clean up any existing recording first
+      console.log('🔧 Creating new recording instance...');
+      this.recording = new Audio.Recording();
+
+      console.log('🔧 Preparing to record with config:', JSON.stringify(recordingConfig, null, 2));
+      await this.recording.prepareToRecordAsync(recordingConfig);
+
+      console.log('🔧 Starting recording...');
+      await this.recording.startAsync();
+
+      this.isRecording = true;
+      console.log('✅ Audio recording started successfully');
+    } catch (error) {
+      console.error('❌ Failed to start recording:', error);
+      this.isRecording = false;
       if (this.recording) {
         try {
           await this.recording.stopAndUnloadAsync();
@@ -96,17 +120,6 @@ export class AudioRecorder {
         }
         this.recording = null;
       }
-
-      this.recording = new Audio.Recording();
-      await this.recording.prepareToRecordAsync(recordingConfig);
-      await this.recording.startAsync();
-
-      this.isRecording = true;
-      console.log('✅ Audio recording started');
-    } catch (error) {
-      console.error('❌ Failed to start recording:', error);
-      this.isRecording = false;
-      this.recording = null;
       throw error;
     }
   }

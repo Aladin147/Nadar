@@ -17,7 +17,7 @@ export interface LiveAssistRequest {
 
 export interface LiveAssistResponse {
   sessionId: string;
-  text: string;
+  speak: string;
   suggest?: string[];
   tokens_in?: number;
   tokens_out?: number;

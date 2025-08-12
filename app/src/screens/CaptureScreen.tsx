@@ -185,7 +185,7 @@ export default function CaptureScreen() {
         imageUri,
         mode: 'assist' as any,
         question: question.trim() || undefined,
-        result: result.text,
+        result: result.speak,
         details: undefined,
         signals: undefined,
         followup_suggest: result.suggest,

@@ -21,7 +21,7 @@ interface LiveAssistRequest {
 
 interface LiveAssistResponse {
   sessionId: string;
-  text: string;
+  speak: string;
   suggest?: string[];
   tokens_in?: number;
   tokens_out?: number;
@@ -182,7 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const liveResponse: LiveAssistResponse = {
       sessionId,
-      text,
+      speak: text,
       suggest: generateFollowUpSuggestions(language),
       audio_bytes: audioBytes,
       model_ms: modelMs,
