@@ -206,6 +206,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Route handling
   const { url } = req;
 
+  console.log(`🔍 Request URL: ${url}, Method: ${req.method}`);
+
   if (url === '/health' || url === '/') {
     res.status(200).json({
       ok: true,
@@ -672,7 +674,7 @@ ${verbosity === 'brief' ? 'Keep the answer brief and direct.' : 'Provide suffici
   }
 
   // Handle multimodal live assist endpoint
-  if (url === '/api/live/assist') {
+  if (url === '/api/live/assist' || url?.includes('/api/live/assist')) {
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Method not allowed' });
     }
