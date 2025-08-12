@@ -1,6 +1,6 @@
 // File: src/screens/ResultsScreen.tsx (drop-in refactor)
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Image, Share, ScrollView } from 'react-native';
+import { View, StyleSheet, Image, Share, ScrollView, TextInput } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { theme } from '../app/theme';
@@ -8,7 +8,7 @@ import { ScreenWrapper } from '../app/components/ScreenWrapper';
 import { StyledText } from '../app/components/StyledText';
 import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
-import { tts } from '../api/client';
+import { tts, followUp } from '../api/client';
 import { AudioPlayer, AudioPlayerRef } from '../utils/audioPlayer';
 
 
@@ -29,6 +29,9 @@ export default function ResultsScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const chunkedTTSQueue = useRef<string[]>([]);
   const isChunkedPlaying = useRef(false);
+  const [followUpQuestion, setFollowUpQuestion] = useState('');
+  const [followUpResponse, setFollowUpResponse] = useState<string | null>(null);
+  const [isFollowUpLoading, setIsFollowUpLoading] = useState(false);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -107,7 +110,90 @@ export default function ResultsScreen() {
     }
   };
 
+  const handleFollowUp = async () => {
+    console.log('🔄 Follow-up button pressed');
+    console.log('📝 Question:', followUpQuestion.trim());
+    console.log('🆔 Session ID:', result?.sessionId);
 
+    if (!followUpQuestion.trim()) {
+      console.log('❌ No question provided');
+      dispatch({
+        type: 'SHOW_TOAST',
+        message: 'Please enter a question',
+        toastType: 'error'
+      });
+      return;
+    }
+
+    if (!result?.sessionId) {
+      console.log('❌ No session ID found');
+      dispatch({
+        type: 'SHOW_TOAST',
+        message: 'No session found. Please take a new photo first.',
+        toastType: 'error'
+      });
+      return;
+    }
+
+    setIsFollowUpLoading(true);
+    try {
+      console.log('🚀 Sending follow-up request...');
+      const response = await followUp(
+        result.sessionId,
+        followUpQuestion.trim(),
+        { verbosity: settings.verbosity, language: settings.language }
+      );
+
+      console.log('✅ Follow-up response received:', response.speak);
+      setFollowUpResponse(response.speak);
+      setFollowUpQuestion(''); // Clear the input
+
+      // Auto-play the follow-up response
+      if (response.speak) {
+        speak(response.speak, settings.voice);
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch (error: any) {
+      console.error('❌ Follow-up failed:', error);
+      dispatch({
+        type: 'SHOW_TOAST',
+        message: error?.message || 'Failed to get follow-up response',
+        toastType: 'error'
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } finally {
+      setIsFollowUpLoading(false);
+    }
+  };
+
+  function parseAssistResult(result: any) {
+    const sections: { title: string; content: string }[] = [];
+
+    // Handle new assist format
+    if (result.mode === 'assist') {
+      // Main response (for TTS)
+      sections.push({
+        title: 'نظر يقول', // "Nadar says"
+        content: result.result || 'No response available'
+      });
+
+      // Additional details if available
+      if (result.details && result.details.length > 0) {
+        sections.push({
+          title: 'تفاصيل إضافية', // "Additional details"
+          content: result.details.join('\n• ')
+        });
+      }
+
+      // Note: Follow-up suggestions removed per user feedback
+
+      return sections;
+    }
+
+    // Fallback to old format parsing for backward compatibility
+    return parseStructuredResult(result.result || '');
+  }
 
   function parseStructuredResult(text: string) {
     const sections: { title: string; content: string }[] = [];
@@ -156,7 +242,7 @@ export default function ResultsScreen() {
     return arr.length ? arr : null;
   }
 
-  const sections = sectionsFromStructured() || parseStructuredResult(result.result);
+  const sections = sectionsFromStructured() || parseAssistResult(result);
 
   return (
     <ScreenWrapper>
@@ -165,7 +251,9 @@ export default function ResultsScreen() {
           <View style={styles.imageContainer}>
             <Image source={{ uri: result.imageUri }} style={styles.image} />
             <View style={styles.modeTag}>
-              <StyledText style={styles.modeText}>{result.mode.toUpperCase()}</StyledText>
+              <StyledText style={styles.modeText}>
+                {result.mode === 'assist' ? 'ASSIST' : result.mode.toUpperCase()}
+              </StyledText>
             </View>
           </View>
 
@@ -241,6 +329,48 @@ export default function ResultsScreen() {
             />
           </View>
         </View>
+
+        {/* Follow-up Questions Section */}
+        <Card style={styles.followUpContainer}>
+          <StyledText variant="meta" color="textMut" style={{ marginBottom: theme.spacing(1) }}>
+            سؤال إضافي
+          </StyledText>
+          <View style={styles.followUpInputRow}>
+            <TextInput
+              value={followUpQuestion}
+              onChangeText={setFollowUpQuestion}
+              placeholder="اسأل سؤال إضافي عن الصورة..."
+              placeholderTextColor={theme.colors.textMut}
+              style={styles.followUpInput}
+              returnKeyType="send"
+              onSubmitEditing={handleFollowUp}
+              editable={!isFollowUpLoading}
+            />
+            <SecondaryButton
+              title={isFollowUpLoading ? '...' : 'سأل'}
+              onPress={() => {
+                console.log('🔘 Follow-up button pressed!');
+                handleFollowUp();
+              }}
+              disabled={isFollowUpLoading}
+              style={styles.followUpButton}
+            />
+          </View>
+
+          {followUpResponse && (
+            <View style={styles.followUpResponse}>
+              <StyledText variant="meta" color="textMut" style={{ marginBottom: theme.spacing(0.5) }}>
+                الجواب:
+              </StyledText>
+              <StyledText>{followUpResponse}</StyledText>
+              <SecondaryButton
+                title="🔊"
+                onPress={() => speak(followUpResponse, settings.voice)}
+                style={styles.followUpPlayButton}
+              />
+            </View>
+          )}
+        </Card>
       </ScrollView>
     </ScreenWrapper>
   );
@@ -311,5 +441,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     gap: theme.spacing(2),
+  },
+  followUpContainer: {
+    marginTop: theme.spacing(2),
+  },
+  followUpInputRow: {
+    flexDirection: 'row',
+    gap: theme.spacing(1),
+    alignItems: 'center',
+  },
+  followUpInput: {
+    flex: 1,
+    backgroundColor: theme.colors.surfaceAlt,
+    color: theme.colors.text,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing(1.5),
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    fontSize: 16,
+  },
+  followUpButton: {
+    minWidth: 60,
+    paddingHorizontal: theme.spacing(1),
+  },
+  followUpResponse: {
+    marginTop: theme.spacing(2),
+    padding: theme.spacing(2),
+    backgroundColor: theme.colors.surfaceAlt,
+    borderRadius: theme.radius.md,
+    position: 'relative',
+  },
+  followUpPlayButton: {
+    position: 'absolute',
+    top: theme.spacing(1),
+    right: theme.spacing(1),
+    minWidth: 40,
+    paddingHorizontal: theme.spacing(0.5),
   },
 });

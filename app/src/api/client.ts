@@ -248,6 +248,79 @@ export async function setTTSProvider(provider: 'gemini' | 'elevenlabs') {
   return postJSON<{ success: boolean }>(`/tts/provider`, { provider });
 }
 
+export async function assist(
+  imageBase64: string,
+  mimeType: string,
+  question?: string,
+  options?: { verbosity?: 'brief' | 'normal'; language?: 'darija' | 'ar' | 'en' },
+  sessionId?: string
+) {
+  const body = {
+    sessionId,
+    imageBase64,
+    mimeType,
+    question,
+    language: options?.language || 'darija',
+    verbosity: options?.verbosity || 'brief'
+  };
+
+  console.log('🤖 Sending assist request, size:', imageBase64.length, 'chars');
+  if (question) {
+    console.log('❓ Question:', question);
+  }
+
+  const result = await postJSON<{
+    speak: string;
+    details?: string[];
+    signals: {
+      has_text: boolean;
+      hazards: string[];
+      people_count: number;
+      lighting_ok: boolean;
+      confidence: number;
+    };
+    followup_suggest?: string[];
+    timestamp: string;
+    sessionId: string;
+    processingTime: number;
+    fallback?: boolean;
+  }>('/assist', body);
+
+  console.log('✅ Assist response received:', result.speak.substring(0, 100) + '...');
+  if (result.signals) {
+    console.log('🔍 Signals:', result.signals);
+  }
+
+  return result;
+}
+
+export async function followUp(
+  sessionId: string,
+  question: string,
+  options?: { verbosity?: 'brief' | 'normal'; language?: 'darija' | 'ar' | 'en' }
+) {
+  const body = {
+    sessionId,
+    question,
+    language: options?.language || 'darija',
+    verbosity: options?.verbosity || 'brief'
+  };
+
+  console.log('🔄 Sending follow-up question:', question);
+
+  const result = await postJSON<{
+    speak: string;
+    timestamp: string;
+    sessionId: string;
+    processingTime: number;
+    followup: boolean;
+  }>('/followup', body);
+
+  console.log('✅ Follow-up response received:', result.speak.substring(0, 100) + '...');
+
+  return result;
+}
+
 export async function testConnection() {
   try {
     const base = await resolveApiBase();

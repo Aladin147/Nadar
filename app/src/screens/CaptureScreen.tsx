@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../app/theme'; // ✅ correct for screens
 import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
-import { describe, ocr, qa } from '../api/client';
+import { assist } from '../api/client';
 import { downscale } from '../utils/downscale';
 
 // Map error codes to friendly messages
@@ -52,7 +52,6 @@ export default function CaptureScreen() {
   const { state, dispatch } = useAppState();
   const { settings } = useSettings();
   const [permission, requestPermission] = useCameraPermissions();
-  const [mode, setMode] = useState<'scene' | 'ocr' | 'qa'>('scene');
   const [question, setQuestion] = useState('');
 
   const cameraRef = useRef<any>(null);
@@ -81,36 +80,34 @@ export default function CaptureScreen() {
       const downscaled = await downscale(imageUri, 1024, 0.7);
 
       const opts = { verbosity: settings.verbosity, language: settings.language };
-      let result: any;
 
-      if (mode === 'scene') {
-        result = await describe(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
-      } else if (mode === 'ocr') {
-        result = await ocr(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
-      } else {
-        if (!question.trim()) {
-          dispatch({ type: 'SET_ERROR', error: 'Please select a question for Q&A mode' });
-          return;
-        }
-        result = await qa(
-          downscaled.base64,
-          question.trim(),
-          downscaled.mimeType,
-          opts,
-          state.sessionId
-        );
-      }
+      // Use the new smart assist endpoint
+      const result = await assist(
+        downscaled.base64,
+        downscaled.mimeType,
+        question.trim() || undefined,
+        opts,
+        state.sessionId
+      );
+
+      console.log('🔍 Full API response:', JSON.stringify(result, null, 2));
+      console.log('🆔 Session ID from API:', result.sessionId);
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
       const captureResult = {
         id: Date.now().toString(),
         timestamp: Date.now(),
         imageUri,
-        mode,
-        question: mode === 'qa' ? question : undefined,
-        result: result.text,
-        timings: result.timings,
-        structured: (result as any).structured,
+        mode: 'assist' as any, // New assist mode
+        question: question.trim() || undefined,
+        result: result.speak, // Use the speak text as the main result
+        details: result.details, // Additional details
+        signals: result.signals, // AI analysis signals
+        followup_suggest: result.followup_suggest, // Suggested follow-up questions
+        sessionId: result.sessionId, // Store session ID for follow-up questions
+        timings: result.processingTime ? { total: result.processingTime } : undefined,
+        structured: undefined, // Not used in assist mode
       };
 
       dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
@@ -162,54 +159,9 @@ export default function CaptureScreen() {
   async function handleCapture() {
     if (!cameraRef.current || state.isLoading) return;
 
-    dispatch({ type: 'SET_LOADING', loading: true });
-    dispatch({ type: 'SET_ERROR', error: null });
-
     try {
       const photo = await cameraRef.current.takePictureAsync({ base64: true });
-      const downscaled = await downscale(photo.uri, 1024, 0.7);
-
-      const opts = { verbosity: settings.verbosity, language: settings.language };
-      let result;
-
-      if (mode === 'scene') {
-        result = await describe(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
-      } else if (mode === 'ocr') {
-        result = await ocr(downscaled.base64, downscaled.mimeType, opts, state.sessionId);
-      } else {
-        if (!question.trim()) {
-          dispatch({ type: 'SET_ERROR', error: 'Please select a question for Q&A mode' });
-          return;
-        }
-        result = await qa(
-          downscaled.base64,
-          question.trim(),
-          downscaled.mimeType,
-          opts,
-          state.sessionId
-        );
-      }
-
-      const captureResult = {
-        id: Date.now().toString(),
-        timestamp: Date.now(),
-        imageUri: photo.uri,
-        mode,
-        question: mode === 'qa' ? question : undefined,
-        result: result.text,
-        timings: result.timings
-          ? {
-              prep: undefined,
-              model: (result.timings as any).modelMs ?? (result.timings as any).model ?? undefined,
-              total: undefined,
-            }
-          : undefined,
-        structured: (result as any).structured,
-      };
-
-      dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
-      dispatch({ type: 'ADD_TO_HISTORY', result: captureResult });
-      dispatch({ type: 'NAVIGATE', route: 'results' });
+      await processImage(photo.uri, 'camera');
     } catch (error: any) {
       const errorMessage = mapErrorMessage(error);
       dispatch({ type: 'SET_LOADING', loading: false });
@@ -224,7 +176,7 @@ export default function CaptureScreen() {
           {/* Header */}
           <View style={styles.header}>
             <StyledText variant="title" style={styles.title}>
-              Nadar
+              Assist
             </StyledText>
             <ConnectivityPill style={styles.connectivityPill} />
           </View>
@@ -234,37 +186,29 @@ export default function CaptureScreen() {
 
           {/* Footer Controls */}
           <View style={styles.footer}>
-            <View style={styles.modeSwitcherContainer}>
-              <Segmented
-                options={['scene', 'ocr', 'qa']}
-                value={mode}
-                onChange={v => setMode(v as any)}
-              />
-            </View>
-
-            {mode === 'qa' && (
-              <View style={styles.qaContainer}>
-                <View style={styles.presetQuestions}>
-                  {['What is this?', 'What color is it?', 'Is there text?'].map(q => (
-                    <Chip
-                      key={q}
-                      title={q}
-                      selected={question === q}
-                      onPress={() => setQuestion(q)}
-                    />
-                  ))}
-                </View>
+            {/* Question input with speech button */}
+            <View style={styles.qaContainer}>
+              <View style={styles.inputRow}>
                 <TextInput
                   value={question}
                   onChangeText={setQuestion}
-                  placeholder="Ask a custom question…"
+                  placeholder="اسأل سؤال... (اختياري)"
                   placeholderTextColor={theme.colors.textMut}
                   style={styles.questionInput}
                   returnKeyType="send"
                   onSubmitEditing={handleCapture}
                 />
+                <SecondaryButton
+                  title="🎤"
+                  onPress={() => {
+                    // TODO: Implement speech-to-text
+                    dispatch({ type: 'SHOW_TOAST', message: 'Speech input coming soon', toastType: 'info' });
+                  }}
+                  style={styles.speechButton}
+                  disabled={state.isLoading}
+                />
               </View>
-            )}
+            </View>
 
             <View style={styles.captureRow}>
               <View style={styles.libraryButtonContainer}>
@@ -343,7 +287,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: theme.spacing(1),
   },
+  inputRow: {
+    flexDirection: 'row',
+    gap: theme.spacing(1),
+    alignItems: 'center',
+  },
   questionInput: {
+    flex: 1,
     backgroundColor: theme.colors.surfaceAlt,
     color: theme.colors.text,
     borderRadius: theme.radius.md,
@@ -351,6 +301,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     fontSize: 16,
+  },
+  speechButton: {
+    minWidth: 50,
+    paddingHorizontal: theme.spacing(1),
   },
   captureRow: {
     flexDirection: 'row',

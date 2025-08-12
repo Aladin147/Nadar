@@ -15,9 +15,13 @@ export type CaptureResult = {
   id: string;
   timestamp: number;
   imageUri: string;
-  mode: 'scene' | 'ocr' | 'qa';
+  mode: 'scene' | 'ocr' | 'qa' | 'assist';
   question?: string;
   result: string;
+  details?: string[]; // For assist mode
+  signals?: any; // For assist mode
+  followup_suggest?: string[]; // For assist mode
+  sessionId?: string; // For follow-up questions
   timings?: { prep?: number; model?: number; total?: number };
   structured?: {
     immediate?: string;
