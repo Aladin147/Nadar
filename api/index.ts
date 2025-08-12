@@ -211,7 +211,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log(`🔍 URL includes live-assist: ${url?.includes('live-assist')}`);
 
   // PRIORITY: Handle multimodal live assist endpoint FIRST
-  if (url?.includes('live') && req.method === 'POST' && req.body?.sessionId) {
+  console.log('🔍 Checking multimodal conditions:');
+  console.log('🔍 URL includes live:', url?.includes('live'));
+  console.log('🔍 Method is POST:', req.method === 'POST');
+  console.log('🔍 Has sessionId:', !!req.body?.sessionId);
+  console.log('🔍 Request body:', JSON.stringify(req.body, null, 2));
+
+  // FALLBACK: Catch any POST to live/assist regardless of body
+  if ((url?.includes('live') || url?.includes('assist')) && req.method === 'POST') {
     console.log('🚀 MULTIMODAL REQUEST DETECTED!');
 
     const startTime = Date.now();
