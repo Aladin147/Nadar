@@ -380,6 +380,19 @@ CORRECT Example (Arabic script only):
     return;
   }
 
+  // TEST ENDPOINT - to verify our code is deployed
+  if (url === '/test-debug') {
+    res.status(200).json({
+      message: 'DEBUG ENDPOINT WORKING',
+      url: url,
+      method: req.method,
+      hasBody: !!req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+      timestamp: new Date().toISOString()
+    });
+    return;
+  }
+
   // Handle describe endpoint
   if (url === '/describe' && req.method === 'POST') {
     try {
