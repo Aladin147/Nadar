@@ -794,7 +794,7 @@ CORRECT Example (Arabic script only):
         'What is next to me?'
       ];
 
-      const liveResponse = {
+      const liveResponse: any = {
         sessionId,
         speak: text,
         suggest,
