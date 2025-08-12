@@ -96,7 +96,13 @@ function generateFollowUpSuggestions(language: string): string[] {
 }
 
 async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('🚀 LIVE ASSIST HANDLER CALLED!');
+  console.log('🔍 Method:', req.method);
+  console.log('🔍 Body:', JSON.stringify(req.body, null, 2));
+  console.log('🔍 GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+
   if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 

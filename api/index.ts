@@ -374,8 +374,8 @@ CORRECT Example (Arabic script only):
     res.status(200).json({
       ok: true,
       timestamp: new Date().toISOString(),
-      message: 'Nadar API Server',
-      version: '1.0.0'
+      message: 'Nadar API Server - UPDATED VERSION',
+      version: '1.0.1-debug'
     });
     return;
   }
