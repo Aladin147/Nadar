@@ -210,6 +210,159 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log(`🔍 URL includes live/assist: ${url?.includes('live/assist')}`);
   console.log(`🔍 URL includes live-assist: ${url?.includes('live-assist')}`);
 
+  // PRIORITY: Handle multimodal live assist endpoint FIRST
+  if (url?.includes('live') && req.method === 'POST' && req.body?.sessionId) {
+    console.log('🚀 MULTIMODAL REQUEST DETECTED!');
+
+    const startTime = Date.now();
+
+    try {
+      const {
+        sessionId,
+        language = 'darija',
+        style = 'single_paragraph',
+        image,
+        audio,
+        question
+      } = req.body;
+
+      console.log(`🚀 Live assist request: ${sessionId}, lang: ${language}, has_audio: ${!!audio}, has_image: ${!!image}`);
+
+      if (!sessionId) {
+        return res.status(400).json({ error: 'sessionId is required' });
+      }
+
+      if (!image && !audio && !question) {
+        return res.status(400).json({ error: 'At least one of image, audio, or question is required' });
+      }
+
+      // Create system prompt for multimodal processing
+      let systemPrompt = '';
+      if (language === 'darija') {
+        systemPrompt = `You are نظر (Nadar), an intelligent AI assistant for blind users in Morocco. You will receive an image and potentially audio input with a question. Analyze both to provide helpful guidance.
+
+🚨 CRITICAL LANGUAGE REQUIREMENT 🚨
+- You MUST respond ONLY in Moroccan Darija using Arabic script (الحروف العربية)
+- NEVER use Latin script (kayn, gadi, bzaf) - ALWAYS use Arabic script (كاين، غادي، بزاف)
+- This is essential for text-to-speech functionality
+
+MANDATORY Arabic Script Words:
+- Use "كاين" NOT "kayn"
+- Use "غادي" NOT "gadi"
+- Use "بزاف" NOT "bzaf"
+- Use "شوية" NOT "chwiya"
+- Use "راه" NOT "rah"
+- Use "ديال" NOT "dyal"
+
+Be helpful, accurate, and focus on safety and navigation. Keep responses ${style === 'single_paragraph' ? 'brief and focused' : 'detailed but practical'}.
+
+CORRECT Example (Arabic script only):
+"انتبه! كاين درج قدامك، خاصك تطلع بحذر. كاين نص على لوحة على اليمين، بغيتي نقراه ليك؟ المكان فيه إضاءة مزيانة والطريق واضح."`;
+      } else {
+        systemPrompt = `You are Nadar, an AI assistant for blind users. Analyze the image and audio question to provide helpful guidance in a single paragraph.`;
+      }
+
+      // Use Gemini 2.5 Flash for multimodal processing
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        systemInstruction: systemPrompt
+      });
+
+      // Build the content array for multimodal input
+      const content: any[] = [];
+
+      // Add image if provided
+      if (image) {
+        content.push({
+          inlineData: {
+            data: image.data,
+            mimeType: image.mime
+          }
+        });
+      }
+
+      // Add audio if provided
+      if (audio) {
+        content.push({
+          inlineData: {
+            data: audio.data,
+            mimeType: audio.mime
+          }
+        });
+      }
+
+      // Add text question if provided
+      if (question) {
+        content.push({
+          text: question
+        });
+      }
+
+      // If no explicit question but we have audio/image, add a general prompt
+      if (!question && (audio || image)) {
+        const defaultPrompt = language === 'darija'
+          ? 'وصف لي شنو كاين فهاد الصورة وجاوبني على السؤال ديالي'
+          : 'Describe what you see in this image and answer my question';
+        content.push({
+          text: defaultPrompt
+        });
+      }
+
+      console.log(`🧠 Sending multimodal request to Gemini 2.5 Flash with ${content.length} parts`);
+
+      // Generate response
+      const result = await model.generateContent(content);
+      const response = await result.response;
+      const text = response.text();
+
+      const modelMs = Date.now() - startTime;
+      const audioBytes = audio ? Buffer.from(audio.data, 'base64').length : 0;
+
+      console.log(`✅ Live assist response generated in ${modelMs}ms, audio_bytes: ${audioBytes}`);
+
+      // Generate follow-up suggestions
+      const suggest = language === 'darija' ? [
+        'نقرا النص كامل؟',
+        'فين الممر الخالي؟',
+        'شنو كاين حداي؟'
+      ] : [
+        'Read all text?',
+        'Where is the clear path?',
+        'What is next to me?'
+      ];
+
+      const liveResponse: any = {
+        sessionId,
+        speak: text,
+        suggest,
+        audio_bytes: audioBytes,
+        model_ms: modelMs,
+        assist_engine: 'gemini-multimodal'
+      };
+
+      // Add token usage if available
+      if (response.usageMetadata) {
+        liveResponse.tokens_in = response.usageMetadata.promptTokenCount;
+        liveResponse.tokens_out = response.usageMetadata.candidatesTokenCount;
+      }
+
+      res.status(200).json(liveResponse);
+      return;
+
+    } catch (error: any) {
+      console.error('❌ Live assist error:', error);
+
+      const errorResponse = {
+        error: 'Live assist failed',
+        message: error?.message || 'Unknown error',
+        assist_engine: 'gemini-multimodal'
+      };
+
+      res.status(500).json(errorResponse);
+      return;
+    }
+  }
+
   if (url === '/health' || url === '/') {
     res.status(200).json({
       ok: true,
@@ -675,160 +828,7 @@ ${verbosity === 'brief' ? 'Keep the answer brief and direct.' : 'Provide suffici
     }
   }
 
-  // Handle multimodal live assist endpoint - BROAD MATCHING FOR DEBUGGING
-  if (url?.includes('live/assist') || url?.includes('live-assist')) {
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
 
-    const startTime = Date.now();
-
-    try {
-      const {
-        sessionId,
-        language = 'darija',
-        style = 'single_paragraph',
-        image,
-        audio,
-        question
-      } = req.body;
-
-      console.log(`🚀 Live assist request: ${sessionId}, lang: ${language}, has_audio: ${!!audio}, has_image: ${!!image}`);
-
-      if (!sessionId) {
-        return res.status(400).json({ error: 'sessionId is required' });
-      }
-
-      if (!image && !audio && !question) {
-        return res.status(400).json({ error: 'At least one of image, audio, or question is required' });
-      }
-
-      // Create system prompt for multimodal processing
-      let systemPrompt = '';
-      if (language === 'darija') {
-        systemPrompt = `You are نظر (Nadar), an intelligent AI assistant for blind users in Morocco. You will receive an image and potentially audio input with a question. Analyze both to provide helpful guidance.
-
-🚨 CRITICAL LANGUAGE REQUIREMENT 🚨
-- You MUST respond ONLY in Moroccan Darija using Arabic script (الحروف العربية)
-- NEVER use Latin script (kayn, gadi, bzaf) - ALWAYS use Arabic script (كاين، غادي، بزاف)
-- This is essential for text-to-speech functionality
-
-MANDATORY Arabic Script Words:
-- Use "كاين" NOT "kayn"
-- Use "غادي" NOT "gadi"
-- Use "بزاف" NOT "bzaf"
-- Use "شوية" NOT "chwiya"
-- Use "راه" NOT "rah"
-- Use "ديال" NOT "dyal"
-
-Be helpful, accurate, and focus on safety and navigation. Keep responses ${style === 'single_paragraph' ? 'brief and focused' : 'detailed but practical'}.
-
-CORRECT Example (Arabic script only):
-"انتبه! كاين درج قدامك، خاصك تطلع بحذر. كاين نص على لوحة على اليمين، بغيتي نقراه ليك؟ المكان فيه إضاءة مزيانة والطريق واضح."`;
-      } else {
-        systemPrompt = `You are Nadar, an AI assistant for blind users. Analyze the image and audio question to provide helpful guidance in a single paragraph.`;
-      }
-
-      // Use Gemini 2.5 Flash for multimodal processing
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        systemInstruction: systemPrompt
-      });
-
-      // Build the content array for multimodal input
-      const content: any[] = [];
-
-      // Add image if provided
-      if (image) {
-        content.push({
-          inlineData: {
-            data: image.data,
-            mimeType: image.mime
-          }
-        });
-      }
-
-      // Add audio if provided
-      if (audio) {
-        content.push({
-          inlineData: {
-            data: audio.data,
-            mimeType: audio.mime
-          }
-        });
-      }
-
-      // Add text question if provided
-      if (question) {
-        content.push({
-          text: question
-        });
-      }
-
-      // If no explicit question but we have audio/image, add a general prompt
-      if (!question && (audio || image)) {
-        const defaultPrompt = language === 'darija'
-          ? 'وصف لي شنو كاين فهاد الصورة وجاوبني على السؤال ديالي'
-          : 'Describe what you see in this image and answer my question';
-        content.push({
-          text: defaultPrompt
-        });
-      }
-
-      console.log(`🧠 Sending multimodal request to Gemini 2.5 Flash with ${content.length} parts`);
-
-      // Generate response
-      const result = await model.generateContent(content);
-      const response = await result.response;
-      const text = response.text();
-
-      const modelMs = Date.now() - startTime;
-      const audioBytes = audio ? Buffer.from(audio.data, 'base64').length : 0;
-
-      console.log(`✅ Live assist response generated in ${modelMs}ms, audio_bytes: ${audioBytes}`);
-
-      // Generate follow-up suggestions
-      const suggest = language === 'darija' ? [
-        'نقرا النص كامل؟',
-        'فين الممر الخالي؟',
-        'شنو كاين حداي؟'
-      ] : [
-        'Read all text?',
-        'Where is the clear path?',
-        'What is next to me?'
-      ];
-
-      const liveResponse: any = {
-        sessionId,
-        speak: text,
-        suggest,
-        audio_bytes: audioBytes,
-        model_ms: modelMs,
-        assist_engine: 'gemini-multimodal'
-      };
-
-      // Add token usage if available
-      if (response.usageMetadata) {
-        liveResponse.tokens_in = response.usageMetadata.promptTokenCount;
-        liveResponse.tokens_out = response.usageMetadata.candidatesTokenCount;
-      }
-
-      res.status(200).json(liveResponse);
-      return;
-
-    } catch (error: any) {
-      console.error('❌ Live assist error:', error);
-
-      const errorResponse = {
-        error: 'Live assist failed',
-        message: error?.message || 'Unknown error',
-        assist_engine: 'gemini-multimodal'
-      };
-
-      res.status(500).json(errorResponse);
-      return;
-    }
-  }
 
   // Handle other endpoints with placeholder responses
   res.status(200).json({
