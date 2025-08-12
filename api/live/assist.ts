@@ -209,3 +209,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(500).json(errorResponse);
   }
 }
+
+// Export as default for Vercel API routes
+export default handler;
