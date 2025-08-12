@@ -671,6 +671,13 @@ ${verbosity === 'brief' ? 'Keep the answer brief and direct.' : 'Provide suffici
     }
   }
 
+  // Route to live assist handler
+  if (url === '/api/live/assist') {
+    // Import and delegate to the live assist handler
+    const liveAssistHandler = require('./live/assist').default;
+    return liveAssistHandler(req, res);
+  }
+
   // Handle other endpoints with placeholder responses
   res.status(200).json({
     message: 'Nadar API Server',
