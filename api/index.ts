@@ -217,9 +217,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('🔍 Has sessionId:', !!req.body?.sessionId);
   console.log('🔍 Request body:', JSON.stringify(req.body, null, 2));
 
-  // FALLBACK: Catch any POST to live/assist regardless of body
+  // DIRECT MULTIMODAL HANDLER - EXECUTE IMMEDIATELY
   if ((url?.includes('live') || url?.includes('assist')) && req.method === 'POST') {
-    console.log('🚀 MULTIMODAL REQUEST DETECTED!');
+    console.log('🚀 MULTIMODAL REQUEST DETECTED IN MAIN HANDLER!');
 
     const startTime = Date.now();
 
