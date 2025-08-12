@@ -13,6 +13,8 @@ import { useAppState } from '../app/state/AppContext';
 import { useSettings } from '../app/state/useSettings';
 import { assist } from '../api/client';
 import { downscale } from '../utils/downscale';
+import { audioRecorder } from '../app/utils/audioRecording';
+import { liveAssist, createSessionId, logLiveAssistTelemetry } from '../app/services/liveAssistApi';
 
 // Map error codes to friendly messages
 function mapErrorMessage(error: any): string {
@@ -53,6 +55,11 @@ export default function CaptureScreen() {
   const { settings } = useSettings();
   const [permission, requestPermission] = useCameraPermissions();
   const [question, setQuestion] = useState('');
+
+  // Audio recording state for experimental multimodal
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+  const [experimentalMode, setExperimentalMode] = useState(false);
 
   const cameraRef = useRef<any>(null);
 
@@ -121,6 +128,119 @@ export default function CaptureScreen() {
     }
   }
 
+  // Experimental multimodal processing with audio + image
+  async function processMultimodal(imageUri: string, audioUri: string | null) {
+    dispatch({ type: 'SET_LOADING', loading: true });
+    dispatch({ type: 'SET_ERROR', error: null });
+    setIsProcessingAudio(true);
+
+    const startTime = Date.now();
+
+    try {
+      const downscaled = await downscale(imageUri, 1024, 0.7);
+      const sessionId = createSessionId();
+
+      // Prepare image data
+      const imageData = {
+        mime: downscaled.mimeType,
+        data: downscaled.base64
+      };
+
+      // Prepare audio data if available
+      let audioData = undefined;
+      if (audioUri) {
+        const audioBase64 = await audioRecorder.convertToBase64(audioUri);
+        audioData = audioBase64;
+      }
+
+      console.log(`🚀 Experimental multimodal request: image=${!!imageData}, audio=${!!audioData}, question="${question}"`);
+
+      // Call the multimodal API
+      const result = await liveAssist(sessionId, {
+        language: settings.language,
+        style: settings.verbosity === 'brief' ? 'single_paragraph' : 'detailed',
+        image: imageData,
+        audio: audioData,
+        question: question.trim() || undefined
+      });
+
+      const totalTime = Date.now() - startTime;
+
+      // Log telemetry
+      logLiveAssistTelemetry(
+        sessionId,
+        result,
+        totalTime,
+        !!imageData,
+        !!audioData,
+        !!question.trim()
+      );
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
+      // Create capture result compatible with existing UI
+      const captureResult = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        imageUri,
+        mode: 'assist' as any,
+        question: question.trim() || undefined,
+        result: result.text,
+        details: undefined,
+        signals: undefined,
+        followup_suggest: result.suggest,
+        sessionId: result.sessionId,
+        timings: { total: result.model_ms },
+        structured: undefined,
+      };
+
+      dispatch({ type: 'SET_CAPTURE_RESULT', result: captureResult });
+      dispatch({ type: 'ADD_TO_HISTORY', result: captureResult });
+      dispatch({ type: 'NAVIGATE', route: 'results' });
+
+    } catch (error: any) {
+      const errorMessage = mapErrorMessage(error);
+      dispatch({ type: 'SET_LOADING', loading: false });
+      dispatch({ type: 'SHOW_TOAST', message: errorMessage, toastType: 'error' });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } finally {
+      setIsProcessingAudio(false);
+    }
+  }
+
+  // Audio recording functions
+  async function startRecording() {
+    try {
+      setIsRecording(true);
+      await audioRecorder.startRecording();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      setIsRecording(false);
+      dispatch({ type: 'SHOW_TOAST', message: 'Failed to start recording', toastType: 'error' });
+    }
+  }
+
+  async function stopRecording() {
+    try {
+      const audioUri = await audioRecorder.stopRecording();
+      setIsRecording(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+
+      if (audioUri) {
+        // Take a photo and process with audio
+        if (cameraRef.current) {
+          const photo = await cameraRef.current.takePictureAsync({ base64: true });
+          await processMultimodal(photo.uri, audioUri);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      setIsRecording(false);
+      dispatch({ type: 'SHOW_TOAST', message: 'Failed to process recording', toastType: 'error' });
+    }
+  }
+
   // Web is not supported in this refactor, so we return a placeholder.
   if (Platform.OS === 'web') {
     return (
@@ -186,28 +306,47 @@ export default function CaptureScreen() {
 
           {/* Footer Controls */}
           <View style={styles.footer}>
+            {/* Experimental Mode Toggle */}
+            <View style={styles.experimentalToggle}>
+              <Chip
+                title={experimentalMode ? "🧪 Multimodal" : "📸 Standard"}
+                selected={experimentalMode}
+                onPress={() => setExperimentalMode(!experimentalMode)}
+                style={{ marginBottom: theme.spacing(1) }}
+              />
+            </View>
+
             {/* Question input with speech button */}
             <View style={styles.qaContainer}>
               <View style={styles.inputRow}>
                 <TextInput
                   value={question}
                   onChangeText={setQuestion}
-                  placeholder="اسأل سؤال... (اختياري)"
+                  placeholder={experimentalMode ? "اسأل سؤال... (اختياري)" : "اسأل سؤال... (اختياري)"}
                   placeholderTextColor={theme.colors.textMut}
                   style={styles.questionInput}
                   returnKeyType="send"
-                  onSubmitEditing={handleCapture}
+                  onSubmitEditing={experimentalMode ? undefined : handleCapture}
                 />
                 <SecondaryButton
-                  title="🎤"
-                  onPress={() => {
-                    // TODO: Implement speech-to-text
-                    dispatch({ type: 'SHOW_TOAST', message: 'Speech input coming soon', toastType: 'info' });
+                  title={experimentalMode ? (isRecording ? "🔴" : "🎤") : "🎤"}
+                  onPress={experimentalMode ? (isRecording ? stopRecording : startRecording) : () => {
+                    dispatch({ type: 'SHOW_TOAST', message: 'Enable Multimodal mode for voice input', toastType: 'info' });
                   }}
-                  style={styles.speechButton}
-                  disabled={state.isLoading}
+                  style={[
+                    styles.speechButton,
+                    isRecording && { backgroundColor: theme.colors.error }
+                  ]}
+                  disabled={state.isLoading || isProcessingAudio}
                 />
               </View>
+              {experimentalMode && (
+                <StyledText variant="caption" style={styles.experimentalHint}>
+                  {isRecording ? "🎤 Recording... Release to process" :
+                   isProcessingAudio ? "🧠 Processing audio + image..." :
+                   "Hold mic button and speak, then release"}
+                </StyledText>
+              )}
             </View>
 
             <View style={styles.captureRow}>
@@ -305,6 +444,15 @@ const styles = StyleSheet.create({
   speechButton: {
     minWidth: 50,
     paddingHorizontal: theme.spacing(1),
+  },
+  experimentalToggle: {
+    alignItems: 'center',
+    marginBottom: theme.spacing(1),
+  },
+  experimentalHint: {
+    textAlign: 'center',
+    color: theme.colors.textMut,
+    marginTop: theme.spacing(1),
   },
   captureRow: {
     flexDirection: 'row',
