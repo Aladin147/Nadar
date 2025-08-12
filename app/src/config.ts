@@ -13,6 +13,13 @@ function guessLocalBase() {
 
 export const API_BASE = process.env.EXPO_PUBLIC_API_BASE || guessLocalBase();
 
+// Debug logging for tunnel mode
+if (process.env.EXPO_PUBLIC_API_BASE) {
+  console.log('🌐 Using tunnel API base:', process.env.EXPO_PUBLIC_API_BASE);
+} else {
+  console.log('🏠 Using local API base:', API_BASE);
+}
+
 // Helper to check if API base is configured
 export const isApiConfigured = () => {
   return API_BASE !== null;
@@ -22,6 +29,11 @@ export const isApiConfigured = () => {
 export const isApiConfiguredAsync = async (): Promise<boolean> => {
   if (Platform.OS === 'web') {
     return API_BASE !== null;
+  }
+
+  // Check environment variable first (for tunnel mode)
+  if (process.env.EXPO_PUBLIC_API_BASE) {
+    return true;
   }
 
   try {

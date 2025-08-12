@@ -10,8 +10,12 @@ export interface CardProps {
 
 export function Card({ children, variant = 'default', style }: CardProps) {
   const cardStyle = variant === 'boldLight' ? styles.boldLight : styles.default;
-
-  return <View style={[cardStyle, style]}>{children}</View>;
+  
+  return (
+    <View style={[cardStyle, style]}>
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

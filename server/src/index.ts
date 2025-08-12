@@ -163,8 +163,8 @@ export function cacheImage(body: any): void {
 
 const app = express();
 
-// Trust proxy so rate limiter can read X-Forwarded-For from dev tunnels/reverse proxies
-app.set('trust proxy', true);
+// Trust only the first proxy (e.g., ngrok) so rate limiter can safely read X-Forwarded-For
+app.set('trust proxy', 1);
 
 app.use(morgan('combined'));
 

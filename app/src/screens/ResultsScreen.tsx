@@ -11,6 +11,7 @@ import { useSettings } from '../app/state/useSettings';
 import { tts } from '../api/client';
 import { AudioPlayer, AudioPlayerRef } from '../utils/audioPlayer';
 
+
 import { PrimaryButton } from '../app/components/PrimaryButton';
 import { SecondaryButton } from '../app/components/SecondaryButton';
 import { ResultSection } from '../app/components/ResultSection';
@@ -105,6 +106,8 @@ export default function ResultsScreen() {
       setIsPlaying(false);
     }
   };
+
+
 
   function parseStructuredResult(text: string) {
     const sections: { title: string; content: string }[] = [];

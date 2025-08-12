@@ -8,7 +8,7 @@ import CaptureScreen from './src/screens/CaptureScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
-import AccessibilityTestScreen from './src/screens/AccessibilityTestScreen';
+// import AccessibilityTestScreen from './src/screens/AccessibilityTestScreen';
 import { isApiConfigured, isApiConfiguredAsync } from './src/config';
 import { Toast } from './src/app/components/Toast';
 
@@ -49,14 +49,10 @@ function AppContent() {
 
     // Show mobile setup screen if on mobile and no API is configured
     if (Platform.OS !== 'web' && !isConfigured && state.currentRoute !== 'settings') {
-      return (
-        <MobileSetupScreen
-          onComplete={() => {
-            checkApiConfiguration(); // Refresh configuration state
-            handleNavigate('capture');
-          }}
-        />
-      );
+      return <MobileSetupScreen onComplete={() => {
+        checkApiConfiguration(); // Refresh configuration state
+        handleNavigate('capture');
+      }} />;
     }
 
     switch (state.currentRoute) {
@@ -71,7 +67,7 @@ function AppContent() {
       case 'settings':
         return <SettingsScreen />;
       case 'accessibility-test':
-        return <AccessibilityTestScreen />;
+        return <CaptureScreen />; // Fallback to capture screen
       default:
         return <CaptureScreen />;
     }

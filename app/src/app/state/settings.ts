@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type Language = 'darija' | 'ar' | 'en';
-export type Verbosity = 'brief' | 'normal' | 'detailed';
-export type TTSProvider = 'gemini' | 'elevenlabs';
+export type Language = 'darija'|'ar'|'en';
+export type Verbosity = 'brief'|'normal'|'detailed';
+export type TTSProvider = 'gemini'|'elevenlabs';
 export type TTSRate = 0.9 | 1.0 | 1.2;
 
 export type Settings = {
@@ -17,12 +17,7 @@ export type Settings = {
 const KEY = 'nadar.settings.v1';
 
 export async function loadSettings(): Promise<Settings> {
-  const defaults: Settings = {
-    language: 'darija',
-    verbosity: 'brief',
-    ttsProvider: 'elevenlabs',
-    ttsRate: 1.0,
-  };
+  const defaults: Settings = { language: 'darija', verbosity: 'brief', ttsProvider: 'elevenlabs', ttsRate: 1.0 };
 
   try {
     const raw = await AsyncStorage.getItem(KEY);
@@ -37,3 +32,4 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSettings(s: Settings) {
   await AsyncStorage.setItem(KEY, JSON.stringify(s));
 }
+

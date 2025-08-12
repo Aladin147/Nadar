@@ -21,8 +21,9 @@ function normalizeFetchError(e: any): Error {
 
 async function resolveApiBase(): Promise<string> {
   try {
+    const envBase = process.env.EXPO_PUBLIC_API_BASE as string | undefined;
     const s = await loadSettings();
-    const base = s.apiBase || API_BASE;
+    const base = envBase || s.apiBase || API_BASE;
 
     if (!base) {
       throw new Error('No server configured. Please set up the server connection in Settings.');
@@ -180,7 +181,15 @@ export async function describe(
   options?: any,
   sessionId?: string
 ) {
-  return postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options, sessionId });
+  console.log('📸 Sending image for description, size:', imageBase64.length, 'chars');
+  try {
+    const result = await postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options, sessionId });
+    console.log('✅ Description received:', result.text?.substring(0, 100) + '...');
+    return result;
+  } catch (error) {
+    console.log('❌ Description failed:', error);
+    throw error;
+  }
 }
 
 export async function ocr(
@@ -242,8 +251,10 @@ export async function setTTSProvider(provider: 'gemini' | 'elevenlabs') {
 export async function testConnection() {
   try {
     const base = await resolveApiBase();
+    console.log('🔍 Testing connection to:', base);
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased timeout for tunnel
 
     const res = await fetch(`${base}/health`, {
       method: 'GET',
@@ -251,13 +262,17 @@ export async function testConnection() {
     });
 
     clearTimeout(timeoutId);
+    console.log('📡 Response status:', res.status, res.statusText);
 
     if (res.ok) {
       const data = await res.json();
+      console.log('✅ Health check response:', data);
       return data.ok === true;
     }
+    console.log('❌ Health check failed - not ok');
     return false;
-  } catch {
+  } catch (error) {
+    console.log('❌ Connection test failed:', error);
     return false;
   }
 }
