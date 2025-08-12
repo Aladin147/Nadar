@@ -209,6 +209,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log(`🔍 Request URL: ${url}, Method: ${req.method}`);
   console.log(`🔍 URL includes live/assist: ${url?.includes('live/assist')}`);
   console.log(`🔍 URL includes live-assist: ${url?.includes('live-assist')}`);
+  console.log(`🔍 MAIN BRANCH DEPLOYED - MULTIMODAL READY!`);
 
   // PRIORITY: Handle multimodal live assist endpoint FIRST
   console.log('🔍 Checking multimodal conditions:');
