@@ -96,14 +96,9 @@ function generateFollowUpSuggestions(language: string): string[] {
 }
 
 async function handler(req: VercelRequest, res: VercelResponse) {
-  // IMMEDIATE RESPONSE TO TEST IF THIS FILE IS EXECUTED
-  return res.status(200).json({
-    message: 'LIVE ASSIST HANDLER IS WORKING!',
-    timestamp: new Date().toISOString(),
-    method: req.method,
-    hasBody: !!req.body,
-    file: 'api/live/assist.ts'
-  });
+  // Set headers for no caching and handler identification
+  res.setHeader('cache-control', 'no-store');
+  res.setHeader('x-handler', 'live-assist-multimodal');
 
   console.log('🚀 LIVE ASSIST HANDLER CALLED!');
   console.log('🔍 Method:', req.method);
