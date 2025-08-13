@@ -98,8 +98,7 @@ class GeminiTTSProvider {
             prebuiltVoiceConfig: {
               voiceName: voice || 'Kore'
             }
-          },
-          ...(rate && { speakingRate: rate })
+          }
         }
       }
     } as any);
