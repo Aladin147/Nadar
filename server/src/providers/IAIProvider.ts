@@ -13,13 +13,17 @@ export interface GenResult {
     immediate?: string;
     objects?: string[];
     navigation?: string;
+    // New single-paragraph format
+    paragraph?: string;
+    details?: string[];
+    has_text_content?: boolean;
   };
 }
 
 export interface IAIProvider {
-  describe(args: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult>;
+  describe(args: { imageBase64: string; mimeType?: string; options?: GenOptions; signals?: any }): Promise<GenResult>;
   ocr(args: { imageBase64: string; mimeType?: string; options?: GenOptions; full?: boolean }): Promise<GenResult>;
-  qa(args: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions }): Promise<GenResult>;
+  qa(args: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions; signals?: any }): Promise<GenResult>;
   tts(args: { text: string; voice?: string; rate?: number }): Promise<{ audioBase64: string; mimeType?: string }>;
 }
 

@@ -8,16 +8,17 @@ jest.mock('@google/generative-ai');
 const mockGoogleGenerativeAI = GoogleGenerativeAI as jest.MockedClass<typeof GoogleGenerativeAI>;
 
 describe('buildSystemPrompt', () => {
-  it('includes structure for scene mode and brevity', () => {
+  it('includes JSON structure for scene mode', () => {
     const p = buildSystemPrompt('scene', { verbosity: 'brief' });
-    expect(p).toContain('IMMEDIATE:');
-    expect(p).toContain('OBJECTS:');
-    expect(p).toContain('NAVIGATION:');
+    expect(p).toContain('JSON object');
+    expect(p).toContain('"paragraph"');
+    expect(p).toContain('"details"');
+    expect(p).toContain('safety/next-step first');
   });
 
-  it('adds detail note when verbosity is detailed', () => {
+  it('adds comprehensive detail note when verbosity is detailed', () => {
     const p = buildSystemPrompt('ocr', { verbosity: 'detailed' });
-    expect(p.toLowerCase()).toContain('provide more detail');
+    expect(p.toLowerCase()).toContain('comprehensive details');
   });
 
   it('qa prompt encourages uncertainty when unsure', () => {

@@ -32,7 +32,7 @@ export class HybridProvider implements IAIProvider {
   }
 
   // Vision capabilities - always use Gemini
-  async describe(args: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
+  async describe(args: { imageBase64: string; mimeType?: string; options?: GenOptions; signals?: any }): Promise<GenResult> {
     return this.geminiProvider.describe(args);
   }
 
@@ -40,7 +40,7 @@ export class HybridProvider implements IAIProvider {
     return this.geminiProvider.ocr(args);
   }
 
-  async qa(args: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
+  async qa(args: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions; signals?: any }): Promise<GenResult> {
     return this.geminiProvider.qa(args);
   }
 
@@ -86,3 +86,6 @@ export class HybridProvider implements IAIProvider {
   }
 
 }
+
+// Export singleton instance
+export const hybridProvider = new HybridProvider();

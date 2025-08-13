@@ -1,24 +1,44 @@
+import type { ImageSignals } from '../services/imageInspector';
+
 // Enhanced telemetry logging for request tracking and debugging
 export interface TelemetryData {
   ts: string;
-  mode: 'describe' | 'ocr' | 'qa' | 'tts';
+  mode: 'describe' | 'ocr' | 'qa' | 'tts' | 'assist';
+  engine?: string;
   route_path: string;
-  bytes_in: number;
+  image_bytes: number;
+  audio_bytes_in: number;
   total_ms: number;
   model_ms: number;
   tts_ms: number;
+  chars_out?: number;
+  signals?: ImageSignals;
   ok: boolean;
-  err_code: string | null;
+  err_code?: string | null;
   model_name?: string;
   provider_name?: string;
   remote_addr?: string;
   user_agent?: string;
   request_id?: string;
+  // Legacy field for backward compatibility
+  bytes_in?: number;
 }
 
 export function logTelemetry(data: TelemetryData): void {
   // Log to stdout as JSON for easy parsing
   console.log(JSON.stringify(data));
+  
+  // Also feed to metrics endpoint if available
+  try {
+    // Dynamic import to avoid circular dependency
+    const metricsModule = require('../routes/metrics');
+    if (metricsModule.addTelemetryEntry) {
+      metricsModule.addTelemetryEntry(data);
+    }
+  } catch (error) {
+    // Silently ignore if metrics module is not available
+    // This prevents breaking the telemetry system if metrics is disabled
+  }
 }
 
 /**
@@ -85,6 +105,26 @@ export function calculateRequestSize(body: any): number {
   return JSON.stringify(body).length;
 }
 
+export function calculateImageBytes(body: any): number {
+  if (body.imageBase64) {
+    // Base64 adds ~33% overhead, so actual image size is ~75% of base64 length
+    return Math.floor(body.imageBase64.length * 0.75);
+  }
+  return 0;
+}
+
+export function calculateAudioBytes(body: any): number {
+  if (body.audioBase64) {
+    // Base64 adds ~33% overhead, so actual audio size is ~75% of base64 length
+    return Math.floor(body.audioBase64.length * 0.75);
+  }
+  if (body.audio) {
+    // If audio is provided as buffer or other format
+    return Buffer.isBuffer(body.audio) ? body.audio.length : 0;
+  }
+  return 0;
+}
+
 export interface TelemetryContext {
   route_path: string;
   remote_addr?: string;
@@ -100,10 +140,13 @@ export function createTelemetryLogger(mode: 'describe' | 'ocr' | 'qa' | 'tts', c
       success: boolean,
       modelMs: number = 0,
       ttsMs: number = 0,
-      bytesIn: number = 0,
+      imageBytes: number = 0,
+      audioBytesIn: number = 0,
+      charsOut: number = 0,
       errCode: string | null = null,
       modelName?: string,
-      providerName?: string
+      providerName?: string,
+      signals?: ImageSignals
     ) => {
       const totalMs = Date.now() - startTime;
 
@@ -111,17 +154,22 @@ export function createTelemetryLogger(mode: 'describe' | 'ocr' | 'qa' | 'tts', c
         ts: new Date().toISOString(),
         mode,
         route_path: context.route_path,
-        bytes_in: bytesIn,
+        image_bytes: imageBytes,
+        audio_bytes_in: audioBytesIn,
         total_ms: totalMs,
         model_ms: modelMs,
         tts_ms: ttsMs,
+        chars_out: charsOut,
+        signals,
         ok: success,
         err_code: errCode,
         model_name: modelName,
         provider_name: providerName,
         remote_addr: context.remote_addr,
         user_agent: context.user_agent,
-        request_id: context.request_id
+        request_id: context.request_id,
+        // Legacy field for backward compatibility
+        bytes_in: imageBytes + audioBytesIn
       });
     }
   };

@@ -6,7 +6,8 @@
     "test": "jest",
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "nodemon --watch src --ext ts --exec \"ts-node --transpile-only src/index.ts\""
+    "dev": "nodemon --watch src --ext ts --exec \"ts-node --transpile-only src/index.ts\"",
+    "cost-estimate": "ts-node scripts/cost.ts"
   },
   "keywords": [],
   "author": "",
@@ -30,8 +31,10 @@
     "@types/jest": "^30.0.0",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.2.0",
+    "@types/supertest": "^6.0.3",
     "jest": "^30.0.5",
     "nodemon": "^3.1.10",
+    "supertest": "^7.1.4",
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"

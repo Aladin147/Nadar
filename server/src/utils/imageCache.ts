@@ -26,7 +26,9 @@ export async function cacheOrResolveImage(imageBase64: string): Promise<CachedIm
   // If cache is full, remove oldest entry
   if (recentImages.size >= MAX_CACHE_SIZE) {
     const oldestKey = recentImages.keys().next().value;
-    recentImages.delete(oldestKey);
+    if (oldestKey) {
+      recentImages.delete(oldestKey);
+    }
   }
   
   // Add to cache

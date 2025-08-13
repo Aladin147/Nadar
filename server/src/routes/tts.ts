@@ -42,13 +42,13 @@ ttsRouter.post('/', async (req, res) => {
   const parse = TTSBody.safeParse(req.body);
 
   if (!parse.success) {
-    telemetry.log(false, 0, 0, 0, 'INVALID_INPUT');
+    telemetry.log(false, 0, 0, 0, 0, 0, 'INVALID_INPUT');
     return res.status(400).json({ error: parse.error.issues[0]?.message || 'invalid body' });
   }
 
   const { text, voice, rate } = parse.data;
   const { provider: requestProvider } = req.body; // Optional provider override
-  const bytesIn = calculateRequestSize(req.body);
+  const textBytes = text.length; // Text input size in bytes
   const ttsStart = Date.now();
 
   try {
@@ -56,7 +56,9 @@ ttsRouter.post('/', async (req, res) => {
     const ttsMs = Date.now() - ttsStart;
     const actualProvider = requestProvider || provider.getCurrentTTSProvider();
     const modelName = actualProvider === 'elevenlabs' ? 'eleven-multilingual-v2' : 'gemini-1.5-flash';
-    telemetry.log(true, 0, ttsMs, bytesIn, null, modelName, actualProvider);
+    
+    // TTS doesn't have image or audio input, only text input
+    telemetry.log(true, 0, ttsMs, 0, 0, text.length, null, modelName, actualProvider);
     res.json(result);
   } catch (e: any) {
     // Preserve ProviderError codes; fallback to mapping for unknown errors
@@ -64,7 +66,9 @@ ttsRouter.post('/', async (req, res) => {
     const ttsMs = Date.now() - ttsStart;
     const actualProvider = requestProvider || provider.getCurrentTTSProvider();
     const modelName = actualProvider === 'elevenlabs' ? 'eleven-multilingual-v2' : 'gemini-1.5-flash';
-    telemetry.log(false, 0, ttsMs, bytesIn, err_code, modelName, actualProvider);
+    
+    // TTS doesn't have image or audio input, only text input
+    telemetry.log(false, 0, ttsMs, 0, 0, text.length, err_code, modelName, actualProvider);
     res.status(500).json({ message, err_code });
   }
 });

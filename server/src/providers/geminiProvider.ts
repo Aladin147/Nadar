@@ -24,34 +24,67 @@ export function mapGeminiError(error: any): { message: string; err_code: string 
   return { message: errorMessage, err_code: 'UNKNOWN' };
 }
 
-export function buildSystemPrompt(mode: 'scene'|'ocr'|'ocr_full'|'qa', options?: GenOptions) {
+export function buildSystemPrompt(mode: 'scene'|'ocr'|'ocr_full'|'qa', options?: GenOptions, signals?: any) {
   const verbosity = options?.verbosity ?? 'brief';
   const language = options?.language ?? 'darija';
   const langDir = language === 'darija' ? 'Respond in Darija (Moroccan Arabic).' : language === 'ar' ? 'Respond in Modern Standard Arabic.' : 'Respond in English.';
+  
   const base = {
     scene: `${langDir} You are نظر (Nadar), an AI assistant for blind users in Morocco. You are their eyes, guiding them through daily navigation.
 
-When analyzing images, prioritize by proximity and importance:
-1. IMMEDIATE dangers or critical safety information (red lights, obstacles, hazards)
-2. Navigation guidance (what's ahead, direction, movement options)
-3. Environmental context (location, objects, people nearby)
+Format your response as a JSON object with exactly these fields:
+{
+  "paragraph": "One short Darija paragraph (≤2 sentences) with safety/next-step first",
+  "details": ["Additional detail 1", "Additional detail 2", "Additional detail 3"],
+  "has_text_content": ${signals?.has_text ? 'true' : 'false'}
+}
 
-Format strictly as:
-Only respond using Darija in Arabic Script.
-IMMEDIATE: [1 short sentence - safety/critical info first]
-OBJECTS: [up to 2 bullets - key items by proximity]
-NAVIGATION: [1 short sentence - movement guidance]
+For the paragraph:
+- Start with safety information or immediate next steps
+- Keep to maximum 2 sentences in Darija
+- Be actionable and concise
+${signals?.has_text ? 
+  '- IMPORTANT: Since text was detected, mention the visible text content prominently in your response' : 
+  '- Focus on scene description and navigation guidance'}
 
-Keep responses very concise and actionable. Assume users are on the move and need quick, essential information. Don't identify people; avoid reading private screens; express uncertainty when unsure. Never use phrases like "as you can see" or "if you look".`,
+For details array:
+- Provide 2-4 additional bullet points for "More" expansion
+- Include objects, navigation guidance, environmental context
+${signals?.has_text ? '- Include text-related details since text was detected' : ''}
+- Keep each detail concise but informative
 
-    ocr: `${langDir} You are نظر (Nadar), helping blind users read text. Extract visible text and summarize in 2 bullets maximum. If mixed languages are present, note them. Keep responses concise and practical. Avoid reading private or sensitive information.`,
+Don't identify people; avoid reading private screens; express uncertainty when unsure. Never use phrases like "as you can see" or "if you look".`,
+
+    ocr: `${langDir} You are نظر (Nadar), helping blind users read text. 
+
+Format your response as a JSON object:
+{
+  "paragraph": "One short Darija paragraph (≤2 sentences) summarizing the text content",
+  "details": ["Text excerpt 1", "Text excerpt 2", "Additional context"],
+  "has_text_content": true
+}
+
+Extract visible text and provide a concise summary in the paragraph. Include key text excerpts in details. If mixed languages are present, note them. Avoid reading private or sensitive information.`,
 
     ocr_full: `${langDir} You are نظر (Nadar), helping blind users read text. Extract and return the full visible text verbatim. No summary. Present the text exactly as it appears, maintaining structure and formatting where possible.`,
 
-    qa: `${langDir} You are نظر (Nadar), answering specific questions for blind users. Provide one short, direct sentence. If uncertain about anything, clearly state you are not sure and suggest one clarifying question. Always prioritize safety - if you see imminent danger or critical information, mention it first regardless of the question asked.`,
+    qa: `${langDir} You are نظر (Nadar), answering specific questions for blind users.
+
+Format your response as a JSON object:
+{
+  "paragraph": "One short Darija sentence directly answering the question first",
+  "details": ["Supporting detail 1", "Supporting detail 2"],
+  "has_text_content": ${signals?.has_text ? 'true' : 'false'}
+}
+
+CRITICAL: Answer the user's question FIRST in the paragraph, then provide context.
+${signals?.has_text ? 'Since text was detected, incorporate text information in your answer if relevant.' : ''}
+
+Always prioritize safety - if you see imminent danger or critical information, mention it first regardless of the question asked. If uncertain, clearly state you are not sure.`,
   }[mode];
-  const vb = verbosity === 'brief' ? ' Keep response to max 3 short bullet points.'
-    : verbosity === 'detailed' ? ' Provide more detail but remain structured and concise.'
+  
+  const vb = verbosity === 'brief' ? ' Keep details concise.'
+    : verbosity === 'detailed' ? ' Provide more comprehensive details.'
     : '';
   return base + vb;
 }
@@ -82,10 +115,10 @@ export class GeminiProvider implements IAIProvider {
     this.ttsTimeoutMs = Number(process.env.GEMINI_TTS_TIMEOUT_MS) || 20000;
   }
 
-  async describe({ imageBase64, mimeType, options }: { imageBase64: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
+  async describe({ imageBase64, mimeType, options, signals }: { imageBase64: string; mimeType?: string; options?: GenOptions; signals?: any }): Promise<GenResult> {
     let timeoutId: NodeJS.Timeout;
     try {
-      const sys = buildSystemPrompt('scene', options);
+      const sys = buildSystemPrompt('scene', options, signals);
       const parts = [sys, toInlineImage(imageBase64, mimeType)];
       const t0 = Date.now();
       const result = await Promise.race([
@@ -95,8 +128,11 @@ export class GeminiProvider implements IAIProvider {
         })
       ]) as any;
       const t1 = Date.now();
-      const text = result.response.text();
-      const structured = parseSceneStructured(text);
+      const responseText = result.response.text();
+      
+      // Parse JSON response for single-paragraph format
+      const { text, structured } = this.parseSingleParagraphResponse(responseText);
+      
       return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 }, structured };
     } catch (error) {
         const { message, err_code } = mapGeminiError(error);
@@ -130,10 +166,10 @@ export class GeminiProvider implements IAIProvider {
     }
   }
 
-  async qa({ imageBase64, question, mimeType, options }: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions }): Promise<GenResult> {
+  async qa({ imageBase64, question, mimeType, options, signals }: { imageBase64: string; question: string; mimeType?: string; options?: GenOptions; signals?: any }): Promise<GenResult> {
     let timeoutId: NodeJS.Timeout;
     try {
-      const sys = buildSystemPrompt('qa', options);
+      const sys = buildSystemPrompt('qa', options, signals);
       const parts = [sys + `\n\nQUESTION: ${question}`, toInlineImage(imageBase64, mimeType)];
       const t0 = Date.now();
       const result = await Promise.race([
@@ -143,8 +179,12 @@ export class GeminiProvider implements IAIProvider {
         })
       ]) as any;
       const t1 = Date.now();
-      const text = result.response.text();
-      return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 } };
+      const responseText = result.response.text();
+      
+      // Parse JSON response for single-paragraph format
+      const { text, structured } = this.parseSingleParagraphResponse(responseText);
+      
+      return { text, timings: { prep: 0, model: t1 - t0, total: t1 - t0 }, structured };
     } catch (error) {
         const { message, err_code } = mapGeminiError(error);
         throw new ProviderError(err_code, message);
@@ -190,6 +230,37 @@ export class GeminiProvider implements IAIProvider {
     } finally {
       if (timeoutId!) clearTimeout(timeoutId);
     }
+  }
+
+  private parseSingleParagraphResponse(responseText: string): { text: string; structured?: GenResult['structured'] } {
+    try {
+      // Try to parse as JSON first
+      const parsed = JSON.parse(responseText.trim());
+      
+      if (parsed.paragraph && Array.isArray(parsed.details)) {
+        return {
+          text: parsed.paragraph,
+          structured: {
+            paragraph: parsed.paragraph,
+            details: parsed.details,
+            has_text_content: parsed.has_text_content || false
+          }
+        };
+      }
+    } catch (parseError) {
+      // Fallback: treat entire response as paragraph
+      console.warn('Failed to parse single-paragraph JSON response, using fallback:', responseText);
+    }
+    
+    // Fallback: use the entire response as the paragraph
+    return {
+      text: responseText.trim(),
+      structured: {
+        paragraph: responseText.trim(),
+        details: [],
+        has_text_content: false
+      }
+    };
   }
 }
 

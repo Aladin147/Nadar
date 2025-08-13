@@ -73,7 +73,11 @@ export function stopWebAudio(): void {
 
 // Test function for debugging
 export async function testWebAudio(): Promise<void> {
-  const response = await fetch('http://localhost:4000/tts', {
+  // Import API_BASE dynamically to avoid circular imports
+  const { API_BASE } = await import('../config');
+  const apiBase = API_BASE || 'http://localhost:4000';
+  
+  const response = await fetch(`${apiBase}/tts`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

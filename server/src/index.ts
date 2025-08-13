@@ -7,6 +7,8 @@ import { describeRouter } from './routes/describe';
 import { ocrRouter } from './routes/ocr';
 import { qaRouter } from './routes/qa';
 import { ttsRouter } from './routes/tts';
+import { assistRouter } from './routes/assist';
+import { metricsRouter } from './routes/metrics';
 import { logTelemetry, extractTelemetryContext } from './utils/telemetry';
 import { execSync } from 'child_process';
 
@@ -177,7 +179,8 @@ function createRateLimitHandler(errCode: string, message: string) {
       ts: new Date().toISOString(),
       mode: 'describe', // Default mode for rate limits
       route_path: context.route_path,
-      bytes_in: 0,
+      image_bytes: 0,
+      audio_bytes_in: 0,
       total_ms: 0,
       model_ms: 0,
       tts_ms: 0,
@@ -234,15 +237,19 @@ app.get('/debug/cache', healthLimiter, (_req, res) => {
   });
 });
 
-app.get('/', (_req, res) => res.type('text/plain').send('Nadar API. Endpoints: /health, /version, POST /describe, /ocr, /qa, /tts'));
+app.get('/', (_req, res) => res.type('text/plain').send('Nadar API. Endpoints: /health, /version, POST /describe, /ocr, /qa, /tts, /assist'));
 
 // Vision endpoints with stricter rate limiting
 app.use('/describe', visionLimiter, describeRouter);
 app.use('/ocr', visionLimiter, ocrRouter);
 app.use('/qa', visionLimiter, qaRouter);
+app.use('/assist', visionLimiter, assistRouter);
 
 // TTS uses general limiter (allows for text chunking)
 app.use('/tts', ttsRouter);
+
+// Metrics endpoint with health limiter (dev-only)
+app.use('/metrics', healthLimiter, metricsRouter);
 
 const port = Number(process.env.PORT) || 4000;
 // Centralized error handler (must be before listen)
@@ -273,7 +280,8 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     ts: new Date().toISOString(),
     mode: 'describe', // Default mode for server errors
     route_path: context.route_path,
-    bytes_in: 0,
+    image_bytes: 0,
+    audio_bytes_in: 0,
     total_ms: 0,
     model_ms: 0,
     tts_ms: 0,
