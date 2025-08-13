@@ -124,7 +124,7 @@ class GeminiTTSProvider {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('cache-control', 'no-store');
-  res.setHeader('x-handler', 'tts-endpoint');
+  res.setHeader('x-handler', 'root-tts-endpoint');
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
