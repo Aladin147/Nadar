@@ -329,7 +329,7 @@ export async function testConnection() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased timeout for tunnel
 
-    const res = await fetch(`${base}/health`, {
+    const res = await fetch(`${base}/api/health`, {
       method: 'GET',
       signal: controller.signal,
     });
