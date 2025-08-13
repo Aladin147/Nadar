@@ -183,7 +183,7 @@ export async function describe(
 ) {
   console.log('📸 Sending image for description, size:', imageBase64.length, 'chars');
   try {
-    const result = await postJSON<GenResult>(`/describe`, { imageBase64, mimeType, options, sessionId });
+    const result = await postJSON<GenResult>(`/api/describe`, { imageBase64, mimeType, options, sessionId });
     console.log('✅ Description received:', result.text?.substring(0, 100) + '...');
     return result;
   } catch (error) {
@@ -200,7 +200,7 @@ export async function ocr(
   full?: boolean,
   imageRef?: string
 ) {
-  const url = full ? `/ocr?full=true` : `/ocr`;
+  const url = full ? `/api/ocr?full=true` : `/api/ocr`;
   const body: any = { mimeType, options, sessionId };
 
   if (imageRef) {
@@ -227,7 +227,7 @@ export async function qa(
     body.imageBase64 = imageBase64;
   }
 
-  return postJSON<GenResult>(`/qa`, body);
+  return postJSON<GenResult>(`/api/qa`, body);
 }
 export async function tts(
   text: string,
@@ -235,17 +235,17 @@ export async function tts(
   provider?: 'gemini' | 'elevenlabs',
   rate?: number
 ) {
-  return postJSON<TTSResult>(`/tts`, { text, voice, provider, rate });
+  return postJSON<TTSResult>(`/api/tts`, { text, voice, provider, rate });
 }
 
 // Get available TTS providers from server
 export async function getTTSProviders() {
-  return getJSON<{ available: string[]; current: string }>(`/tts/providers`);
+  return getJSON<{ available: string[]; current: string }>(`/api/tts/providers`);
 }
 
 // Set TTS provider on server
 export async function setTTSProvider(provider: 'gemini' | 'elevenlabs') {
-  return postJSON<{ success: boolean }>(`/tts/provider`, { provider });
+  return postJSON<{ success: boolean }>(`/api/tts/provider`, { provider });
 }
 
 export async function assist(
@@ -284,7 +284,7 @@ export async function assist(
     sessionId: string;
     processingTime: number;
     fallback?: boolean;
-  }>('/assist', body);
+  }>('/api/assist', body);
 
   console.log('✅ Assist response received:', result.speak.substring(0, 100) + '...');
   if (result.signals) {
@@ -314,7 +314,7 @@ export async function followUp(
     sessionId: string;
     processingTime: number;
     followup: boolean;
-  }>('/followup', body);
+  }>('/api/followup', body);
 
   console.log('✅ Follow-up response received:', result.speak.substring(0, 100) + '...');
 

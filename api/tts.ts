@@ -89,36 +89,64 @@ class GeminiTTSProvider {
   }
 
   async tts({ text, voice, rate }: { text: string; voice?: string; rate?: number }): Promise<{ audioBase64: string; mimeType?: string }> {
-    const result = await this.ttsModel.generateContent({
-      contents: [{ role: 'user', parts: [{ text }] }],
-      generationConfig: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: voice || 'Kore'
-            }
+    try {
+      const result = await this.ttsModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text }] }],
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: voice || 'Kore'
+              }
+            },
+            ...(rate && { speakingRate: rate })
           }
         }
+      } as any);
+
+      const response = await result.response;
+      console.log('🔍 Gemini TTS response structure:', JSON.stringify(response, null, 2));
+
+      const candidates = response.candidates;
+
+      if (!candidates || candidates.length === 0) {
+        console.error('❌ No candidates in Gemini TTS response');
+        throw new Error('No audio generated - no candidates');
       }
-    } as any);
 
-    const response = await result.response;
-    const candidates = response.candidates;
+      // Try different possible paths for audio data
+      let audioData = null;
 
-    if (!candidates || candidates.length === 0) {
-      throw new Error('No audio generated');
+      // Path 1: Standard inline data path
+      audioData = candidates[0]?.content?.parts?.[0]?.inlineData?.data;
+
+      // Path 2: Direct audio data
+      if (!audioData) {
+        audioData = candidates[0]?.content?.parts?.[0]?.audioData;
+      }
+
+      // Path 3: Alternative structure
+      if (!audioData) {
+        audioData = response.audioData;
+      }
+
+      if (!audioData) {
+        console.error('❌ No audio data found in any expected path');
+        console.error('Candidate structure:', JSON.stringify(candidates[0], null, 2));
+        throw new Error('No audio data in response - checked all paths');
+      }
+
+      console.log('✅ Found audio data, length:', audioData.length);
+
+      return {
+        audioBase64: audioData,
+        mimeType: 'audio/pcm'
+      };
+    } catch (error) {
+      console.error('❌ Gemini TTS error:', error);
+      throw error;
     }
-
-    const audioData = candidates[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!audioData) {
-      throw new Error('No audio data in response');
-    }
-
-    return {
-      audioBase64: audioData,
-      mimeType: 'audio/pcm'
-    };
   }
 }
 
@@ -152,16 +180,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const elevenLabs = new ElevenLabsProvider();
       if (!elevenLabs.isAvailable()) {
         console.log('⚠️ ElevenLabs not available, falling back to Gemini');
-        const gemini = new GeminiTTSProvider();
-        result = await gemini.tts({ text, voice, rate });
+        try {
+          const gemini = new GeminiTTSProvider();
+          result = await gemini.tts({ text, voice, rate });
+        } catch (geminiError) {
+          console.error('❌ Gemini TTS fallback also failed:', geminiError);
+          throw new Error(`Both TTS providers failed. ElevenLabs: not configured, Gemini: ${geminiError instanceof Error ? geminiError.message : 'Unknown error'}`);
+        }
       } else {
         console.log('🎙️ Using ElevenLabs TTS');
         result = await elevenLabs.tts({ text, voice, rate });
       }
     } else {
       console.log('🎙️ Using Gemini TTS');
-      const gemini = new GeminiTTSProvider();
-      result = await gemini.tts({ text, voice, rate });
+      try {
+        const gemini = new GeminiTTSProvider();
+        result = await gemini.tts({ text, voice, rate });
+      } catch (geminiError) {
+        console.error('❌ Gemini TTS failed, trying ElevenLabs fallback:', geminiError);
+        const elevenLabs = new ElevenLabsProvider();
+        if (elevenLabs.isAvailable()) {
+          console.log('🎙️ Falling back to ElevenLabs TTS');
+          result = await elevenLabs.tts({ text, voice, rate });
+        } else {
+          console.error('❌ ElevenLabs fallback not available');
+          throw new Error(`Gemini TTS failed: ${geminiError instanceof Error ? geminiError.message : 'Unknown error'}, and ElevenLabs is not configured`);
+        }
+      }
     }
 
     const processingTime = Date.now() - startTime;
