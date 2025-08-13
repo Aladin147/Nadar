@@ -10,6 +10,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     sha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
     timestamp: new Date().toISOString(),
     method: req.method,
-    deploymentTest: 'SUCCESS - INDIVIDUAL HANDLER WORKING!'
+    deploymentTest: 'SUCCESS - INDIVIDUAL HANDLER WORKING!',
+    uniqueId: 'DEPLOYMENT-TEST-12345',
+    message: 'THIS IS THE REAL TEST-DEPLOYMENT HANDLER!'
   });
 }
