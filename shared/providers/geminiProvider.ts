@@ -11,17 +11,40 @@ import {
   globalPerformanceMonitor,
   simpleHash
 } from '../utils/performance';
+import {
+  withRetry,
+  geminiCircuitBreaker,
+  DEFAULT_RETRY_CONFIG,
+  RetryConfig,
+  checkServiceHealth,
+  HealthStatus
+} from '../utils/reliability';
 
 export class GeminiProvider implements AIProvider {
   private genAI: GoogleGenerativeAI;
   private config: PerformanceConfig;
+  private retryConfig: RetryConfig;
 
-  constructor(apiKey: string, config?: Partial<PerformanceConfig>) {
+  constructor(
+    apiKey: string,
+    config?: Partial<PerformanceConfig>,
+    retryConfig?: Partial<RetryConfig>
+  ) {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.config = { ...DEFAULT_PERFORMANCE_CONFIG, ...config };
+    this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
   }
 
   async inspectImage(image: Uint8Array, mimeType: string): Promise<Result<ImageSignals>> {
+    // Wrap with circuit breaker and retry logic
+    return await geminiCircuitBreaker.execute(async () => {
+      return await withRetry(async () => {
+        return await this.performInspection(image, mimeType);
+      }, this.retryConfig, 'Gemini Image Inspection');
+    });
+  }
+
+  private async performInspection(image: Uint8Array, mimeType: string): Promise<Result<ImageSignals>> {
     const startTime = Date.now();
 
     try {
@@ -86,12 +109,28 @@ Be concise and accurate. Return only valid JSON.`;
         };
       }
     } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      globalPerformanceMonitor.recordRequest(responseTime, false, true);
+
       console.error('Image inspection failed:', error);
+
+      // Map specific error types for better retry logic
+      let errorCode = 'INSPECTION_ERROR';
+      if (error.message?.includes('quota') || error.message?.includes('rate limit')) {
+        errorCode = 'RATE_LIMIT';
+      } else if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT') {
+        errorCode = 'TIMEOUT';
+      } else if (error.message?.includes('network') || error.code === 'ENOTFOUND') {
+        errorCode = 'NETWORK_ERROR';
+      } else if (error.status >= 500) {
+        errorCode = 'SERVICE_UNAVAILABLE';
+      }
+
       return {
         ok: false,
         error: {
           message: error.message || 'Image inspection failed',
-          err_code: 'INSPECTION_ERROR',
+          err_code: errorCode,
           details: error.toString()
         }
       };
@@ -99,6 +138,15 @@ Be concise and accurate. Return only valid JSON.`;
   }
 
   async generateResponse(image: Uint8Array, mimeType: string, prompt: string): Promise<Result<string>> {
+    // Wrap with circuit breaker and retry logic
+    return await geminiCircuitBreaker.execute(async () => {
+      return await withRetry(async () => {
+        return await this.performGeneration(image, mimeType, prompt);
+      }, this.retryConfig, 'Gemini Response Generation');
+    });
+  }
+
+  private async performGeneration(image: Uint8Array, mimeType: string, prompt: string): Promise<Result<string>> {
     const startTime = Date.now();
 
     try {
@@ -155,14 +203,58 @@ Be concise and accurate. Return only valid JSON.`;
       globalPerformanceMonitor.recordRequest(responseTime, false, true);
 
       console.error('Response generation failed:', error);
+
+      // Map specific error types for better retry logic
+      let errorCode = 'GENERATION_ERROR';
+      if (error.message?.includes('quota') || error.message?.includes('rate limit')) {
+        errorCode = 'RATE_LIMIT';
+      } else if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT') {
+        errorCode = 'TIMEOUT';
+      } else if (error.message?.includes('network') || error.code === 'ENOTFOUND') {
+        errorCode = 'NETWORK_ERROR';
+      } else if (error.status >= 500) {
+        errorCode = 'SERVICE_UNAVAILABLE';
+      } else if (error.message?.includes('API key')) {
+        errorCode = 'MISSING_API_KEY';
+      }
+
       return {
         ok: false,
         error: {
           message: error.message || 'Response generation failed',
-          err_code: 'GENERATION_ERROR',
+          err_code: errorCode,
           details: error.toString()
         }
       };
     }
+  }
+
+  // Health check method
+  async checkHealth(): Promise<HealthStatus> {
+    return await checkServiceHealth(
+      'Gemini',
+      async () => {
+        try {
+          // Simple health check with minimal image
+          const testImage = new Uint8Array([137, 80, 78, 71]); // PNG header
+          const result = await this.performInspection(testImage, 'image/png');
+          // Even if it fails due to invalid image, if we get a response, service is up
+          return true;
+        } catch (error) {
+          return false;
+        }
+      },
+      geminiCircuitBreaker
+    );
+  }
+
+  // Get circuit breaker status
+  getCircuitBreakerStatus() {
+    return geminiCircuitBreaker.getState();
+  }
+
+  // Reset circuit breaker (for admin/debugging)
+  resetCircuitBreaker() {
+    geminiCircuitBreaker.reset();
   }
 }

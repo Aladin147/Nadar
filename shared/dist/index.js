@@ -415,15 +415,261 @@ function simpleHash(data) {
   return hash.toString(36);
 }
 
+// utils/reliability.ts
+var DEFAULT_RETRY_CONFIG = {
+  maxAttempts: 3,
+  baseDelayMs: 1e3,
+  // Start with 1s delay
+  maxDelayMs: 1e4,
+  // Max 10s delay
+  backoffMultiplier: 2,
+  // Exponential backoff
+  retryableErrors: [
+    "RATE_LIMIT",
+    "TIMEOUT",
+    "NETWORK_ERROR",
+    "SERVICE_UNAVAILABLE",
+    "INTERNAL_ERROR"
+  ],
+  timeoutMs: 3e4
+  // 30s timeout per attempt
+};
+var DEFAULT_CIRCUIT_CONFIG = {
+  failureThreshold: 5,
+  // Open after 5 failures
+  recoveryTimeoutMs: 6e4,
+  // Try recovery after 1 minute
+  successThreshold: 2,
+  // Close after 2 successes
+  monitoringWindowMs: 3e5
+  // 5-minute monitoring window
+};
+async function withRetry(operation, config = DEFAULT_RETRY_CONFIG, context = "operation") {
+  let lastError = null;
+  for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
+    try {
+      console.log(`\u{1F504} ${context}: Attempt ${attempt}/${config.maxAttempts}`);
+      const result = await Promise.race([
+        operation(),
+        new Promise(
+          (_, reject) => setTimeout(() => reject(new Error("Operation timeout")), config.timeoutMs)
+        )
+      ]);
+      if (result.ok) {
+        if (attempt > 1) {
+          console.log(`\u2705 ${context}: Succeeded on attempt ${attempt}`);
+        }
+        return result;
+      }
+      const enhancedError = enhanceError(result.error, config);
+      lastError = enhancedError;
+      if (!enhancedError.isRetryable || attempt === config.maxAttempts) {
+        console.log(`\u274C ${context}: Non-retryable error or max attempts reached`);
+        return { ok: false, error: enhancedError };
+      }
+      const delay = Math.min(
+        config.baseDelayMs * Math.pow(config.backoffMultiplier, attempt - 1),
+        config.maxDelayMs
+      );
+      console.log(`\u23F3 ${context}: Retrying in ${delay}ms (attempt ${attempt + 1})`);
+      await sleep(delay);
+    } catch (error) {
+      const enhancedError = enhanceError({
+        message: error.message || "Unknown error",
+        err_code: "UNKNOWN"
+      }, config);
+      lastError = enhancedError;
+      if (attempt === config.maxAttempts) {
+        console.log(`\u274C ${context}: Max attempts reached with exception`);
+        return { ok: false, error: enhancedError };
+      }
+      const delay = Math.min(
+        config.baseDelayMs * Math.pow(config.backoffMultiplier, attempt - 1),
+        config.maxDelayMs
+      );
+      console.log(`\u23F3 ${context}: Exception, retrying in ${delay}ms`);
+      await sleep(delay);
+    }
+  }
+  return { ok: false, error: lastError };
+}
+var CircuitBreaker = class {
+  state = "CLOSED" /* CLOSED */;
+  failures = [];
+  successes = 0;
+  lastFailureTime = 0;
+  config;
+  name;
+  constructor(name, config = DEFAULT_CIRCUIT_CONFIG) {
+    this.name = name;
+    this.config = config;
+  }
+  async execute(operation) {
+    if (this.state === "OPEN" /* OPEN */) {
+      if (Date.now() - this.lastFailureTime < this.config.recoveryTimeoutMs) {
+        console.log(`\u{1F6AB} Circuit breaker ${this.name} is OPEN, rejecting request`);
+        return {
+          ok: false,
+          error: {
+            message: `Service ${this.name} is temporarily unavailable`,
+            err_code: "CIRCUIT_OPEN"
+          }
+        };
+      } else {
+        this.state = "HALF_OPEN" /* HALF_OPEN */;
+        this.successes = 0;
+        console.log(`\u{1F504} Circuit breaker ${this.name} trying HALF_OPEN`);
+      }
+    }
+    try {
+      const result = await operation();
+      if (result.ok) {
+        this.onSuccess();
+        return result;
+      } else {
+        this.onFailure();
+        return result;
+      }
+    } catch (error) {
+      this.onFailure();
+      return {
+        ok: false,
+        error: {
+          message: error.message || "Circuit breaker caught exception",
+          err_code: "CIRCUIT_ERROR"
+        }
+      };
+    }
+  }
+  onSuccess() {
+    this.successes++;
+    if (this.state === "HALF_OPEN" /* HALF_OPEN */) {
+      if (this.successes >= this.config.successThreshold) {
+        this.state = "CLOSED" /* CLOSED */;
+        this.failures = [];
+        console.log(`\u2705 Circuit breaker ${this.name} is now CLOSED`);
+      }
+    }
+  }
+  onFailure() {
+    const now = Date.now();
+    this.lastFailureTime = now;
+    this.failures = this.failures.filter(
+      (time) => now - time < this.config.monitoringWindowMs
+    );
+    this.failures.push(now);
+    if (this.failures.length >= this.config.failureThreshold) {
+      this.state = "OPEN" /* OPEN */;
+      this.successes = 0;
+      console.log(`\u{1F6AB} Circuit breaker ${this.name} is now OPEN`);
+    }
+  }
+  getState() {
+    return {
+      state: this.state,
+      failures: this.failures.length,
+      successes: this.successes
+    };
+  }
+  reset() {
+    this.state = "CLOSED" /* CLOSED */;
+    this.failures = [];
+    this.successes = 0;
+    this.lastFailureTime = 0;
+    console.log(`\u{1F504} Circuit breaker ${this.name} manually reset`);
+  }
+};
+var geminiCircuitBreaker = new CircuitBreaker("Gemini");
+var elevenLabsCircuitBreaker = new CircuitBreaker("ElevenLabs");
+function enhanceError(error, config) {
+  const isRetryable = config.retryableErrors.includes(error.err_code);
+  let suggestedAction = "Contact support if problem persists";
+  let isTemporary = false;
+  switch (error.err_code) {
+    case "RATE_LIMIT":
+      suggestedAction = "Reduce request frequency or upgrade API plan";
+      isTemporary = true;
+      break;
+    case "TIMEOUT":
+      suggestedAction = "Check network connection and try again";
+      isTemporary = true;
+      break;
+    case "NETWORK_ERROR":
+      suggestedAction = "Check internet connection";
+      isTemporary = true;
+      break;
+    case "SERVICE_UNAVAILABLE":
+      suggestedAction = "Service is temporarily down, try again later";
+      isTemporary = true;
+      break;
+    case "INVALID_IMAGE":
+      suggestedAction = "Use a different image or check image format";
+      isTemporary = false;
+      break;
+    case "MISSING_API_KEY":
+      suggestedAction = "Configure API key in environment variables";
+      isTemporary = false;
+      break;
+  }
+  return {
+    ...error,
+    isRetryable,
+    isTemporary,
+    suggestedAction
+  };
+}
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+async function checkServiceHealth(serviceName, healthCheck, circuitBreaker) {
+  const startTime = Date.now();
+  try {
+    const isHealthy = await Promise.race([
+      healthCheck(),
+      new Promise(
+        (_, reject) => setTimeout(() => reject(new Error("Health check timeout")), 5e3)
+      )
+    ]);
+    const responseTime = Date.now() - startTime;
+    return {
+      service: serviceName,
+      status: isHealthy ? "healthy" : "unhealthy",
+      responseTime,
+      lastCheck: (/* @__PURE__ */ new Date()).toISOString(),
+      circuitState: circuitBreaker?.getState().state,
+      details: isHealthy ? "Service responding normally" : "Service check failed"
+    };
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    return {
+      service: serviceName,
+      status: "unhealthy",
+      responseTime,
+      lastCheck: (/* @__PURE__ */ new Date()).toISOString(),
+      circuitState: circuitBreaker?.getState().state,
+      details: error.message || "Health check failed"
+    };
+  }
+}
+
 // providers/geminiProvider.ts
 var GeminiProvider = class {
   genAI;
   config;
-  constructor(apiKey, config) {
+  retryConfig;
+  constructor(apiKey, config, retryConfig) {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.config = { ...DEFAULT_PERFORMANCE_CONFIG, ...config };
+    this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
   }
   async inspectImage(image, mimeType) {
+    return await geminiCircuitBreaker.execute(async () => {
+      return await withRetry(async () => {
+        return await this.performInspection(image, mimeType);
+      }, this.retryConfig, "Gemini Image Inspection");
+    });
+  }
+  async performInspection(image, mimeType) {
     const startTime = Date.now();
     try {
       const model = this.genAI.getGenerativeModel({ model: this.config.fastModel });
@@ -478,18 +724,37 @@ Be concise and accurate. Return only valid JSON.`;
         };
       }
     } catch (error) {
+      const responseTime = Date.now() - startTime;
+      globalPerformanceMonitor.recordRequest(responseTime, false, true);
       console.error("Image inspection failed:", error);
+      let errorCode = "INSPECTION_ERROR";
+      if (error.message?.includes("quota") || error.message?.includes("rate limit")) {
+        errorCode = "RATE_LIMIT";
+      } else if (error.message?.includes("timeout") || error.code === "ETIMEDOUT") {
+        errorCode = "TIMEOUT";
+      } else if (error.message?.includes("network") || error.code === "ENOTFOUND") {
+        errorCode = "NETWORK_ERROR";
+      } else if (error.status >= 500) {
+        errorCode = "SERVICE_UNAVAILABLE";
+      }
       return {
         ok: false,
         error: {
           message: error.message || "Image inspection failed",
-          err_code: "INSPECTION_ERROR",
+          err_code: errorCode,
           details: error.toString()
         }
       };
     }
   }
   async generateResponse(image, mimeType, prompt) {
+    return await geminiCircuitBreaker.execute(async () => {
+      return await withRetry(async () => {
+        return await this.performGeneration(image, mimeType, prompt);
+      }, this.retryConfig, "Gemini Response Generation");
+    });
+  }
+  async performGeneration(image, mimeType, prompt) {
     const startTime = Date.now();
     try {
       const imageHash = simpleHash(image);
@@ -531,15 +796,51 @@ Be concise and accurate. Return only valid JSON.`;
       const responseTime = Date.now() - startTime;
       globalPerformanceMonitor.recordRequest(responseTime, false, true);
       console.error("Response generation failed:", error);
+      let errorCode = "GENERATION_ERROR";
+      if (error.message?.includes("quota") || error.message?.includes("rate limit")) {
+        errorCode = "RATE_LIMIT";
+      } else if (error.message?.includes("timeout") || error.code === "ETIMEDOUT") {
+        errorCode = "TIMEOUT";
+      } else if (error.message?.includes("network") || error.code === "ENOTFOUND") {
+        errorCode = "NETWORK_ERROR";
+      } else if (error.status >= 500) {
+        errorCode = "SERVICE_UNAVAILABLE";
+      } else if (error.message?.includes("API key")) {
+        errorCode = "MISSING_API_KEY";
+      }
       return {
         ok: false,
         error: {
           message: error.message || "Response generation failed",
-          err_code: "GENERATION_ERROR",
+          err_code: errorCode,
           details: error.toString()
         }
       };
     }
+  }
+  // Health check method
+  async checkHealth() {
+    return await checkServiceHealth(
+      "Gemini",
+      async () => {
+        try {
+          const testImage = new Uint8Array([137, 80, 78, 71]);
+          const result = await this.performInspection(testImage, "image/png");
+          return true;
+        } catch (error) {
+          return false;
+        }
+      },
+      geminiCircuitBreaker
+    );
+  }
+  // Get circuit breaker status
+  getCircuitBreakerStatus() {
+    return geminiCircuitBreaker.getState();
+  }
+  // Reset circuit breaker (for admin/debugging)
+  resetCircuitBreaker() {
+    geminiCircuitBreaker.reset();
   }
 };
 
