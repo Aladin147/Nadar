@@ -1,18 +1,32 @@
-// Gemini AI provider implementation
+// Gemini AI provider implementation with performance optimizations
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AIProvider, Result, ImageSignals, ProviderError } from '../types/api';
+import {
+  PerformanceConfig,
+  DEFAULT_PERFORMANCE_CONFIG,
+  optimizeImageForAI,
+  createOptimizedPrompt,
+  globalResponseCache,
+  globalPerformanceMonitor,
+  simpleHash
+} from '../utils/performance';
 
 export class GeminiProvider implements AIProvider {
   private genAI: GoogleGenerativeAI;
+  private config: PerformanceConfig;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, config?: Partial<PerformanceConfig>) {
     this.genAI = new GoogleGenerativeAI(apiKey);
+    this.config = { ...DEFAULT_PERFORMANCE_CONFIG, ...config };
   }
 
   async inspectImage(image: Uint8Array, mimeType: string): Promise<Result<ImageSignals>> {
+    const startTime = Date.now();
+
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+      // Use fastest model for inspection
+      const model = this.genAI.getGenerativeModel({ model: this.config.fastModel });
       
       const prompt = `Analyze this image quickly and return ONLY a JSON object with these exact fields:
 {
@@ -25,7 +39,9 @@ export class GeminiProvider implements AIProvider {
 
 Be concise and accurate. Return only valid JSON.`;
 
-      const imageBase64 = Buffer.from(image).toString('base64');
+      // Optimize image if needed
+      const optimizedImage = optimizeImageForAI(image, this.config);
+      const imageBase64 = Buffer.from(optimizedImage).toString('base64');
       
       const result = await model.generateContent([
         prompt,
@@ -41,6 +57,11 @@ Be concise and accurate. Return only valid JSON.`;
       
       try {
         const signals = JSON.parse(responseText);
+
+        const responseTime = Date.now() - startTime;
+        globalPerformanceMonitor.recordRequest(responseTime, false, false);
+        console.log(`⚡ Fast inspection completed in ${responseTime}ms`);
+
         return {
           ok: true,
           data: {
@@ -78,10 +99,29 @@ Be concise and accurate. Return only valid JSON.`;
   }
 
   async generateResponse(image: Uint8Array, mimeType: string, prompt: string): Promise<Result<string>> {
+    const startTime = Date.now();
+
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      
-      const imageBase64 = Buffer.from(image).toString('base64');
+      // Check cache first
+      const imageHash = simpleHash(image);
+      const cacheKey = globalResponseCache.generateKey(imageHash, 'darija', prompt.includes('question') ? 'qa' : undefined);
+
+      if (this.config.enableResponseCache) {
+        const cachedResponse = globalResponseCache.get(cacheKey);
+        if (cachedResponse) {
+          const responseTime = Date.now() - startTime;
+          globalPerformanceMonitor.recordRequest(responseTime, true, false);
+          console.log(`⚡ Cache hit! Response served in ${responseTime}ms`);
+          return { ok: true, data: cachedResponse };
+        }
+      }
+
+      // Use quality model for main response
+      const model = this.genAI.getGenerativeModel({ model: this.config.qualityModel });
+
+      // Optimize image if needed
+      const optimizedImage = optimizeImageForAI(image, this.config);
+      const imageBase64 = Buffer.from(optimizedImage).toString('base64');
       
       const result = await model.generateContent([
         {
@@ -96,12 +136,24 @@ Be concise and accurate. Return only valid JSON.`;
       const response = await result.response;
       const text = response.text();
 
+      // Cache the response
+      if (this.config.enableResponseCache) {
+        globalResponseCache.set(cacheKey, text);
+      }
+
+      const responseTime = Date.now() - startTime;
+      globalPerformanceMonitor.recordRequest(responseTime, false, false);
+      console.log(`⚡ Response generated in ${responseTime}ms`);
+
       return {
         ok: true,
         data: text
       };
       
     } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      globalPerformanceMonitor.recordRequest(responseTime, false, true);
+
       console.error('Response generation failed:', error);
       return {
         ok: false,
