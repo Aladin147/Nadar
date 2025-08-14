@@ -191,7 +191,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let details: string[] = [];
 
     try {
-      const parsed = JSON.parse(responseText.trim());
+      // Remove markdown code blocks if present
+      let cleanedResponse = responseText.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      const parsed = JSON.parse(cleanedResponse);
       if (parsed.paragraph && Array.isArray(parsed.details)) {
         speak = parsed.paragraph;
         details = parsed.details;
