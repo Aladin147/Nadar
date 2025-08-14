@@ -13,7 +13,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { theme } from "../theme";
-import { assist, assistWithImageRef, testConnection, tts, postJSON } from "../api/client";
+import { assist, assistWithImageRef, ocr, testConnection, tts, postJSON } from "../api/client";
 import { downscale } from "../utils/downscale";
 import { AudioPlayer, AudioPlayerRef } from "../utils/audioPlayer";
 
@@ -176,19 +176,26 @@ export default function DemoScreen() {
   };
 
   const handleReadAllText = async () => {
-    if (!response) return;
+    if (!response || !response.followupToken) {
+      Alert.alert("Error", "No image available for text extraction. Please take a new photo.");
+      return;
+    }
 
     try {
       setIsLoading(true);
       console.log("📄 Reading all text from image");
+      console.log("🔄 Using followupToken:", response.followupToken);
 
-      // Call OCR with full text extraction using the last image
-      const ocrResult = await postJSON<{ text: string }>('/api/ocr?full=true', {
-        imageRef: "last",
-        sessionId: response.sessionId
-      });
+      // Call OCR with full text extraction using the cached image
+      const ocrResult = await ocr(
+        response.followupToken,
+        true, // full text extraction
+        'darija',
+        response.sessionId
+      );
 
       if (ocrResult.text && ocrResult.text.trim()) {
+        console.log("📄 OCR extracted text length:", ocrResult.text.length);
         // Play the full text using TTS
         await playTTS(ocrResult.text);
       } else {

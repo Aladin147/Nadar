@@ -173,6 +173,36 @@ export async function assistWithImageRef(
   return result;
 }
 
+// OCR function for text extraction
+export async function ocr(
+  imageRef: string,
+  full: boolean = true,
+  language?: 'darija' | 'ar' | 'en',
+  sessionId?: string
+) {
+  const body = {
+    sessionId,
+    imageRef,
+    full,
+    language: language || 'darija'
+  };
+
+  console.log('📄 Demo app sending OCR request with imageRef:', imageRef);
+  console.log('📄 Full text extraction:', full);
+
+  const result = await postJSON<{
+    text: string;
+    timing: {
+      processing_ms: number;
+      total_ms: number;
+    };
+  }>('/api/ocr-shared', body);
+
+  console.log('✅ Demo app OCR response received, text length:', result.text.length);
+
+  return result;
+}
+
 export async function tts(
   text: string,
   voice?: string,
