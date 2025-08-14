@@ -7,3 +7,4 @@ export { GlobalImageStore, MemoryImageStore, VercelBlobImageStore } from './stor
 export { AIProvider, AssistDeps, AssistRequest, AssistResponse, ImageSignals, ImageStore, ProviderError, RequestContext, Result, TelemetryData, TelemetryLogger } from './types/api.js';
 import 'express';
 import '@vercel/node';
+import './core/ttsCore.js';

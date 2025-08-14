@@ -4,6 +4,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { AssistRequest, AssistDeps, RequestContext } from '../types/api';
 import { handleAssist } from '../core/assistCore';
 import { handleOCR, OCRRequest } from '../core/ocrCore';
+import { handleTTS, TTSRequest, TTSDeps } from '../core/ttsCore';
 
 // Convert Vercel request to core AssistRequest
 function mapVercelRequest(req: VercelRequest): AssistRequest {
@@ -51,6 +52,19 @@ function mapVercelOCRRequest(req: VercelRequest): OCRRequest {
     imageRef: body.imageRef,
     full: body.full || false,
     language: body.options?.language || body.language || 'darija'
+  };
+}
+
+// Convert Vercel request to core TTSRequest
+function mapVercelTTSRequest(req: VercelRequest): TTSRequest {
+  const body = req.body;
+
+  return {
+    sessionId: body.sessionId || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    text: body.text,
+    voice: body.voice,
+    provider: body.provider || 'gemini',
+    rate: body.rate
   };
 }
 
@@ -110,6 +124,44 @@ export function createVercelOCRHandler(deps: AssistDeps) {
     try {
       const coreRequest = mapVercelOCRRequest(req);
       const result = await handleOCR(coreRequest, deps);
+
+      if (result.ok) {
+        res.status(200).json(result.data);
+      } else {
+        const statusCode = result.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
+        res.status(statusCode).json({
+          error: result.error.message,
+          err_code: result.error.err_code,
+          details: result.error.details
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        error: error.message || 'Internal server error',
+        err_code: 'UNKNOWN'
+      });
+    }
+  };
+}
+
+// Vercel adapter for TTS endpoint
+export function createVercelTTSHandler(deps: TTSDeps) {
+  return async (req: VercelRequest, res: VercelResponse) => {
+    // Set headers
+    res.setHeader('cache-control', 'no-store');
+    res.setHeader('x-handler', 'shared-core');
+
+    // Check method
+    if (req.method !== 'POST') {
+      return res.status(405).json({
+        error: 'Method not allowed',
+        err_code: 'METHOD_NOT_ALLOWED'
+      });
+    }
+
+    try {
+      const coreRequest = mapVercelTTSRequest(req);
+      const result = await handleTTS(coreRequest, deps);
 
       if (result.ok) {
         res.status(200).json(result.data);

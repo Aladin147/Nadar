@@ -47,7 +47,6 @@
 
 - [x] 6. Add /metrics endpoint
 
-
   - Return last N calls, P95 latency, error mix, total estimated cost
   - Dev-only JSON dashboard format
   - **Done when**: Can open /metrics and see quick dashboard JSON
@@ -57,6 +56,7 @@
 ## P1 - Demo App & Core Features
 
 - [ ] 7. Create demo app shell
+
 
   - Initialize apps/nadar-demo (or branch) reusing API client
   - One screen: Assist with shutter + mic, no tabs

@@ -141,7 +141,7 @@ export async function tts(
   provider?: 'gemini' | 'elevenlabs',
   rate?: number
 ) {
-  return postJSON<{ audioBase64: string; mimeType?: string }>(`/api/tts`, { 
+  return postJSON<{ audioBase64: string; mimeType?: string }>(`/api/tts-shared`, {
     text, 
     voice, 
     provider: provider || 'elevenlabs', // Default to ElevenLabs
