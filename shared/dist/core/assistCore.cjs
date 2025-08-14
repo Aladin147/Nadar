@@ -92,23 +92,49 @@ async function handleAssist(request, deps) {
     } else if (request.imageRef) {
       const cachedImage = await deps.imageStore.get(request.imageRef);
       if (!cachedImage) {
-        return {
-          ok: false,
-          error: {
-            message: `No cached image found for imageRef: ${request.imageRef}`,
-            err_code: "IMAGE_NOT_FOUND"
-          }
+        const error = {
+          message: `No cached image found for imageRef: ${request.imageRef}`,
+          err_code: "IMAGE_NOT_FOUND"
         };
+        deps.telemetry.log({
+          ts: (/* @__PURE__ */ new Date()).toISOString(),
+          mode: "assist",
+          engine: "gemini",
+          route_path: "/assist",
+          image_bytes: 0,
+          audio_bytes_in: 0,
+          total_ms: deps.now() - startTime,
+          model_ms: 0,
+          tts_ms: 0,
+          chars_out: 0,
+          ok: false,
+          err_code: error.err_code,
+          request_id: request.sessionId
+        });
+        return { ok: false, error };
       }
       image = cachedImage;
     } else {
-      return {
-        ok: false,
-        error: {
-          message: "No valid image provided",
-          err_code: "INVALID_IMAGE"
-        }
+      const error = {
+        message: "No valid image provided",
+        err_code: "INVALID_IMAGE"
       };
+      deps.telemetry.log({
+        ts: (/* @__PURE__ */ new Date()).toISOString(),
+        mode: "assist",
+        engine: "gemini",
+        route_path: "/assist",
+        image_bytes: 0,
+        audio_bytes_in: 0,
+        total_ms: deps.now() - startTime,
+        model_ms: 0,
+        tts_ms: 0,
+        chars_out: 0,
+        ok: false,
+        err_code: error.err_code,
+        request_id: request.sessionId
+      });
+      return { ok: false, error };
     }
     const inspectionStart = deps.now();
     const signalsResult = await deps.providers.inspectImage(image, "image/jpeg");

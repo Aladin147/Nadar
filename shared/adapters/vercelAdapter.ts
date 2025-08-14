@@ -3,6 +3,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { AssistRequest, AssistDeps, RequestContext } from '../types/api';
 import { handleAssist } from '../core/assistCore';
+import { handleOCR, OCRRequest } from '../core/ocrCore';
 
 // Convert Vercel request to core AssistRequest
 function mapVercelRequest(req: VercelRequest): AssistRequest {
@@ -34,6 +35,25 @@ function extractContext(req: VercelRequest): RequestContext {
   };
 }
 
+// Convert Vercel request to core OCRRequest
+function mapVercelOCRRequest(req: VercelRequest): OCRRequest {
+  const body = req.body;
+
+  // Convert base64 image to Uint8Array if present
+  let image: Uint8Array | undefined;
+  if (body.imageBase64) {
+    image = new Uint8Array(Buffer.from(body.imageBase64, 'base64'));
+  }
+
+  return {
+    sessionId: body.sessionId || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    image,
+    imageRef: body.imageRef,
+    full: body.full || false,
+    language: body.options?.language || body.language || 'darija'
+  };
+}
+
 // Vercel adapter for assist endpoint
 export function createVercelAssistHandler(deps: AssistDeps) {
   return async (req: VercelRequest, res: VercelResponse) => {
@@ -52,6 +72,44 @@ export function createVercelAssistHandler(deps: AssistDeps) {
     try {
       const coreRequest = mapVercelRequest(req);
       const result = await handleAssist(coreRequest, deps);
+
+      if (result.ok) {
+        res.status(200).json(result.data);
+      } else {
+        const statusCode = result.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
+        res.status(statusCode).json({
+          error: result.error.message,
+          err_code: result.error.err_code,
+          details: result.error.details
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        error: error.message || 'Internal server error',
+        err_code: 'UNKNOWN'
+      });
+    }
+  };
+}
+
+// Vercel adapter for OCR endpoint
+export function createVercelOCRHandler(deps: AssistDeps) {
+  return async (req: VercelRequest, res: VercelResponse) => {
+    // Set headers
+    res.setHeader('cache-control', 'no-store');
+    res.setHeader('x-handler', 'shared-core');
+
+    // Check method
+    if (req.method !== 'POST') {
+      return res.status(405).json({
+        error: 'Method not allowed',
+        err_code: 'METHOD_NOT_ALLOWED'
+      });
+    }
+
+    try {
+      const coreRequest = mapVercelOCRRequest(req);
+      const result = await handleOCR(coreRequest, deps);
 
       if (result.ok) {
         res.status(200).json(result.data);

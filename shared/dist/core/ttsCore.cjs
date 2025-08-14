@@ -1,0 +1,235 @@
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// core/ttsCore.ts
+var ttsCore_exports = {};
+__export(ttsCore_exports, {
+  handleTTS: () => handleTTS
+});
+module.exports = __toCommonJS(ttsCore_exports);
+async function handleTTS(request, deps) {
+  const startTime = deps.now();
+  try {
+    if (!request.text || request.text.trim().length === 0) {
+      const error = {
+        message: "Text is required for TTS generation",
+        err_code: "INVALID_TEXT"
+      };
+      deps.telemetry.log({
+        ts: (/* @__PURE__ */ new Date()).toISOString(),
+        mode: "tts",
+        engine: request.provider || "gemini",
+        route_path: "/tts",
+        image_bytes: 0,
+        audio_bytes_in: 0,
+        total_ms: deps.now() - startTime,
+        model_ms: 0,
+        tts_ms: 0,
+        chars_out: 0,
+        ok: false,
+        err_code: error.err_code,
+        request_id: request.sessionId
+      });
+      return { ok: false, error };
+    }
+    const processingStart = deps.now();
+    const provider = request.provider || "gemini";
+    let audioBase64;
+    let mimeType;
+    if (provider === "gemini") {
+      const result = await generateGeminiTTS(request.text, deps.geminiApiKey);
+      if (!result.ok) {
+        return result;
+      }
+      audioBase64 = result.data.audioBase64;
+      mimeType = result.data.mimeType;
+    } else if (provider === "elevenlabs") {
+      const result = await generateElevenLabsTTS(request.text, request.voice, deps.elevenLabsApiKey);
+      if (!result.ok) {
+        return result;
+      }
+      audioBase64 = result.data.audioBase64;
+      mimeType = result.data.mimeType;
+    } else {
+      const error = {
+        message: `Unsupported TTS provider: ${provider}`,
+        err_code: "INVALID_PROVIDER"
+      };
+      deps.telemetry.log({
+        ts: (/* @__PURE__ */ new Date()).toISOString(),
+        mode: "tts",
+        engine: provider,
+        route_path: "/tts",
+        image_bytes: 0,
+        audio_bytes_in: 0,
+        total_ms: deps.now() - startTime,
+        model_ms: 0,
+        tts_ms: 0,
+        chars_out: 0,
+        ok: false,
+        err_code: error.err_code,
+        request_id: request.sessionId
+      });
+      return { ok: false, error };
+    }
+    const processingTime = deps.now() - processingStart;
+    const totalTime = deps.now() - startTime;
+    const audioBytes = Math.floor(audioBase64.length * 0.75);
+    deps.telemetry.log({
+      ts: (/* @__PURE__ */ new Date()).toISOString(),
+      mode: "tts",
+      engine: provider,
+      route_path: "/tts",
+      image_bytes: 0,
+      audio_bytes_in: audioBytes,
+      total_ms: totalTime,
+      model_ms: 0,
+      tts_ms: processingTime,
+      chars_out: request.text.length,
+      ok: true,
+      request_id: request.sessionId
+    });
+    return {
+      ok: true,
+      data: {
+        audioBase64,
+        mimeType,
+        timing: {
+          processing_ms: processingTime,
+          total_ms: totalTime
+        }
+      }
+    };
+  } catch (error) {
+    const totalTime = deps.now() - startTime;
+    deps.telemetry.log({
+      ts: (/* @__PURE__ */ new Date()).toISOString(),
+      mode: "tts",
+      engine: request.provider || "gemini",
+      route_path: "/tts",
+      image_bytes: 0,
+      audio_bytes_in: 0,
+      total_ms: totalTime,
+      model_ms: 0,
+      tts_ms: 0,
+      chars_out: 0,
+      ok: false,
+      err_code: error.err_code || "UNKNOWN",
+      request_id: request.sessionId
+    });
+    return {
+      ok: false,
+      error: {
+        message: error.message || "Internal server error",
+        err_code: error.err_code || "UNKNOWN",
+        details: error.details
+      }
+    };
+  }
+}
+async function generateGeminiTTS(text, apiKey) {
+  try {
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: {
+          message: "Gemini API key not configured",
+          err_code: "MISSING_API_KEY"
+        }
+      };
+    }
+    return {
+      ok: false,
+      error: {
+        message: "Gemini TTS not yet implemented",
+        err_code: "NOT_IMPLEMENTED"
+      }
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: {
+        message: error.message || "Gemini TTS generation failed",
+        err_code: "GEMINI_TTS_ERROR"
+      }
+    };
+  }
+}
+async function generateElevenLabsTTS(text, voice, apiKey) {
+  try {
+    if (!apiKey) {
+      return {
+        ok: false,
+        error: {
+          message: "ElevenLabs API key not configured",
+          err_code: "MISSING_API_KEY"
+        }
+      };
+    }
+    const voiceId = voice || "pNInz6obpgDQGcFmaJgB";
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": apiKey
+      },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
+      })
+    });
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: {
+          message: `ElevenLabs API error: ${response.status} ${response.statusText}`,
+          err_code: "ELEVENLABS_API_ERROR"
+        }
+      };
+    }
+    const audioBuffer = await response.arrayBuffer();
+    const audioBase64 = Buffer.from(audioBuffer).toString("base64");
+    return {
+      ok: true,
+      data: {
+        audioBase64,
+        mimeType: "audio/mpeg"
+      }
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: {
+        message: error.message || "ElevenLabs TTS generation failed",
+        err_code: "ELEVENLABS_TTS_ERROR"
+      }
+    };
+  }
+}
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  handleTTS
+});
+//# sourceMappingURL=ttsCore.cjs.map
