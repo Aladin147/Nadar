@@ -1,6 +1,73 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Fast image inspector for signal detection
+interface ImageSignals {
+  has_text: boolean;
+  hazards: string[];
+  people_count: number;
+  lighting_ok: boolean;
+  confidence: number;
+}
+
+async function inspectImage(imageBase64: string, mimeType: string, genAI: GoogleGenerativeAI): Promise<ImageSignals> {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+
+    const prompt = `Analyze this image quickly and return ONLY a JSON object with these exact fields:
+{
+  "has_text": boolean (true if any readable text is visible),
+  "hazards": string[] (list of safety hazards like "moving vehicle", "stairs", "obstacle", max 3),
+  "people_count": number (count of people visible, 0-10+),
+  "lighting_ok": boolean (true if lighting is adequate for clear vision),
+  "confidence": number (0.0-1.0, overall confidence in analysis)
+}
+
+Be concise and accurate. Return only valid JSON.`;
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType
+        }
+      }
+    ]);
+
+    const responseText = result.response.text().trim();
+
+    try {
+      const signals = JSON.parse(responseText);
+      return {
+        has_text: Boolean(signals.has_text),
+        hazards: Array.isArray(signals.hazards) ? signals.hazards.slice(0, 3).map(String) : [],
+        people_count: Math.max(0, Math.min(10, Number(signals.people_count) || 0)),
+        lighting_ok: Boolean(signals.lighting_ok),
+        confidence: Math.max(0, Math.min(1, Number(signals.confidence) || 0))
+      };
+    } catch (parseError) {
+      console.warn('Failed to parse image inspector JSON:', responseText);
+      return {
+        has_text: responseText.toLowerCase().includes('text'),
+        hazards: [],
+        people_count: 0,
+        lighting_ok: true,
+        confidence: 0.5
+      };
+    }
+  } catch (error) {
+    console.error('Image inspection failed:', error);
+    return {
+      has_text: false,
+      hazards: [],
+      people_count: 0,
+      lighting_ok: true,
+      confidence: 0.0
+    };
+  }
+}
+
 // Standard assist endpoint for backward compatibility
 interface AssistRequest {
   imageBase64: string;
@@ -14,13 +81,7 @@ interface AssistRequest {
 interface AssistResponse {
   speak: string;
   details?: string[];
-  signals: {
-    has_text: boolean;
-    hazards: string[];
-    people_count: number;
-    lighting_ok: boolean;
-    confidence: number;
-  };
+  signals: ImageSignals;
   followup_suggest?: string[];
   timestamp: string;
   sessionId: string;
@@ -30,20 +91,36 @@ interface AssistResponse {
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-function createSystemPrompt(language: string): string {
-  if (language === 'darija') {
-    return `You are نظر (Nadar), an intelligent AI assistant for blind users in Morocco.
+function createSystemPrompt(language: string, signals?: ImageSignals, question?: string): string {
+  const langDir = language === 'ar' ? 'اكتب بالعربية الفصحى' :
+                  language === 'darija' ? 'اكتب بالدارجة المغربية' :
+                  'Write in English';
 
-🚨 CRITICAL: Respond ONLY in Moroccan Darija using Arabic script (الحروف العربية)
-- NEVER use Latin script - ALWAYS use Arabic script
-- Use authentic Moroccan expressions
-- Prioritize safety, then answer questions, then describe environment
-- If there's text, say "كاين نص هنا، بغيتي نقراه ليك؟"
-- If there's danger, start with "انتبه!" or "حذاري!"
-- Keep it brief and conversational`;
-  }
-  
-  return `You are Nadar, an AI assistant for blind users. Provide helpful guidance about what you see.`;
+  return `${langDir} You are نظر (Nadar), helping blind users navigate safely.
+
+Format your response as a JSON object with exactly these fields:
+{
+  "paragraph": "One short ${language === 'darija' ? 'Darija' : language} paragraph (≤2 sentences) with safety/next-step first",
+  "details": ["Additional detail 1", "Additional detail 2", "Additional detail 3"],
+  "has_text_content": ${signals?.has_text ? 'true' : 'false'}
+}
+
+For the paragraph:
+- Start with safety information or immediate next steps
+- Keep to maximum 2 sentences in ${language === 'darija' ? 'Darija' : language}
+- Be actionable and concise
+${question ? '- Answer the specific question first, then provide context' : ''}
+${signals?.has_text ?
+  '- IMPORTANT: Since text was detected, mention the visible text content prominently in your response' :
+  '- Focus on scene description and navigation guidance'}
+
+For details array:
+- Provide 2-4 additional bullet points for "More" expansion
+- Include objects, navigation guidance, environmental context
+${signals?.has_text ? '- Include text-related details since text was detected' : ''}
+- Keep each detail concise but informative
+
+Don't identify people; avoid reading private screens; express uncertainty when unsure. Never use phrases like "as you can see" or "if you look".`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -72,9 +149,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`🤖 Standard assist request: ${sessionId}, hasQuestion: ${!!question}, language: ${language}`);
 
-    const model = genAI.getGenerativeModel({ 
+    // Step 1: Fast image inspection
+    const inspectionStart = Date.now();
+    const signals = await inspectImage(imageBase64, mimeType, genAI);
+    const inspectionTime = Date.now() - inspectionStart;
+
+    console.log(`🔍 Image inspection signals:`, signals);
+
+    // Step 2: Generate response based on signals and question
+    const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: createSystemPrompt(language)
+      systemInstruction: createSystemPrompt(language, signals, question)
     });
 
     const content: any[] = [
@@ -89,7 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (question) {
       content.push({ text: question });
     } else {
-      const defaultPrompt = language === 'darija' 
+      const defaultPrompt = language === 'darija'
         ? 'ساعدني نفهم شنو كاين فهاد الصورة'
         : 'Help me understand what is in this image';
       content.push({ text: defaultPrompt });
@@ -97,18 +182,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const result = await model.generateContent(content);
     const response = await result.response;
-    const text = response.text();
+    const responseText = response.text();
 
     const processingTime = Date.now() - startTime;
 
-    // Create mock signals for compatibility
-    const signals = {
-      has_text: text.includes('نص') || text.includes('text') || text.includes('كتابة'),
-      hazards: text.includes('انتبه') || text.includes('حذاري') ? ['potential_hazard'] : [],
-      people_count: 0,
-      lighting_ok: true,
-      confidence: 0.85
-    };
+    // Parse single-paragraph response
+    let speak = responseText;
+    let details: string[] = [];
+
+    try {
+      const parsed = JSON.parse(responseText.trim());
+      if (parsed.paragraph && Array.isArray(parsed.details)) {
+        speak = parsed.paragraph;
+        details = parsed.details;
+      }
+    } catch (parseError) {
+      console.warn('Failed to parse single-paragraph JSON response, using fallback:', responseText);
+    }
 
     const followup_suggest = language === 'darija' ? [
       'نقرا النص كامل؟',
@@ -121,7 +211,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ];
 
     const assistResponse: AssistResponse = {
-      speak: text,
+      speak,
+      details,
       signals,
       followup_suggest,
       timestamp: new Date().toISOString(),
