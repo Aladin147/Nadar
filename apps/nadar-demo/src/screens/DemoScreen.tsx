@@ -13,7 +13,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { theme } from "../theme";
-import { assist, testConnection, tts, postJSON } from "../api/client";
+import { assist, assistWithImageRef, testConnection, tts, postJSON } from "../api/client";
 import { downscale } from "../utils/downscale";
 import { AudioPlayer, AudioPlayerRef } from "../utils/audioPlayer";
 
@@ -28,6 +28,7 @@ interface AssistResponse {
     confidence: number;
   };
   followup_suggest?: string[];
+  followupToken?: string;
   timestamp: string;
   sessionId: string;
   processingTime: number;
@@ -143,14 +144,24 @@ export default function DemoScreen() {
   };
 
   const handleFollowUp = async (question: string) => {
-    if (!response) return;
+    if (!response || !response.followupToken) {
+      Alert.alert("Error", "No image available for follow-up question. Please take a new photo.");
+      return;
+    }
 
     try {
       setIsLoading(true);
       console.log("❓ Follow-up question:", question);
+      console.log("🔄 Using followupToken:", response.followupToken);
 
-      // Use the last captured image with the follow-up question
-      const followUpResult = await assist("", "image/jpeg", question, undefined, response.sessionId);
+      // Use the cached image with the follow-up question
+      const followUpResult = await assistWithImageRef(
+        response.followupToken,
+        question,
+        { language: 'darija' },
+        response.sessionId
+      );
+
       setResponse(followUpResult);
       setShowDetails(false);
 

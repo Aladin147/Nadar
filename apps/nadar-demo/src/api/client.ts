@@ -110,6 +110,43 @@ export async function assist(
     console.log('❓ Question:', question);
   }
 
+  return await postJSON<{
+    speak: string;
+    details?: string[];
+    signals: {
+      has_text: boolean;
+      hazards: string[];
+      people_count: number;
+      lighting_ok: boolean;
+      confidence: number;
+    };
+    followup_suggest?: string[];
+    followupToken?: string;
+    timestamp: string;
+    sessionId: string;
+    processingTime: number;
+    fallback?: boolean;
+  }>('/api/assist-shared', body);
+}
+
+// New function for follow-up questions using imageRef
+export async function assistWithImageRef(
+  imageRef: string,
+  question: string,
+  options?: { verbosity?: 'brief' | 'normal'; language?: 'darija' | 'ar' | 'en' },
+  sessionId?: string
+) {
+  const body = {
+    sessionId,
+    imageRef,
+    question,
+    language: options?.language || 'darija',
+    verbosity: options?.verbosity || 'brief'
+  };
+
+  console.log('🔄 Demo app sending follow-up question with imageRef:', imageRef);
+  console.log('❓ Follow-up question:', question);
+
   const result = await postJSON<{
     speak: string;
     details?: string[];
@@ -121,13 +158,14 @@ export async function assist(
       confidence: number;
     };
     followup_suggest?: string[];
+    followupToken?: string;
     timestamp: string;
     sessionId: string;
     processingTime: number;
     fallback?: boolean;
   }>('/api/assist-shared', body);
 
-  console.log('✅ Demo app assist response received:', result.speak.substring(0, 100) + '...');
+  console.log('✅ Demo app follow-up response received:', result.speak.substring(0, 100) + '...');
   if (result.signals) {
     console.log('🔍 Signals:', result.signals);
   }
