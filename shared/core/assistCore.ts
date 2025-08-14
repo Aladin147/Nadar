@@ -122,7 +122,7 @@ export async function handleAssist(
     const inspectionStart = deps.now();
     const signalsResult = await deps.providers.inspectImage(image, 'image/jpeg');
     if (!signalsResult.ok) {
-      return { ok: false, error: signalsResult.error };
+      return signalsResult;
     }
     const signals = signalsResult.data;
     const inspectionTime = deps.now() - inspectionStart;
@@ -137,13 +137,13 @@ export async function handleAssist(
       : 'Help me understand what is in this image');
     
     const responseResult = await deps.providers.generateResponse(
-      image, 
-      'image/jpeg', 
+      image,
+      'image/jpeg',
       `${systemPrompt}\n\nUser: ${defaultPrompt}`
     );
-    
+
     if (!responseResult.ok) {
-      return { ok: false, error: responseResult.error };
+      return responseResult;
     }
     
     const processingTime = deps.now() - processingStart;
