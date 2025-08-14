@@ -125,7 +125,7 @@ export async function handleOCR(
     );
 
     if (!responseResult.ok) {
-      return { ok: false, error: responseResult.error };
+      return responseResult;
     }
     
     const processingTime = deps.now() - processingStart;

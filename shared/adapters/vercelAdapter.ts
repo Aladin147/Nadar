@@ -90,11 +90,12 @@ export function createVercelAssistHandler(deps: AssistDeps) {
       if (result.ok) {
         res.status(200).json(result.data);
       } else {
-        const statusCode = result.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
+        const error = result.error;
+        const statusCode = error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
         res.status(statusCode).json({
-          error: result.error.message,
-          err_code: result.error.err_code,
-          details: result.error.details
+          error: error.message,
+          err_code: error.err_code,
+          details: error.details
         });
       }
     } catch (error: any) {
@@ -128,11 +129,12 @@ export function createVercelOCRHandler(deps: AssistDeps) {
       if (result.ok) {
         res.status(200).json(result.data);
       } else {
-        const statusCode = result.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
+        const error = result.error;
+        const statusCode = error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
         res.status(statusCode).json({
-          error: result.error.message,
-          err_code: result.error.err_code,
-          details: result.error.details
+          error: error.message,
+          err_code: error.err_code,
+          details: error.details
         });
       }
     } catch (error: any) {
@@ -166,11 +168,12 @@ export function createVercelTTSHandler(deps: TTSDeps) {
       if (result.ok) {
         res.status(200).json(result.data);
       } else {
-        const statusCode = result.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
+        const error = result.error;
+        const statusCode = error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
         res.status(statusCode).json({
-          error: result.error.message,
-          err_code: result.error.err_code,
-          details: result.error.details
+          error: error.message,
+          err_code: error.err_code,
+          details: error.details
         });
       }
     } catch (error: any) {
