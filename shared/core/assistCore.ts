@@ -154,7 +154,7 @@ export async function handleAssist(
     const inspectionStart = deps.now();
     const signalsResult = await deps.providers.inspectImage(image, 'image/jpeg');
     if (!signalsResult.ok) {
-      return signalsResult;
+      return { ok: false, error: signalsResult.error };
     }
     const signals = signalsResult.data;
     const inspectionTime = deps.now() - inspectionStart;
@@ -175,7 +175,7 @@ export async function handleAssist(
     );
 
     if (!responseResult.ok) {
-      return responseResult;
+      return { ok: false, error: responseResult.error };
     }
     
     const processingTime = deps.now() - processingStart;

@@ -141,7 +141,7 @@ async function handleAssist(request, deps) {
     const inspectionStart = deps.now();
     const signalsResult = await deps.providers.inspectImage(image, "image/jpeg");
     if (!signalsResult.ok) {
-      return signalsResult;
+      return { ok: false, error: signalsResult.error };
     }
     const signals = signalsResult.data;
     const inspectionTime = deps.now() - inspectionStart;
@@ -157,7 +157,7 @@ async function handleAssist(request, deps) {
 User: ${defaultPrompt}`
     );
     if (!responseResult.ok) {
-      return responseResult;
+      return { ok: false, error: responseResult.error };
     }
     const processingTime = deps.now() - processingStart;
     const { paragraph, details } = parseResponse(responseResult.data);

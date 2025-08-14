@@ -119,13 +119,13 @@ export async function handleOCR(
     const prompt = createOCRPrompt(language, request.full || false);
     
     const responseResult = await deps.providers.generateResponse(
-      image, 
-      'image/jpeg', 
+      image,
+      'image/jpeg',
       prompt
     );
-    
+
     if (!responseResult.ok) {
-      return responseResult;
+      return { ok: false, error: responseResult.error };
     }
     
     const processingTime = deps.now() - processingStart;
