@@ -1,4 +1,15 @@
-// Shared API types for both Express server and Vercel functions
+// Core types for shared business logic - runtime agnostic
+
+// Result type for error handling
+export type Result<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: ProviderError };
+
+export interface ProviderError {
+  message: string;
+  err_code: string;
+  details?: string;
+}
 
 export interface ImageSignals {
   has_text: boolean;
@@ -32,14 +43,14 @@ export interface TTSResult {
   mimeType?: string;
 }
 
-// Request types
+// Core request types (runtime-agnostic)
 export interface AssistRequest {
-  imageBase64?: string;
-  imageRef?: 'last';
-  sessionId?: string;
-  mimeType?: string;
+  sessionId: string;
+  image?: Uint8Array;
+  imageRef?: string;
   question?: string;
-  options?: GenOptions;
+  language?: 'darija' | 'ar' | 'en';
+  verbosity?: 'brief' | 'normal' | 'detailed';
 }
 
 export interface DescribeRequest {
@@ -70,20 +81,18 @@ export interface TTSRequest {
   rate?: number;
 }
 
-// Response types
+// Core response types
 export interface AssistResponse {
-  result: string;
+  speak: string;
+  details?: string[];
   signals: ImageSignals;
-  model: string;
+  followup_suggest?: string[];
+  followupToken?: string;
   timing: {
     inspection_ms: number;
     processing_ms: number;
     total_ms: number;
   };
-  structured?: GenResult['structured'];
-  paragraph?: string;
-  details?: string[];
-  show_read_all_text?: boolean;
 }
 
 export interface StandardResponse {
@@ -119,6 +128,28 @@ export interface TelemetryData {
   remote_addr?: string;
   user_agent?: string;
   request_id?: string;
+}
+
+// Dependency injection interfaces
+export interface ImageStore {
+  save(buffer: Uint8Array, ttlMinutes?: number): Promise<string>;
+  get(token: string): Promise<Uint8Array | null>;
+}
+
+export interface AIProvider {
+  inspectImage(image: Uint8Array, mimeType: string): Promise<Result<ImageSignals>>;
+  generateResponse(image: Uint8Array, mimeType: string, prompt: string): Promise<Result<string>>;
+}
+
+export interface TelemetryLogger {
+  log(data: TelemetryData): void;
+}
+
+export interface AssistDeps {
+  providers: AIProvider;
+  telemetry: TelemetryLogger;
+  imageStore: ImageStore;
+  now: () => number;
 }
 
 // Environment context

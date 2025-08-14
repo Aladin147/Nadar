@@ -125,8 +125,8 @@ export async function handleAssistRequest(
   
   try {
     // Validate request body
-    const validatedBody = validateRequest(assistBodySchema, body);
-    
+    const validatedBody = validateRequest(assistBodySchema, body) as AssistRequest;
+
     // Resolve image (different logic for Express vs Vercel)
     let imageBase64: string;
     if (validatedBody.imageBase64) {
@@ -140,7 +140,7 @@ export async function handleAssistRequest(
     } else {
       throw new Error('No valid image provided');
     }
-    
+
     const mimeType = validatedBody.mimeType || 'image/jpeg';
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
     

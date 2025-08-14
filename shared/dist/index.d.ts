@@ -1,0 +1,9 @@
+export { handleAssist } from './core/assistCore.js';
+export { createExpressAssistHandler } from './adapters/expressAdapter.js';
+export { createVercelAssistHandler } from './adapters/vercelAdapter.js';
+export { GeminiProvider } from './providers/geminiProvider.js';
+export { ConsoleTelemetryLogger, RingBufferTelemetryLogger } from './providers/telemetryProvider.js';
+export { GlobalImageStore, MemoryImageStore, VercelBlobImageStore } from './stores/imageStore.js';
+export { AIProvider, AssistDeps, AssistRequest, AssistResponse, ImageSignals, ImageStore, ProviderError, RequestContext, Result, TelemetryData, TelemetryLogger } from './types/api.js';
+import 'express';
+import '@vercel/node';

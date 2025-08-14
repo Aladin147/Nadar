@@ -1,0 +1,6 @@
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { AssistDeps } from '../types/api.js';
+
+declare function createVercelAssistHandler(deps: AssistDeps): (req: VercelRequest, res: VercelResponse) => Promise<VercelResponse | undefined>;
+
+export { createVercelAssistHandler };

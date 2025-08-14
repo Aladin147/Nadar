@@ -1,0 +1,69 @@
+{
+  "name": "@nadar/shared",
+  "version": "1.0.0",
+  "description": "Shared business logic for Nadar API endpoints",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./core/*": {
+      "import": "./dist/core/*.js",
+      "require": "./dist/core/*.cjs",
+      "types": "./dist/core/*.d.ts"
+    },
+    "./adapters/*": {
+      "import": "./dist/adapters/*.js",
+      "require": "./dist/adapters/*.cjs",
+      "types": "./dist/adapters/*.d.ts"
+    },
+    "./providers/*": {
+      "import": "./dist/providers/*.js",
+      "require": "./dist/providers/*.cjs",
+      "types": "./dist/providers/*.d.ts"
+    },
+    "./stores/*": {
+      "import": "./dist/stores/*.js",
+      "require": "./dist/stores/*.cjs",
+      "types": "./dist/stores/*.d.ts"
+    },
+    "./types/*": {
+      "import": "./dist/types/*.js",
+      "require": "./dist/types/*.cjs",
+      "types": "./dist/types/*.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^20.0.0",
+    "@vercel/node": "^5.3.12",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@vercel/node": "*",
+    "express": "*"
+  },
+  "peerDependenciesMeta": {
+    "@vercel/node": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    }
+  }
+}

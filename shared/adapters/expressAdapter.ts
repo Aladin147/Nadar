@@ -1,19 +1,19 @@
-// Vercel adapter - maps VercelRequest to core types
+// Express adapter - maps Express req/res to core types
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { Request, Response } from 'express';
 import { AssistRequest, AssistDeps, RequestContext } from '../types/api';
 import { handleAssist } from '../core/assistCore';
 
-// Convert Vercel request to core AssistRequest
-function mapVercelRequest(req: VercelRequest): AssistRequest {
+// Convert Express request to core AssistRequest
+function mapExpressRequest(req: Request): AssistRequest {
   const body = req.body;
-
+  
   // Convert base64 image to Uint8Array if present
   let image: Uint8Array | undefined;
   if (body.imageBase64) {
     image = new Uint8Array(Buffer.from(body.imageBase64, 'base64'));
   }
-
+  
   return {
     sessionId: body.sessionId || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     image,
@@ -24,37 +24,25 @@ function mapVercelRequest(req: VercelRequest): AssistRequest {
   };
 }
 
-// Extract context from Vercel request
-function extractContext(req: VercelRequest): RequestContext {
+// Extract context from Express request
+function extractContext(req: Request): RequestContext {
   return {
-    route_path: req.url || 'unknown',
-    remote_addr: req.headers['x-forwarded-for'] as string || 'unknown',
+    route_path: req.path,
+    remote_addr: req.ip || req.connection?.remoteAddress || 'unknown',
     user_agent: req.headers['user-agent'] || 'unknown',
     request_id: req.headers['x-request-id'] as string || `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   };
 }
 
-// Vercel adapter for assist endpoint
-export function createVercelAssistHandler(deps: AssistDeps) {
-  return async (req: VercelRequest, res: VercelResponse) => {
-    // Set headers
-    res.setHeader('cache-control', 'no-store');
-    res.setHeader('x-handler', 'shared-core');
-
-    // Check method
-    if (req.method !== 'POST') {
-      return res.status(405).json({
-        error: 'Method not allowed',
-        err_code: 'METHOD_NOT_ALLOWED'
-      });
-    }
-
+// Express adapter for assist endpoint
+export function createExpressAssistHandler(deps: AssistDeps) {
+  return async (req: Request, res: Response) => {
     try {
-      const coreRequest = mapVercelRequest(req);
+      const coreRequest = mapExpressRequest(req);
       const result = await handleAssist(coreRequest, deps);
-
+      
       if (result.ok) {
-        res.status(200).json(result.data);
+        res.json(result.data);
       } else {
         const statusCode = result.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
         res.status(statusCode).json({
