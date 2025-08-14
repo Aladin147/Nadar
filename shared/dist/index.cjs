@@ -149,7 +149,7 @@ async function handleAssist(request, deps) {
     const inspectionStart = deps.now();
     const signalsResult = await deps.providers.inspectImage(image, "image/jpeg");
     if (!signalsResult.ok) {
-      return signalsResult;
+      return { ok: false, error: signalsResult.error };
     }
     const signals = signalsResult.data;
     const inspectionTime = deps.now() - inspectionStart;
@@ -165,7 +165,7 @@ async function handleAssist(request, deps) {
 User: ${defaultPrompt}`
     );
     if (!responseResult.ok) {
-      return responseResult;
+      return { ok: false, error: responseResult.error };
     }
     const processingTime = deps.now() - processingStart;
     const { paragraph, details } = parseResponse(responseResult.data);
@@ -271,6 +271,18 @@ function createExpressAssistHandler(deps) {
 }
 
 // adapters/vercelAdapter.ts
+function handleResult(result, res) {
+  if (result.ok) {
+    res.status(200).json(result.data);
+  } else {
+    const statusCode = result.error.err_code === "VALIDATION_ERROR" ? 400 : 500;
+    res.status(statusCode).json({
+      error: result.error.message,
+      err_code: result.error.err_code,
+      details: result.error.details
+    });
+  }
+}
 function mapVercelRequest(req) {
   const body = req.body;
   let image;
@@ -299,17 +311,7 @@ function createVercelAssistHandler(deps) {
     try {
       const coreRequest = mapVercelRequest(req);
       const result = await handleAssist(coreRequest, deps);
-      if (result.ok) {
-        res.status(200).json(result.data);
-      } else {
-        const error = result.error;
-        const statusCode = error.err_code === "VALIDATION_ERROR" ? 400 : 500;
-        res.status(statusCode).json({
-          error: error.message,
-          err_code: error.err_code,
-          details: error.details
-        });
-      }
+      handleResult(result, res);
     } catch (error) {
       res.status(500).json({
         error: error.message || "Internal server error",

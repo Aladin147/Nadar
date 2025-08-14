@@ -1,10 +1,24 @@
 // Vercel adapter - maps VercelRequest to core types
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { AssistRequest, AssistDeps, RequestContext } from '../types/api';
+import { AssistRequest, AssistDeps, RequestContext, Result } from '../types/api';
 import { handleAssist } from '../core/assistCore';
 import { handleOCR, OCRRequest } from '../core/ocrCore';
 import { handleTTS, TTSRequest, TTSDeps } from '../core/ttsCore';
+
+// Helper function to handle Result responses
+function handleResult<T>(result: Result<T>, res: VercelResponse): void {
+  if (result.ok) {
+    res.status(200).json(result.data);
+  } else {
+    const statusCode = result.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
+    res.status(statusCode).json({
+      error: result.error.message,
+      err_code: result.error.err_code,
+      details: result.error.details
+    });
+  }
+}
 
 // Convert Vercel request to core AssistRequest
 function mapVercelRequest(req: VercelRequest): AssistRequest {
@@ -86,18 +100,7 @@ export function createVercelAssistHandler(deps: AssistDeps) {
     try {
       const coreRequest = mapVercelRequest(req);
       const result = await handleAssist(coreRequest, deps);
-
-      if (result.ok) {
-        res.status(200).json(result.data);
-      } else {
-        const error = result.error;
-        const statusCode = error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
-        res.status(statusCode).json({
-          error: error.message,
-          err_code: error.err_code,
-          details: error.details
-        });
-      }
+      handleResult(result, res);
     } catch (error: any) {
       res.status(500).json({
         error: error.message || 'Internal server error',
@@ -125,18 +128,7 @@ export function createVercelOCRHandler(deps: AssistDeps) {
     try {
       const coreRequest = mapVercelOCRRequest(req);
       const result = await handleOCR(coreRequest, deps);
-
-      if (result.ok) {
-        res.status(200).json(result.data);
-      } else {
-        const error = result.error;
-        const statusCode = error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
-        res.status(statusCode).json({
-          error: error.message,
-          err_code: error.err_code,
-          details: error.details
-        });
-      }
+      handleResult(result, res);
     } catch (error: any) {
       res.status(500).json({
         error: error.message || 'Internal server error',
@@ -164,18 +156,7 @@ export function createVercelTTSHandler(deps: TTSDeps) {
     try {
       const coreRequest = mapVercelTTSRequest(req);
       const result = await handleTTS(coreRequest, deps);
-
-      if (result.ok) {
-        res.status(200).json(result.data);
-      } else {
-        const error = result.error;
-        const statusCode = error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
-        res.status(statusCode).json({
-          error: error.message,
-          err_code: error.err_code,
-          details: error.details
-        });
-      }
+      handleResult(result, res);
     } catch (error: any) {
       res.status(500).json({
         error: error.message || 'Internal server error',

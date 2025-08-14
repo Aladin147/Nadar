@@ -55,14 +55,14 @@ async function handleTTS(request, deps) {
     if (provider === "gemini") {
       const result = await generateGeminiTTS(request.text, deps.geminiApiKey);
       if (!result.ok) {
-        return { ok: false, error: result.error };
+        return result;
       }
       audioBase64 = result.data.audioBase64;
       mimeType = result.data.mimeType;
     } else if (provider === "elevenlabs") {
       const result = await generateElevenLabsTTS(request.text, request.voice, deps.elevenLabsApiKey);
       if (!result.ok) {
-        return { ok: false, error: result.error };
+        return result;
       }
       audioBase64 = result.data.audioBase64;
       mimeType = result.data.mimeType;
