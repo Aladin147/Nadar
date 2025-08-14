@@ -41,7 +41,10 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
@@ -52,7 +55,9 @@
     "@types/node": "^20.0.0",
     "@vercel/node": "^5.3.12",
     "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0"
   },
   "peerDependencies": {
     "@vercel/node": "*",
