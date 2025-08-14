@@ -1,5 +1,5 @@
-// Demo app configuration
-export const API_BASE = process.env.EXPO_PUBLIC_API_BASE || 'https://nadar-server-ebhhtf6v9-aladin147s-projects.vercel.app';
+// Demo app configuration - now using shared core architecture
+export const API_BASE = process.env.EXPO_PUBLIC_API_BASE || 'https://nadar-server-2v7si7bro-aladin147s-projects.vercel.app';
 
 export function isApiConfigured(): boolean {
   return !!API_BASE;
