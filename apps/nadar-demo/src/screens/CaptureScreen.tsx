@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { CameraView } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -197,18 +198,24 @@ export default function CaptureScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          disabled={isLoading || isRecording}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Capture</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <LinearGradient
+      colors={theme.gradients.background.colors}
+      style={styles.container}
+      start={theme.gradients.background.start}
+      end={theme.gradients.background.end}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            disabled={isLoading || isRecording}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Capture</Text>
+          <View style={styles.placeholder} />
+        </View>
 
       <View style={styles.cameraContainer}>
         <CameraView
@@ -284,23 +291,27 @@ export default function CaptureScreen({ navigation }: Props) {
           </Text>
         </View>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
+    paddingHorizontal: theme.spacing(3),
+    paddingVertical: theme.spacing(2),
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   backButton: {
     padding: theme.spacing(1),
@@ -308,9 +319,12 @@ const styles = StyleSheet.create({
   backButtonText: {
     ...theme.typography.body,
     color: theme.colors.primary,
+    fontWeight: '600',
   },
   title: {
     ...theme.typography.h2,
+    color: theme.colors.text,
+    fontWeight: '700',
   },
   placeholder: {
     width: 60, // Same width as back button for centering
@@ -318,6 +332,13 @@ const styles = StyleSheet.create({
   cameraContainer: {
     flex: 1,
     position: 'relative',
+    margin: theme.spacing(3),
+    borderRadius: theme.radius.xl,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...theme.shadows.lg,
   },
   camera: {
     flex: 1,
@@ -328,20 +349,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+    borderRadius: theme.radius.xl,
   },
   loadingText: {
     ...theme.typography.body,
     color: theme.colors.text,
     marginTop: theme.spacing(2),
     textAlign: 'center',
+    fontWeight: '500',
   },
   controls: {
     position: 'absolute',
-    bottom: theme.spacing(12),
+    bottom: theme.spacing(8),
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -350,48 +373,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing(4),
   },
   galleryButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...theme.shadows.md,
   },
   shutterButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.colors.text,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 4,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    ...theme.shadows.xl,
   },
   shutterButtonDisabled: {
     opacity: 0.6,
   },
   shutterButtonRecording: {
     borderColor: theme.colors.error,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   shutterInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.background,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: theme.colors.primary,
   },
   micButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...theme.shadows.md,
   },
   micButtonActive: {
     backgroundColor: theme.colors.error,
     borderColor: theme.colors.error,
+    ...theme.shadows.lg,
   },
   recordingIndicator: {
     width: 24,
@@ -401,20 +431,25 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 24,
+    color: theme.colors.text,
   },
   modeIndicator: {
     position: 'absolute',
     bottom: theme.spacing(2),
-    left: theme.spacing(2),
-    right: theme.spacing(2),
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: theme.spacing(2),
-    paddingVertical: theme.spacing(1),
-    borderRadius: theme.radius.md,
+    left: theme.spacing(4),
+    right: theme.spacing(4),
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: theme.spacing(3),
+    paddingVertical: theme.spacing(2),
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...theme.shadows.md,
   },
   modeText: {
     ...theme.typography.caption,
     color: theme.colors.text,
     textAlign: 'center',
+    fontWeight: '500',
   },
 });
