@@ -1,5 +1,30 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { kv } from '@vercel/kv';
+
+// Try different import methods for @vercel/kv
+let kv: any = null;
+let kvImportError: string | null = null;
+
+try {
+  // Method 1: Named import
+  const kvModule = require('@vercel/kv');
+  kv = kvModule.kv;
+  console.log('✅ KV imported via named import');
+} catch (error1) {
+  try {
+    // Method 2: Default import
+    kv = require('@vercel/kv').default;
+    console.log('✅ KV imported via default import');
+  } catch (error2) {
+    try {
+      // Method 3: Direct require
+      kv = require('@vercel/kv');
+      console.log('✅ KV imported via direct require');
+    } catch (error3) {
+      kvImportError = `Import failed: ${error1}, ${error2}, ${error3}`;
+      console.error('❌ All KV import methods failed:', kvImportError);
+    }
+  }
+}
 
 /**
  * Test Vercel KV (Upstash Redis) connection
@@ -16,10 +41,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
 
   try {
+    // Check if KV was imported successfully
+    if (!kv) {
+      throw new Error(`KV import failed: ${kvImportError}`);
+    }
+
+    console.log('🧪 Testing KV connection with imported module...');
+    console.log('🔍 KV object type:', typeof kv);
+    console.log('🔍 KV methods:', Object.getOwnPropertyNames(kv));
+
     // Test 1: Basic connectivity
     const testKey = `test:${Date.now()}`;
     const testValue = { message: 'Hello Upstash!', timestamp: new Date().toISOString() };
-    
+
     console.log('🧪 Testing KV connection...');
     
     // Test 2: Set operation

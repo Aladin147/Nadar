@@ -3,7 +3,20 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { kv } from '@vercel/kv';
+
+// Try to import Vercel KV with fallback
+let kv: any = null;
+let kvAvailable = false;
+
+try {
+  const kvModule = require('@vercel/kv');
+  kv = kvModule.kv || kvModule.default || kvModule;
+  kvAvailable = true;
+  console.log('✅ Vercel KV imported successfully');
+} catch (error) {
+  console.warn('⚠️ Vercel KV not available:', error);
+  kvAvailable = false;
+}
 
 // Rolling Session Memory Configuration
 const RSM_ENABLED = process.env.RSM_ENABLED === '1';
@@ -33,7 +46,7 @@ interface SessionShard {
 // Session Manager with Vercel KV (Upstash Redis)
 const sessionManager = {
   async getContext(sessionId: string): Promise<string> {
-    if (!RSM_ENABLED) return '';
+    if (!RSM_ENABLED || !kvAvailable) return '';
 
     try {
       const session = await kv.get<SessionShard>(`sess:${sessionId}`);
@@ -74,7 +87,7 @@ const sessionManager = {
   },
 
   async updateSession(sessionId: string, update: any): Promise<void> {
-    if (!RSM_ENABLED) return;
+    if (!RSM_ENABLED || !kvAvailable) return;
 
     try {
       // Get current session
@@ -157,7 +170,7 @@ const sessionManager = {
   },
 
   async getSessionInfo(sessionId: string): Promise<SessionShard | null> {
-    if (!RSM_ENABLED) return null;
+    if (!RSM_ENABLED || !kvAvailable) return null;
 
     try {
       return await kv.get<SessionShard>(`sess:${sessionId}`);
@@ -196,7 +209,7 @@ const sessionManager = {
   },
 
   async clearSession(sessionId: string): Promise<void> {
-    if (!RSM_ENABLED) return;
+    if (!RSM_ENABLED || !kvAvailable) return;
 
     try {
       await kv.del(`sess:${sessionId}`);

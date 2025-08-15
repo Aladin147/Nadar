@@ -1,9 +1,27 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { kv } from '@vercel/kv';
+
+// Try to import Vercel KV with fallback
+let kv: any = null;
+let kvAvailable = false;
+
+try {
+  const kvModule = require('@vercel/kv');
+  kv = kvModule.kv || kvModule.default || kvModule;
+  kvAvailable = true;
+  console.log('✅ Vercel KV imported successfully for session clear');
+} catch (error) {
+  console.warn('⚠️ Vercel KV not available for session clear:', error);
+  kvAvailable = false;
+}
 
 // Session Manager with Vercel KV (Upstash Redis)
 const sessionManager = {
   async clearSession(sessionId: string): Promise<void> {
+    if (!kvAvailable) {
+      console.warn('⚠️ KV not available, cannot clear session');
+      return; // Graceful degradation
+    }
+
     try {
       await kv.del(`sess:${sessionId}`);
       console.log(`🗑️ Session cleared from KV: ${sessionId}`);
