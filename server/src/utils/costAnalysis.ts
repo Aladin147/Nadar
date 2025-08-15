@@ -18,8 +18,8 @@ export const PRICING = {
   
   // ElevenLabs pricing (per character)
   ELEVENLABS: {
-    CHARACTERS_PER_DOLLAR: 25000, // ~25k characters per $1 (varies by plan)
-    COST_PER_CHARACTER: 1 / 25000 // $0.00004 per character
+    CHARACTERS_PER_DOLLAR: 66667, // Flash v2.5: 0.5 credits/char = ~66.7k characters per $1 (50% cheaper)
+    COST_PER_CHARACTER: 0.000015 // $0.000015 per character (Flash v2.5 pricing)
   }
 } as const;
 
