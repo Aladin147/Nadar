@@ -3,6 +3,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { sessionManager } from '../shared/memory/sessionManager';
 
 // Core types (would be imported from shared package)
 interface ImageSignals {
@@ -35,13 +36,20 @@ interface AssistResponse {
   };
 }
 
-// Global image cache (simple implementation)
+// Global image cache (shared with OCR endpoint)
 const imageCache = new Map<string, { buffer: Uint8Array; expires: number }>();
+
+// Export cache for use by other endpoints
+export { imageCache };
 
 // Core business logic (would be in shared/core/assistCore.ts)
 async function handleAssistCore(request: AssistRequest): Promise<AssistResponse> {
   const startTime = Date.now();
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+  // Get session context for memory
+  const sessionContext = await sessionManager.getContext(request.sessionId);
+  console.log(`📝 Session context for ${request.sessionId}: ${sessionContext ? 'found' : 'none'}`);
 
   // Resolve image
   let image: Uint8Array;
@@ -62,10 +70,10 @@ async function handleAssistCore(request: AssistRequest): Promise<AssistResponse>
   const signals = await inspectImage(image, genAI);
   const inspectionTime = Date.now() - inspectionStart;
 
-  // Step 2: Generate response
+  // Step 2: Generate response with session context
   const processingStart = Date.now();
   const language = request.language || 'darija';
-  const responseText = await generateResponse(image, language, signals, request.question, genAI);
+  const responseText = await generateResponse(image, language, signals, request.question, genAI, sessionContext);
   const processingTime = Date.now() - processingStart;
 
   // Parse response
@@ -77,7 +85,35 @@ async function handleAssistCore(request: AssistRequest): Promise<AssistResponse>
 
   const totalTime = Date.now() - startTime;
 
-  // Log telemetry (shared pattern)
+  // Update session memory after successful response
+  const sessionUpdateStart = Date.now();
+  try {
+    // Extract facts from OCR if available
+    const facts = signals.has_text && paragraph ?
+      sessionManager.extractFacts(paragraph, signals.confidence) : [];
+
+    // Guess user intent from the interaction
+    const currentSession = await sessionManager.getSessionInfo(request.sessionId);
+    const userIntent = sessionManager.guessUserIntent(
+      currentSession?.recentQA || [],
+      signals
+    );
+
+    await sessionManager.updateSession(request.sessionId, {
+      question: request.question,
+      answer: paragraph,
+      signals,
+      followupToken,
+      userIntent: userIntent || undefined,
+      facts: facts.length > 0 ? facts : undefined,
+    });
+  } catch (error) {
+    console.error('❌ Session update error:', error);
+    // Don't fail the request if session update fails
+  }
+  const sessionUpdateTime = Date.now() - sessionUpdateStart;
+
+  // Log telemetry (shared pattern) with session context info
   console.log(JSON.stringify({
     ts: new Date().toISOString(),
     mode: request.question ? 'qa' : 'describe',
@@ -87,6 +123,9 @@ async function handleAssistCore(request: AssistRequest): Promise<AssistResponse>
     total_ms: totalTime,
     model_ms: processingTime,
     signals: signals,
+    has_ctx: !!sessionContext,
+    ctx_tokens_est: sessionContext ? Math.ceil(sessionContext.length / 4) : 0,
+    ctx_write_ms: sessionUpdateTime,
     ok: true,
     request_id: request.sessionId
   }));
@@ -159,7 +198,8 @@ async function generateResponse(
   language: string,
   signals: ImageSignals,
   question?: string,
-  genAI?: GoogleGenerativeAI
+  genAI?: GoogleGenerativeAI,
+  sessionContext?: string
 ): Promise<string> {
   // Use quality model for main response generation (sophisticated MVP architecture)
   const model = genAI!.getGenerativeModel({
@@ -224,9 +264,20 @@ Format your response as a JSON object with exactly these fields:
     ? 'ساعدني نفهم شنو كاين فهاد الصورة'
     : 'Help me understand what is in this image');
 
+  // Build the full prompt with session context
+  let fullPrompt = `${systemPrompt}`;
+
+  // Add session context if available (with guard instruction)
+  if (sessionContext && sessionContext.trim()) {
+    fullPrompt += sessionContext;
+    fullPrompt += '\n\nIMPORTANT: Use the session context above ONLY if it is relevant to the current question or image. If not relevant, ignore it completely.';
+  }
+
+  fullPrompt += `\n\nUser: ${userPrompt}`;
+
   const result = await model.generateContent([
     { inlineData: { data: imageBase64, mimeType: 'image/jpeg' } },
-    { text: `${systemPrompt}\n\nUser: ${userPrompt}` }
+    { text: fullPrompt }
   ]);
 
   return result.response.text();

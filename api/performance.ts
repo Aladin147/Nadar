@@ -1,7 +1,48 @@
 // Performance monitoring endpoint
+// Direct implementation for Vercel deployment
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { globalPerformanceMonitor, globalResponseCache } from '../shared/utils/performance';
+
+// Simple performance tracking
+interface PerformanceMetrics {
+  totalRequests: number;
+  totalResponseTime: number;
+  averageResponseTime: number;
+  errorCount: number;
+  errorRate: number;
+  cacheHitRate: number;
+  lastUpdated: string;
+}
+
+// Global performance tracker
+const performanceTracker = {
+  totalRequests: 0,
+  totalResponseTime: 0,
+  errorCount: 0,
+  cacheHits: 0,
+  cacheMisses: 0,
+
+  addRequest(responseTime: number, isError: boolean = false, isCacheHit: boolean = false) {
+    this.totalRequests++;
+    this.totalResponseTime += responseTime;
+    if (isError) this.errorCount++;
+    if (isCacheHit) this.cacheHits++;
+    else this.cacheMisses++;
+  },
+
+  getMetrics(): PerformanceMetrics {
+    const totalCacheRequests = this.cacheHits + this.cacheMisses;
+    return {
+      totalRequests: this.totalRequests,
+      totalResponseTime: this.totalResponseTime,
+      averageResponseTime: this.totalRequests > 0 ? this.totalResponseTime / this.totalRequests : 0,
+      errorCount: this.errorCount,
+      errorRate: this.totalRequests > 0 ? this.errorCount / this.totalRequests : 0,
+      cacheHitRate: totalCacheRequests > 0 ? this.cacheHits / totalCacheRequests : 0,
+      lastUpdated: new Date().toISOString()
+    };
+  }
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set headers
@@ -17,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   
   try {
-    const metrics = globalPerformanceMonitor.getMetrics();
+    const metrics = performanceTracker.getMetrics();
     
     // Add cache statistics
     const cacheStats = {

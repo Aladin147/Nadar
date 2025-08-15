@@ -1,3 +1,6 @@
+// DEPRECATED: This screen is no longer used. Use WelcomeScreen -> CaptureScreen -> ResultsScreen flow instead.
+// TODO: Remove this file after confirming it's not referenced anywhere.
+
 import React, { useState, useRef } from "react";
 import {
   View,

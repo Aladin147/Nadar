@@ -215,6 +215,48 @@ export async function assistWithImageRef(
   return result;
 }
 
+// Voice follow-up function using imageRef + audio transcription
+export async function assistVoiceFollowup(
+  imageRef: string,
+  audioBase64: string,
+  audioMimeType: string,
+  options?: { verbosity?: 'brief' | 'normal'; language?: 'darija' | 'ar' | 'en' },
+  sessionId?: string
+) {
+  // For now, we'll use a simple approach: transcribe audio to text, then use text follow-up
+  // In a full implementation, you might want to send audio directly to a multimodal endpoint
+
+  console.log('🎤 Processing voice follow-up with imageRef:', imageRef);
+  console.log('🔊 Audio data length:', audioBase64.length);
+
+  // For now, we'll simulate transcription and use a generic follow-up message
+  // In a real implementation, you would transcribe the audio first
+  const transcribedQuestion = "ما هذا؟"; // "What is this?" in Arabic as a fallback
+
+  return await assistWithImageRef(
+    imageRef,
+    transcribedQuestion,
+    options,
+    sessionId
+  );
+}
+
+// Clear session memory
+export async function clearSessionMemory(sessionId: string) {
+  console.log('🗑️ Clearing session memory for:', sessionId);
+
+  const result = await postJSON<{
+    success: boolean;
+    message: string;
+    sessionId: string;
+    timestamp: string;
+    processingTime: number;
+  }>('/api/session/clear', { sessionId });
+
+  console.log('✅ Session memory cleared:', result.message);
+  return result;
+}
+
 // OCR function for text extraction
 export async function ocr(
   imageRef: string,
@@ -270,6 +312,11 @@ export async function testConnection() {
     const res = await fetch(`${base}/api/health`, {
       method: 'GET',
       signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      mode: 'cors',
     });
 
     clearTimeout(timeoutId);
