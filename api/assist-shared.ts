@@ -14,12 +14,6 @@ try {
   kv = kvModule.kv;
   kvAvailable = true;
   console.log('✅ Vercel KV imported successfully');
-  console.log('🔍 Environment check:', {
-    VERCEL_KV_URL: !!process.env.VERCEL_KV_URL,
-    VERCEL_KV_REST_TOKEN: !!process.env.VERCEL_KV_REST_TOKEN,
-    KV_REST_API_URL: !!process.env.KV_REST_API_URL,
-    KV_REST_API_TOKEN: !!process.env.KV_REST_API_TOKEN,
-  });
 } catch (error) {
   console.warn('⚠️ Vercel KV not available:', error);
   kvAvailable = false;
