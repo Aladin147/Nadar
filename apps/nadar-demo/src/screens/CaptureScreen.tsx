@@ -163,12 +163,14 @@ export default function CaptureScreen({ navigation }: Props) {
             confidence: 0.8
           },
           followup_suggest: multimodalResult.suggest || [],
-          followupToken: multimodalResult.sessionId,
+          followupToken: 'last', // Use 'last' for image reference
           timestamp: new Date().toISOString(),
-          sessionId: multimodalResult.sessionId,
+          sessionId: multimodalResult.sessionId, // Use the sessionId returned by server
           processingTime: multimodalResult.model_ms || 0,
           fallback: false
         };
+
+        console.log('🆔 Server returned sessionId:', multimodalResult.sessionId);
 
         navigation.navigate('Results', {
           response: standardResponse,
