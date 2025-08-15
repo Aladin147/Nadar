@@ -280,16 +280,15 @@ export default function CaptureScreen({ navigation }: Props) {
             )}
           </TouchableOpacity>
         </View>
-        
-        {/* Mode Indicator */}
-        <View style={styles.modeIndicator}>
-          <Text style={styles.modeText}>
-            {isRecording 
-              ? "🔴 Recording... Tap shutter or mic to capture with audio" 
-              : "Tap shutter for image only, or mic to record with audio"
-            }
-          </Text>
-        </View>
+
+        {/* Recording Indicator - Only show when recording */}
+        {isRecording && (
+          <View style={styles.recordingIndicator}>
+            <Text style={styles.recordingText}>
+              🔴 Recording... Tap to capture with audio
+            </Text>
+          </View>
+        )}
       </View>
       </SafeAreaView>
     </LinearGradient>
@@ -423,33 +422,27 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.error,
     ...theme.shadows.lg,
   },
-  recordingIndicator: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   buttonText: {
     fontSize: 24,
     color: theme.colors.text,
   },
-  modeIndicator: {
+  recordingIndicator: {
     position: 'absolute',
     bottom: theme.spacing(2),
     left: theme.spacing(4),
     right: theme.spacing(4),
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(220, 38, 38, 0.9)',
     paddingHorizontal: theme.spacing(3),
     paddingVertical: theme.spacing(2),
     borderRadius: theme.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    ...theme.shadows.md,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...theme.shadows.lg,
   },
-  modeText: {
+  recordingText: {
     ...theme.typography.caption,
     color: theme.colors.text,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

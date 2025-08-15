@@ -185,24 +185,26 @@ export default function WelcomeScreen({ navigation }: Props) {
         end={theme.gradients.background.end}
       >
         <SafeAreaView style={styles.safeArea}>
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={true}
-          >
-            <Animated.View
-              style={[
-                styles.content,
-                {
-                  opacity: fadeAnim,
-                  transform: [
-                    { translateY: slideAnim },
-                    { scale: scaleAnim }
-                  ]
-                }
-              ]}
+          {/* Main Content Area */}
+          <View style={styles.mainContent}>
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={true}
             >
+              <Animated.View
+                style={[
+                  styles.content,
+                  {
+                    opacity: fadeAnim,
+                    transform: [
+                      { translateY: slideAnim },
+                      { scale: scaleAnim }
+                    ]
+                  }
+                ]}
+              >
             {/* Hero Section */}
             <View style={styles.heroSection}>
               {/* App Icon with Glow Effect */}
@@ -345,10 +347,12 @@ export default function WelcomeScreen({ navigation }: Props) {
               )}
             </View>
 
-            {/* Spacer for better mobile layout */}
-            <View style={styles.buttonSpacer} />
+              </Animated.View>
+            </ScrollView>
+          </View>
 
-            {/* Action Button */}
+          {/* Persistent Action Button */}
+          <View style={styles.persistentButtonContainer}>
             <TouchableOpacity
               style={[
                 styles.startButton,
@@ -384,8 +388,7 @@ export default function WelcomeScreen({ navigation }: Props) {
                 )}
               </LinearGradient>
             </TouchableOpacity>
-            </Animated.View>
-          </ScrollView>
+          </View>
         </SafeAreaView>
       </LinearGradient>
     </>
@@ -399,38 +402,39 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  mainContent: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: theme.spacing(3),
-    paddingBottom: theme.spacing(8), // Extra bottom padding for safe scrolling
+    paddingBottom: theme.spacing(2), // Reduced padding since button is persistent
   },
   content: {
-    // Remove fixed height to allow natural scrolling
     paddingTop: theme.spacing(1),
   },
 
-  // Hero Section
+  // Hero Section - More compact
   heroSection: {
     alignItems: 'center',
-    paddingTop: theme.spacing(4),
-    paddingBottom: theme.spacing(4),
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(3),
   },
   iconContainer: {
     marginBottom: theme.spacing(3),
   },
   iconGradient: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.xl,
   },
   appIcon: {
-    fontSize: 48,
+    fontSize: 40,
   },
   appTitle: {
     ...createTextStyle('display'),
@@ -463,29 +467,29 @@ const styles = StyleSheet.create({
     ...createTextStyle('caption', theme.colors.textSecondary),
   },
 
-  // Features Grid
+  // Features Grid - More compact
   featuresGrid: {
-    paddingVertical: theme.spacing(3),
+    paddingVertical: theme.spacing(2),
   },
   featureCard: {
     ...componentStyles.card.glass,
-    marginBottom: theme.spacing(2.5),
+    marginBottom: theme.spacing(2),
     alignItems: 'center',
-    paddingVertical: theme.spacing(3),
+    paddingVertical: theme.spacing(2.5),
     paddingHorizontal: theme.spacing(3),
   },
   featureIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: theme.colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing(2),
+    marginBottom: theme.spacing(1.5),
     ...theme.shadows.sm,
   },
   featureIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   featureTitle: {
     ...createTextStyle('label'),
@@ -498,11 +502,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Permissions Card
+  // Permissions Card - More compact
   permissionsCard: {
     ...componentStyles.card.elevated,
-    marginBottom: theme.spacing(4),
-    paddingVertical: theme.spacing(3),
+    marginBottom: theme.spacing(2),
+    paddingVertical: theme.spacing(2.5),
     paddingHorizontal: theme.spacing(3),
   },
   permissionsTitle: {
@@ -546,16 +550,20 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 
-  // Button spacing
-  buttonSpacer: {
-    height: theme.spacing(2),
+  // Persistent Button Container
+  persistentButtonContainer: {
+    paddingHorizontal: theme.spacing(3),
+    paddingVertical: theme.spacing(2),
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
 
   // Start Button
   startButton: {
     borderRadius: theme.radius.lg,
     overflow: 'hidden',
-    ...theme.shadows.md,
+    ...theme.shadows.lg,
   },
   startButtonGradient: {
     ...componentStyles.button.primary,
