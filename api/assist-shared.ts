@@ -49,7 +49,7 @@ const sessionManager = {
     if (!RSM_ENABLED || !kvAvailable) return '';
 
     try {
-      const session = await kv.get<SessionShard>(`sess:${sessionId}`);
+      const session = await kv.get(`sess:${sessionId}`) as SessionShard;
       if (!session) return '';
 
       // Format context with priority-based packing
@@ -91,7 +91,7 @@ const sessionManager = {
 
     try {
       // Get current session
-      const current = await kv.get<SessionShard>(`sess:${sessionId}`) || {};
+      const current = (await kv.get(`sess:${sessionId}`) as SessionShard) || {};
 
       // Update timestamp
       current.capturedAt = new Date().toISOString();
@@ -173,7 +173,7 @@ const sessionManager = {
     if (!RSM_ENABLED || !kvAvailable) return null;
 
     try {
-      return await kv.get<SessionShard>(`sess:${sessionId}`);
+      return await kv.get(`sess:${sessionId}`) as SessionShard;
     } catch (error) {
       console.error('❌ Session info error:', error);
       return null;
