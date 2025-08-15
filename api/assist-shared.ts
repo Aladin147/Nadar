@@ -361,6 +361,7 @@ async function handleAssistCore(request: AssistRequest): Promise<AssistResponse>
       'What is next to me?'
     ],
     followupToken,
+    sessionId: request.sessionId, // Return sessionId for client tracking
     timing: {
       inspection_ms: inspectionTime,
       processing_ms: processingTime,
@@ -544,10 +545,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json(result);
 
   } catch (error: any) {
+    console.error('❌ Assist-shared error:', error);
+    console.error('❌ Error stack:', error.stack);
+
     const statusCode = error.message?.includes('No valid image') ? 400 : 500;
     res.status(statusCode).json({
       error: error.message || 'Internal server error',
-      err_code: error.message?.includes('No valid image') ? 'INVALID_IMAGE' : 'UNKNOWN'
+      err_code: error.message?.includes('No valid image') ? 'INVALID_IMAGE' : 'UNKNOWN',
+      details: error.stack || 'No stack trace available',
+      timestamp: new Date().toISOString()
     });
   }
 }
