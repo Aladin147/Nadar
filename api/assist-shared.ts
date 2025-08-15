@@ -3,19 +3,23 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Redis } from '@upstash/redis';
 
-// Try to import Vercel KV with fallback
-let kv: any = null;
-let kvAvailable = false;
+// Initialize Upstash Redis client
+let redis: Redis | null = null;
+let redisAvailable = false;
 
 try {
-  const kvModule = require('@vercel/kv');
-  kv = kvModule.kv || kvModule.default || kvModule;
-  kvAvailable = true;
-  console.log('✅ Vercel KV imported successfully');
+  // Use the REST API for serverless compatibility
+  redis = new Redis({
+    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+  redisAvailable = true;
+  console.log('✅ Upstash Redis client initialized successfully');
 } catch (error) {
-  console.warn('⚠️ Vercel KV not available:', error);
-  kvAvailable = false;
+  console.warn('⚠️ Upstash Redis not available:', error);
+  redisAvailable = false;
 }
 
 // Rolling Session Memory Configuration
@@ -46,10 +50,10 @@ interface SessionShard {
 // Session Manager with Vercel KV (Upstash Redis)
 const sessionManager = {
   async getContext(sessionId: string): Promise<string> {
-    if (!RSM_ENABLED || !kvAvailable) return '';
+    if (!RSM_ENABLED || !redisAvailable || !redis) return '';
 
     try {
-      const session = await kv.get(`sess:${sessionId}`) as SessionShard;
+      const session = await redis.get(`sess:${sessionId}`) as SessionShard;
       if (!session) return '';
 
       // Format context with priority-based packing
@@ -87,11 +91,11 @@ const sessionManager = {
   },
 
   async updateSession(sessionId: string, update: any): Promise<void> {
-    if (!RSM_ENABLED || !kvAvailable) return;
+    if (!RSM_ENABLED || !redisAvailable || !redis) return;
 
     try {
       // Get current session
-      const current = (await kv.get(`sess:${sessionId}`) as SessionShard) || {};
+      const current = (await redis.get(`sess:${sessionId}`) as SessionShard) || {};
 
       // Update timestamp
       current.capturedAt = new Date().toISOString();
@@ -124,10 +128,10 @@ const sessionManager = {
         current.prefs = { ...current.prefs, ...update.prefs };
       }
 
-      // Save to KV with TTL
-      await kv.set(`sess:${sessionId}`, current, { ex: SESSION_TTL });
+      // Save to Redis with TTL
+      await redis.setex(`sess:${sessionId}`, SESSION_TTL, JSON.stringify(current));
 
-      console.log(`✅ Session updated in KV: ${sessionId}`);
+      console.log(`✅ Session updated in Redis: ${sessionId}`);
     } catch (error) {
       console.error('❌ Session update error:', error);
       // Don't throw - graceful degradation
@@ -170,10 +174,10 @@ const sessionManager = {
   },
 
   async getSessionInfo(sessionId: string): Promise<SessionShard | null> {
-    if (!RSM_ENABLED || !kvAvailable) return null;
+    if (!RSM_ENABLED || !redisAvailable || !redis) return null;
 
     try {
-      return await kv.get(`sess:${sessionId}`) as SessionShard;
+      return await redis.get(`sess:${sessionId}`) as SessionShard;
     } catch (error) {
       console.error('❌ Session info error:', error);
       return null;
@@ -209,11 +213,11 @@ const sessionManager = {
   },
 
   async clearSession(sessionId: string): Promise<void> {
-    if (!RSM_ENABLED || !kvAvailable) return;
+    if (!RSM_ENABLED || !redisAvailable || !redis) return;
 
     try {
-      await kv.del(`sess:${sessionId}`);
-      console.log(`🗑️ Session cleared from KV: ${sessionId}`);
+      await redis.del(`sess:${sessionId}`);
+      console.log(`🗑️ Session cleared from Redis: ${sessionId}`);
     } catch (error) {
       console.error('❌ Session clear error:', error);
       // Don't throw - graceful degradation
