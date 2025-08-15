@@ -230,7 +230,6 @@ export default function ResultsScreen({ navigation, route }: Props) {
 
         {/* Cost Tracker Display */}
         <CompactCostDisplay onPress={() => setShowCostTracker(true)} />
-        </View>
 
         <ScrollView
           style={styles.content}
