@@ -252,6 +252,11 @@ interface AssistResponse {
     processing_ms: number;
     total_ms: number;
   };
+  tokenUsage?: {
+    input: number;
+    output: number;
+    total: number;
+  };
 }
 
 // Global image cache (shared with OCR endpoint)
