@@ -31,10 +31,10 @@ const PRICING = {
     IMAGE_PER_1M_TOKENS: 0.15    // $0.15 per 1M image tokens
   },
   
-  // ElevenLabs pricing (per character)
+  // ElevenLabs Flash v2.5 pricing (per character) - 50% cheaper
   ELEVENLABS: {
-    CHARACTERS_PER_DOLLAR: 25000, // ~25k characters per $1 (varies by plan)
-    COST_PER_CHARACTER: 1 / 25000 // $0.00004 per character
+    CHARACTERS_PER_DOLLAR: 66667, // Flash v2.5: 0.5 credits/char = ~66.7k characters per $1
+    COST_PER_CHARACTER: 0.000015 // $0.000015 per character (Flash v2.5 pricing)
   }
 } as const;
 
