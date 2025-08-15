@@ -71,6 +71,21 @@ const sessionManager = {
     }
 
     return facts.slice(0, 3);
+  },
+
+  async getSessionInfo(sessionId: string): Promise<any> {
+    return sessionMemory.get(sessionId) || null;
+  },
+
+  guessUserIntent(recentQA: any[], signals?: any): string {
+    if (!recentQA || recentQA.length === 0) return '';
+    const lastQuestion = recentQA[recentQA.length - 1]?.q.toLowerCase() || '';
+
+    if (lastQuestion.includes('exit') || lastQuestion.includes('خروج')) return 'finding exit';
+    if (lastQuestion.includes('toilet') || lastQuestion.includes('حمام')) return 'finding restroom';
+    if (lastQuestion.includes('read') || lastQuestion.includes('قرا')) return 'reading text';
+
+    return 'general assistance';
   }
 };
 
