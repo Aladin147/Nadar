@@ -51,13 +51,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Get cached image
-    const cachedImage = imageCache.get(imageRef);
-    if (!cachedImage) {
-      return res.status(404).json({
-        error: 'Image not found or expired',
-        err_code: 'IMAGE_NOT_FOUND'
-      });
+    // Get cached image with 'last' support
+    let cachedImage;
+
+    if (imageRef === 'last') {
+      // Find the most recent image in cache
+      let mostRecentImage = null;
+      let mostRecentTime = 0;
+
+      for (const [key, value] of imageCache.entries()) {
+        if (value.expires > Date.now()) { // Only consider non-expired images
+          const timestamp = parseInt(key.split('-')[1]); // Extract timestamp from key
+          if (timestamp > mostRecentTime) {
+            mostRecentTime = timestamp;
+            mostRecentImage = value;
+          }
+        }
+      }
+
+      if (!mostRecentImage) {
+        return res.status(404).json({
+          error: 'No recent cached image found for imageRef: last',
+          err_code: 'IMAGE_NOT_FOUND'
+        });
+      }
+      cachedImage = mostRecentImage;
+      console.log(`📸 OCR using most recent cached image (timestamp: ${mostRecentTime})`);
+    } else {
+      // Use exact imageRef lookup
+      cachedImage = imageCache.get(imageRef);
+      if (!cachedImage || cachedImage.expires < Date.now()) {
+        return res.status(404).json({
+          error: `Image not found or expired for imageRef: ${imageRef}`,
+          err_code: 'IMAGE_NOT_FOUND'
+        });
+      }
     }
 
     // Extract text using Gemini

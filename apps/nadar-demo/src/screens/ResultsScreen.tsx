@@ -73,10 +73,12 @@ export default function ResultsScreen({ navigation, route }: Props) {
     try {
       setIsProcessingFollowup(true);
       console.log('🔄 Processing follow-up question:', question);
+      console.log('🎫 Using followupToken:', response.followupToken);
 
-      // Use the correct API endpoint with imageRef
+      // Use the actual followupToken from the response, fallback to 'last'
+      const imageRef = response.followupToken || 'last';
       const followupResult = await assistWithImageRef(
-        'last', // Use the last image from the session
+        imageRef,
         question,
         { language: 'darija', verbosity: 'brief' },
         sessionId
@@ -131,8 +133,9 @@ export default function ResultsScreen({ navigation, route }: Props) {
         const audioBase64 = await audioRecorder.convertToBase64(audioUri);
 
         // Use the voice follow-up function with audio + imageRef
+        const imageRef = response.followupToken || 'last';
         const followupResult = await assistVoiceFollowup(
-          'last', // Use the last image from the session
+          imageRef,
           audioBase64,
           'audio/wav', // Assuming WAV format from recorder
           { language: 'darija', verbosity: 'brief' },
