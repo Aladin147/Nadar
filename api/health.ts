@@ -1,14 +1,12 @@
-// Comprehensive health check endpoint with reliability monitoring
+// Self-contained health check endpoint for Vercel deployment
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GeminiProvider } from '../shared/providers/geminiProvider';
-import { geminiCircuitBreaker, elevenLabsCircuitBreaker } from '../shared/utils/reliability';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set headers
   res.setHeader('cache-control', 'no-store');
   res.setHeader('content-type', 'application/json');
-  res.setHeader('x-handler', 'comprehensive-health-check');
+  res.setHeader('x-handler', 'robust-health-check');
 
   // Only allow GET requests
   if (req.method !== 'GET') {
@@ -23,6 +21,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let overallStatus = 'healthy';
 
   try {
+    console.log('🏥 Starting health check...');
+
     // Check environment variables
     const envCheck = checkEnvironment();
     checks.push(envCheck);
@@ -32,24 +32,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Check Gemini service
     if (process.env.GEMINI_API_KEY) {
-      try {
-        const geminiProvider = new GeminiProvider(process.env.GEMINI_API_KEY);
-        const geminiHealth = await geminiProvider.checkHealth();
-        checks.push({
-          ...geminiHealth,
-          circuitBreaker: geminiProvider.getCircuitBreakerStatus()
-        });
+      const geminiCheck = await checkGeminiHealth();
+      checks.push(geminiCheck);
 
-        if (geminiHealth.status !== 'healthy') {
-          overallStatus = geminiHealth.status === 'degraded' ? 'degraded' : 'unhealthy';
-        }
-      } catch (error: any) {
-        checks.push({
-          service: 'Gemini',
-          status: 'unhealthy',
-          lastCheck: new Date().toISOString(),
-          details: `Health check failed: ${error.message}`
-        });
+      if (geminiCheck.status !== 'healthy') {
         overallStatus = 'unhealthy';
       }
     }
@@ -57,13 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Check ElevenLabs service (if configured)
     if (process.env.ELEVENLABS_API_KEY) {
       const elevenLabsCheck = await checkElevenLabsHealth();
-      checks.push({
-        ...elevenLabsCheck,
-        circuitBreaker: elevenLabsCircuitBreaker.getState()
-      });
+      checks.push(elevenLabsCheck);
 
       if (elevenLabsCheck.status !== 'healthy') {
-        overallStatus = elevenLabsCheck.status === 'degraded' ? 'degraded' : 'unhealthy';
+        overallStatus = 'unhealthy';
       }
     }
 
@@ -77,6 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const totalTime = Date.now() - startTime;
 
     const response = {
+      ok: overallStatus === 'healthy', // Add ok field for client compatibility
       status: overallStatus,
       timestamp: new Date().toISOString(),
       responseTime: totalTime,
@@ -107,6 +91,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       err_code: 'HEALTH_CHECK_ERROR',
       details: error.message
     });
+  }
+}
+
+// Self-contained Gemini health check
+async function checkGeminiHealth() {
+  const startTime = Date.now();
+
+  try {
+    // Simple test call to Gemini API
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+      method: 'GET',
+      headers: {
+        'x-goog-api-key': process.env.GEMINI_API_KEY || ''
+      },
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+
+    const responseTime = Date.now() - startTime;
+
+    if (response.ok) {
+      return {
+        service: 'Gemini',
+        status: 'healthy' as const,
+        responseTime,
+        lastCheck: new Date().toISOString(),
+        details: 'API responding normally'
+      };
+    } else {
+      return {
+        service: 'Gemini',
+        status: 'unhealthy' as const,
+        responseTime,
+        lastCheck: new Date().toISOString(),
+        details: `API returned ${response.status}: ${response.statusText}`
+      };
+    }
+  } catch (error: any) {
+    const responseTime = Date.now() - startTime;
+
+    return {
+      service: 'Gemini',
+      status: 'unhealthy' as const,
+      responseTime,
+      lastCheck: new Date().toISOString(),
+      details: error.message || 'Health check failed'
+    };
   }
 }
 

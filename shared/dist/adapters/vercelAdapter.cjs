@@ -143,7 +143,8 @@ async function handleAssist(request, deps) {
     const inspectionStart = deps.now();
     const signalsResult = await deps.providers.inspectImage(image, "image/jpeg");
     if (!signalsResult.ok) {
-      return { ok: false, error: signalsResult.error };
+      const errorResult = signalsResult;
+      return { ok: false, error: errorResult.error };
     }
     const signals = signalsResult.data;
     const inspectionTime = deps.now() - inspectionStart;
@@ -159,7 +160,8 @@ async function handleAssist(request, deps) {
 User: ${defaultPrompt}`
     );
     if (!responseResult.ok) {
-      return { ok: false, error: responseResult.error };
+      const errorResult = responseResult;
+      return { ok: false, error: errorResult.error };
     }
     const processingTime = deps.now() - processingStart;
     const { paragraph, details } = parseResponse(responseResult.data);
@@ -307,7 +309,8 @@ async function handleOCR(request, deps) {
       prompt
     );
     if (!responseResult.ok) {
-      return { ok: false, error: responseResult.error };
+      const errorResult = responseResult;
+      return { ok: false, error: errorResult.error };
     }
     const processingTime = deps.now() - processingStart;
     const totalTime = deps.now() - startTime;
@@ -496,11 +499,59 @@ async function generateGeminiTTS(text, apiKey) {
         }
       };
     }
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
+    const requestBody = {
+      contents: [{
+        parts: [{
+          text
+        }]
+      }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: "Kore"
+            }
+          }
+        }
+      }
+    };
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
+      body: JSON.stringify(requestBody)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        ok: false,
+        error: {
+          message: `Gemini TTS API error: ${response.status} ${response.statusText} - ${errorText}`,
+          err_code: "GEMINI_TTS_API_ERROR"
+        }
+      };
+    }
+    const result = await response.json();
+    const audioBase64 = result.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!audioBase64) {
+      return {
+        ok: false,
+        error: {
+          message: "No audio data received from Gemini TTS API",
+          err_code: "NO_AUDIO_DATA"
+        }
+      };
+    }
     return {
-      ok: false,
-      error: {
-        message: "Gemini TTS not yet implemented",
-        err_code: "NOT_IMPLEMENTED"
+      ok: true,
+      data: {
+        audioBase64,
+        mimeType: "audio/wav"
+        // Gemini TTS returns PCM data, which we'll treat as WAV
       }
     };
   } catch (error) {
@@ -576,11 +627,12 @@ function handleResult(result, res) {
   if (result.ok) {
     res.status(200).json(result.data);
   } else {
-    const statusCode = result.error.err_code === "VALIDATION_ERROR" ? 400 : 500;
+    const errorResult = result;
+    const statusCode = errorResult.error.err_code === "VALIDATION_ERROR" ? 400 : 500;
     res.status(statusCode).json({
-      error: result.error.message,
-      err_code: result.error.err_code,
-      details: result.error.details
+      error: errorResult.error.message,
+      err_code: errorResult.error.err_code,
+      details: errorResult.error.details
     });
   }
 }

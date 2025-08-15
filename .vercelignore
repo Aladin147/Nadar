@@ -1,0 +1,24 @@
+# Exclude shared directory from Vercel build (not currently used)
+shared/
+
+# Exclude development files
+*.md
+*.test.ts
+*.test.js
+.git/
+.github/
+node_modules/
+
+# Exclude app directories (not needed for API deployment)
+app/
+apps/
+
+# Exclude server directory (not needed for serverless deployment)
+server/
+
+# Exclude documentation and development files
+docs/
+*.log
+.env.example
+dev-tunnel*.js
+deploy-*.js

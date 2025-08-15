@@ -129,6 +129,48 @@ export async function assist(
   }>('/api/assist-shared', body);
 }
 
+// Multimodal assist function (image + audio + text)
+export async function assistMultimodal(
+  imageBase64: string,
+  imageMimeType: string,
+  audioBase64?: string,
+  audioMimeType?: string,
+  question?: string,
+  options?: { verbosity?: 'brief' | 'normal'; language?: 'darija' | 'ar' | 'en' },
+  sessionId?: string
+) {
+  const body = {
+    sessionId: sessionId || `demo-${Date.now()}`,
+    language: options?.language || 'darija',
+    style: options?.verbosity === 'normal' ? 'detailed' : 'single_paragraph',
+    image: {
+      mime: imageMimeType,
+      data: imageBase64
+    },
+    ...(audioBase64 && {
+      audio: {
+        mime: audioMimeType || 'audio/wav',
+        data: audioBase64
+      }
+    }),
+    ...(question && { question })
+  };
+
+  console.log('🚀 Demo app sending multimodal request');
+  console.log(`📊 Input: image=${!!body.image}, audio=${!!body.audio}, question=${!!question}`);
+
+  return await postJSON<{
+    sessionId: string;
+    speak: string;
+    suggest?: string[];
+    tokens_in?: number;
+    tokens_out?: number;
+    audio_bytes?: number;
+    model_ms?: number;
+    assist_engine: string;
+  }>('/api/live/assist', body);
+}
+
 // New function for follow-up questions using imageRef
 export async function assistWithImageRef(
   imageRef: string,
@@ -210,10 +252,10 @@ export async function tts(
   rate?: number
 ) {
   return postJSON<{ audioBase64: string; mimeType?: string }>(`/api/tts-shared`, {
-    text, 
-    voice, 
-    provider: provider || 'elevenlabs', // Default to ElevenLabs
-    rate 
+    text,
+    voice,
+    provider: provider || 'elevenlabs', // Default to ElevenLabs for best quality and speed
+    rate
   });
 }
 

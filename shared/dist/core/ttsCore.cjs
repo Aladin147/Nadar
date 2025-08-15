@@ -154,11 +154,59 @@ async function generateGeminiTTS(text, apiKey) {
         }
       };
     }
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
+    const requestBody = {
+      contents: [{
+        parts: [{
+          text
+        }]
+      }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: {
+              voiceName: "Kore"
+            }
+          }
+        }
+      }
+    };
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
+      body: JSON.stringify(requestBody)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        ok: false,
+        error: {
+          message: `Gemini TTS API error: ${response.status} ${response.statusText} - ${errorText}`,
+          err_code: "GEMINI_TTS_API_ERROR"
+        }
+      };
+    }
+    const result = await response.json();
+    const audioBase64 = result.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!audioBase64) {
+      return {
+        ok: false,
+        error: {
+          message: "No audio data received from Gemini TTS API",
+          err_code: "NO_AUDIO_DATA"
+        }
+      };
+    }
     return {
-      ok: false,
-      error: {
-        message: "Gemini TTS not yet implemented",
-        err_code: "NOT_IMPLEMENTED"
+      ok: true,
+      data: {
+        audioBase64,
+        mimeType: "audio/wav"
+        // Gemini TTS returns PCM data, which we'll treat as WAV
       }
     };
   } catch (error) {

@@ -13,9 +13,10 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { theme } from "../theme";
-import { assist, assistWithImageRef, ocr, testConnection, tts, postJSON } from "../api/client";
+import { assist, assistWithImageRef, assistMultimodal, ocr, testConnection, tts, postJSON } from "../api/client";
 import { downscale } from "../utils/downscale";
 import { AudioPlayer, AudioPlayerRef } from "../utils/audioPlayer";
+import { audioRecorder } from "../utils/audioRecording";
 
 interface AssistResponse {
   speak: string;
@@ -35,13 +36,26 @@ interface AssistResponse {
   fallback?: boolean;
 }
 
+interface MultimodalResponse {
+  sessionId: string;
+  speak: string;
+  suggest?: string[];
+  tokens_in?: number;
+  tokens_out?: number;
+  audio_bytes?: number;
+  model_ms?: number;
+  assist_engine: string;
+}
+
 export default function DemoScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState<AssistResponse | null>(null);
+  const [response, setResponse] = useState<AssistResponse | MultimodalResponse | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isPlayingTTS, setIsPlayingTTS] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<'image-only' | 'image-with-audio'>('image-only');
   const cameraRef = useRef<CameraView>(null);
   const audioRef = useRef<AudioPlayerRef['current']>(null);
   const audioPlayer = useRef(new AudioPlayer({ current: null }));
@@ -81,6 +95,92 @@ export default function DemoScreen() {
       // Don't show error to user - TTS failure shouldn't block the demo
     } finally {
       setIsPlayingTTS(false);
+    }
+  };
+
+  // Audio recording functions
+  const startRecording = async () => {
+    try {
+      setIsRecording(true);
+      await audioRecorder.startRecording();
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      console.log("🎤 Started recording audio");
+    } catch (error) {
+      console.error("❌ Failed to start recording:", error);
+      setIsRecording(false);
+      Alert.alert("Error", "Failed to start audio recording. Please check permissions.");
+    }
+  };
+
+  const stopRecordingAndCapture = async () => {
+    if (!cameraRef.current) return;
+
+    try {
+      setIsLoading(true);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // Stop recording and get audio
+      const audioUri = await audioRecorder.stopRecording();
+      setIsRecording(false);
+
+      // Take photo
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!photo?.base64) {
+        throw new Error("Failed to capture image");
+      }
+
+      // Process multimodal request
+      if (audioUri) {
+        const audioBase64 = await audioRecorder.convertToBase64(audioUri);
+        const result = await assistMultimodal(
+          photo.base64,
+          "image/jpeg",
+          audioBase64,
+          "audio/wav"
+        );
+
+        // Convert multimodal response to standard format for UI compatibility
+        const standardResponse: AssistResponse = {
+          speak: result.speak,
+          details: result.suggest || [],
+          signals: {
+            has_text: false,
+            hazards: [],
+            people_count: 0,
+            lighting_ok: true,
+            confidence: 0.8
+          },
+          followup_suggest: result.suggest,
+          followupToken: result.sessionId,
+          timestamp: new Date().toISOString(),
+          sessionId: result.sessionId,
+          processingTime: result.model_ms || 0,
+          fallback: false
+        };
+
+        setResponse(standardResponse);
+        setShowDetails(false);
+
+        // Auto-play TTS for the main response
+        await playTTS(result.speak);
+      } else {
+        // Fallback to image-only if audio failed
+        const result = await assist(photo.base64, "image/jpeg");
+        setResponse(result);
+        setShowDetails(false);
+        await playTTS(result.speak);
+      }
+
+    } catch (error) {
+      console.error("Multimodal capture error:", error);
+      Alert.alert("Error", "Failed to process image and audio. Please try again.");
+    } finally {
+      setIsLoading(false);
+      setIsRecording(false);
     }
   };
 
@@ -246,29 +346,52 @@ export default function DemoScreen() {
           <TouchableOpacity
             style={styles.galleryButton}
             onPress={handleGallery}
-            disabled={isLoading}
+            disabled={isLoading || isRecording}
           >
             <Text style={styles.buttonText}>Gallery</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={[styles.shutterButton, isLoading && styles.shutterButtonDisabled]}
-            onPress={handleCapture}
+            style={[
+              styles.shutterButton,
+              (isLoading || isRecording) && styles.shutterButtonDisabled
+            ]}
+            onPress={isRecording ? stopRecordingAndCapture : handleCapture}
             disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color={theme.colors.text} />
+            ) : isRecording ? (
+              <View style={[styles.shutterInner, { backgroundColor: theme.colors.error }]} />
             ) : (
               <View style={styles.shutterInner} />
             )}
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={styles.micButton}
+            style={[
+              styles.micButton,
+              isRecording && styles.micButtonActive
+            ]}
+            onPress={isRecording ? stopRecordingAndCapture : startRecording}
             disabled={isLoading}
           >
-            <Text style={styles.buttonText}>���</Text>
+            {isRecording ? (
+              <ActivityIndicator color={theme.colors.text} size="small" />
+            ) : (
+              <Text style={styles.buttonText}>🎤</Text>
+            )}
           </TouchableOpacity>
+        </View>
+
+        {/* Mode indicator */}
+        <View style={styles.modeIndicator}>
+          <Text style={styles.modeText}>
+            {isRecording
+              ? "🔴 Recording... Tap shutter or mic to capture with audio"
+              : "Tap shutter for image only, or mic to record with audio"
+            }
+          </Text>
         </View>
       </View>
 
@@ -500,5 +623,24 @@ const styles = StyleSheet.create({
   followUpChipText: {
     ...theme.typography.caption,
     color: theme.colors.text,
+  },
+  micButtonActive: {
+    backgroundColor: theme.colors.error,
+    borderColor: theme.colors.error,
+  },
+  modeIndicator: {
+    position: 'absolute',
+    bottom: theme.spacing(1),
+    left: theme.spacing(2),
+    right: theme.spacing(2),
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: theme.spacing(2),
+    paddingVertical: theme.spacing(1),
+    borderRadius: theme.radius.md,
+  },
+  modeText: {
+    ...theme.typography.caption,
+    color: theme.colors.text,
+    textAlign: 'center',
   },
 });

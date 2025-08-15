@@ -115,7 +115,8 @@ async function handleAssist(request, deps) {
     const inspectionStart = deps.now();
     const signalsResult = await deps.providers.inspectImage(image, "image/jpeg");
     if (!signalsResult.ok) {
-      return { ok: false, error: signalsResult.error };
+      const errorResult = signalsResult;
+      return { ok: false, error: errorResult.error };
     }
     const signals = signalsResult.data;
     const inspectionTime = deps.now() - inspectionStart;
@@ -131,7 +132,8 @@ async function handleAssist(request, deps) {
 User: ${defaultPrompt}`
     );
     if (!responseResult.ok) {
-      return { ok: false, error: responseResult.error };
+      const errorResult = responseResult;
+      return { ok: false, error: errorResult.error };
     }
     const processingTime = deps.now() - processingStart;
     const { paragraph, details } = parseResponse(responseResult.data);
@@ -241,11 +243,12 @@ function handleResult(result, res) {
   if (result.ok) {
     res.status(200).json(result.data);
   } else {
-    const statusCode = result.error.err_code === "VALIDATION_ERROR" ? 400 : 500;
+    const errorResult = result;
+    const statusCode = errorResult.error.err_code === "VALIDATION_ERROR" ? 400 : 500;
     res.status(statusCode).json({
-      error: result.error.message,
-      err_code: result.error.err_code,
-      details: result.error.details
+      error: errorResult.error.message,
+      err_code: errorResult.error.err_code,
+      details: errorResult.error.details
     });
   }
 }
@@ -461,7 +464,8 @@ async function withRetry(operation, config = DEFAULT_RETRY_CONFIG, context = "op
         }
         return result;
       }
-      const enhancedError = enhanceError(result.error, config);
+      const errorResult = result;
+      const enhancedError = enhanceError(errorResult.error, config);
       lastError = enhancedError;
       if (!enhancedError.isRetryable || attempt === config.maxAttempts) {
         console.log(`\u274C ${context}: Non-retryable error or max attempts reached`);

@@ -105,7 +105,8 @@ async function handleOCR(request, deps) {
       prompt
     );
     if (!responseResult.ok) {
-      return { ok: false, error: responseResult.error };
+      const errorResult = responseResult;
+      return { ok: false, error: errorResult.error };
     }
     const processingTime = deps.now() - processingStart;
     const totalTime = deps.now() - startTime;

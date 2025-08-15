@@ -172,7 +172,8 @@ async function withRetry(operation, config = DEFAULT_RETRY_CONFIG, context = "op
         }
         return result;
       }
-      const enhancedError = enhanceError(result.error, config);
+      const errorResult = result;
+      const enhancedError = enhanceError(errorResult.error, config);
       lastError = enhancedError;
       if (!enhancedError.isRetryable || attempt === config.maxAttempts) {
         console.log(`\u274C ${context}: Non-retryable error or max attempts reached`);

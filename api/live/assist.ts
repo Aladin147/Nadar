@@ -132,10 +132,22 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'At least one of image, audio, or question is required' });
     }
 
-    // Use Gemini 2.5 Flash for multimodal processing
-    const model = genAI.getGenerativeModel({ 
+    // Use Gemini 2.5 Flash for quality multimodal processing (sophisticated architecture)
+    const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: createSystemPrompt(language, style)
+      systemInstruction: createSystemPrompt(language, style),
+      generationConfig: {
+        candidateCount: 1,
+        maxOutputTokens: 2048,
+        temperature: 0.7,
+        // Proper thinking budget configuration for maximum speed (3-4s target)
+        // Using type assertion until SDK is updated
+        ...(process.env.NODE_ENV === 'production' && {
+          thinkingConfig: {
+            thinkingBudget: 0  // Disable thinking for maximum speed
+          }
+        } as any)
+      }
     });
 
     // Build the content array for multimodal input

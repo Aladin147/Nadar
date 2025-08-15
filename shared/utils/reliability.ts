@@ -86,7 +86,8 @@ export async function withRetry<T>(
       }
       
       // Enhance error with retry information
-      const enhancedError = enhanceError(result.error, config);
+      const errorResult = result as { ok: false; error: ProviderError };
+      const enhancedError = enhanceError(errorResult.error, config);
       lastError = enhancedError;
       
       // Check if error is retryable

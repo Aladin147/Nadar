@@ -116,7 +116,15 @@ async function handleAssistCore(request: AssistRequest): Promise<AssistResponse>
 // Helper functions (would be in shared modules)
 async function inspectImage(image: Uint8Array, genAI: GoogleGenerativeAI): Promise<ImageSignals> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    // Use fast model for inspection only (MVP architecture)
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash-lite',
+      generationConfig: {
+        candidateCount: 1,
+        maxOutputTokens: 200, // Short response for inspection
+        temperature: 0.1      // Low temperature for consistent JSON
+      }
+    });
     const imageBase64 = Buffer.from(image).toString('base64');
 
     const result = await model.generateContent([
@@ -153,13 +161,62 @@ async function generateResponse(
   question?: string,
   genAI?: GoogleGenerativeAI
 ): Promise<string> {
-  const model = genAI!.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  // Use quality model for main response generation (sophisticated MVP architecture)
+  const model = genAI!.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      candidateCount: 1,
+      maxOutputTokens: 2048,
+      temperature: 0.7,
+      // Proper thinking budget configuration for maximum speed (3-4s target)
+      // Using type assertion until SDK is updated
+      ...(process.env.NODE_ENV === 'production' && {
+        thinkingConfig: {
+          thinkingBudget: 0  // Disable thinking for maximum speed
+        }
+      } as any)
+    }
+  });
   const imageBase64 = Buffer.from(image).toString('base64');
 
-  const systemPrompt = `You are نظر (Nadar), helping blind users navigate safely.
+  const systemPrompt = language === 'darija' ?
+    `You are نظر (Nadar), an intelligent AI assistant for blind users in Morocco.
+
+🚨 CRITICAL LANGUAGE REQUIREMENT 🚨
+- You MUST respond ONLY in Moroccan Darija using Arabic script (الحروف العربية)
+- NEVER use Latin script (kayn, gadi, bzaf) - ALWAYS use Arabic script (كاين، غادي، بزاف)
+- This is essential for text-to-speech functionality
+
+MANDATORY Arabic Script Words:
+- Use "كاين" NOT "kayn"
+- Use "غادي" NOT "gadi"
+- Use "بزاف" NOT "bzaf"
+- Use "شوية" NOT "chwiya"
+- Use "راه" NOT "rah"
+- Use "ديال" NOT "dyal"
+
+Important rules:
+1. ALWAYS write in Arabic script - this is non-negotiable for TTS
+2. Use authentic Moroccan Darija expressions
+3. Information priority: Safety first, then answer question, then important text, then environment
+4. If there's important text, say "كاين نص هنا، بغيتي نقراه ليك؟"
+5. If there's danger, start with "انتبه!" or "حذاري!"
+6. Don't use "كنشوف" or "كما تشوف"
+7. Don't identify people by name
+8. If uncertain, say "يمكن" or "كيبان ليا"
+
 Format your response as a JSON object with exactly these fields:
 {
-  "paragraph": "One short ${language === 'darija' ? 'Darija' : language} paragraph (≤2 sentences) with safety/next-step first",
+  "paragraph": "One short Darija paragraph (≤2 sentences) with safety/next-step first, ONLY Arabic script",
+  "details": ["Additional detail 1 in Darija", "Additional detail 2 in Darija", "Additional detail 3 in Darija"]
+}
+
+CORRECT Example (Arabic script only):
+{"paragraph": "انتبه! كاين درج قدامك، خاصك تطلع بحذر. كاين نص على لوحة على اليمين.", "details": ["المكان فيه إضاءة مزيانة", "الطريق واضح", "ما كاينش عوائق أخرى"]}` :
+    `You are نظر (Nadar), helping blind users navigate safely.
+Format your response as a JSON object with exactly these fields:
+{
+  "paragraph": "One short ${language} paragraph (≤2 sentences) with safety/next-step first",
   "details": ["Additional detail 1", "Additional detail 2", "Additional detail 3"]
 }`;
 

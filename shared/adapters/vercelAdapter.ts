@@ -1,7 +1,7 @@
 // Vercel adapter - maps VercelRequest to core types
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { AssistRequest, AssistDeps, RequestContext, Result } from '../types/api';
+import { AssistRequest, AssistDeps, RequestContext, Result, ProviderError } from '../types/api';
 import { handleAssist } from '../core/assistCore';
 import { handleOCR, OCRRequest } from '../core/ocrCore';
 import { handleTTS, TTSRequest, TTSDeps } from '../core/ttsCore';
@@ -11,11 +11,13 @@ function handleResult<T>(result: Result<T>, res: VercelResponse): void {
   if (result.ok) {
     res.status(200).json(result.data);
   } else {
-    const statusCode = result.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
+    // TypeScript now knows result is the error variant
+    const errorResult = result as { ok: false; error: ProviderError };
+    const statusCode = errorResult.error.err_code === 'VALIDATION_ERROR' ? 400 : 500;
     res.status(statusCode).json({
-      error: result.error.message,
-      err_code: result.error.err_code,
-      details: result.error.details
+      error: errorResult.error.message,
+      err_code: errorResult.error.err_code,
+      details: errorResult.error.details
     });
   }
 }
