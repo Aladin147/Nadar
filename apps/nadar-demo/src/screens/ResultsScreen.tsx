@@ -46,6 +46,9 @@ export default function ResultsScreen({ navigation, route }: Props) {
   const audioPlayer = useRef(new AudioPlayer({ current: null }));
 
   useEffect(() => {
+    // Initialize audio player
+    audioPlayer.current.initialize();
+
     // Auto-play TTS for the main response
     if (response?.speak) {
       playTTS(response.speak);
@@ -59,12 +62,22 @@ export default function ResultsScreen({ navigation, route }: Props) {
       setIsPlayingTTS(true);
       console.log('🎵 Playing TTS for:', text.substring(0, 50) + '...');
 
+      // Ensure audio player is initialized
+      await audioPlayer.current.initialize();
+
       const ttsResult = await tts(text, 'Kore', 'elevenlabs');
+      console.log('🔊 TTS result received, mime type:', ttsResult.mimeType);
+
       await audioPlayer.current.playAudio(ttsResult.audioBase64, ttsResult.mimeType);
 
       console.log('✅ TTS playback completed');
     } catch (error) {
       console.error('❌ TTS playback failed:', error);
+
+      // Show a brief user-friendly message for audio issues
+      if (error.message?.includes('Native audio modules')) {
+        console.log('ℹ️ Audio playback not available on this device');
+      }
       // Don't show error to user - TTS failure shouldn't block the demo
     } finally {
       setIsPlayingTTS(false);

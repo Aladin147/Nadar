@@ -7,18 +7,34 @@ let FileSystem: any = null;
 let base64ToUint8Array: any = null;
 let pcm16ToWavBytes: any = null;
 
+let moduleLoadPromise: Promise<void> | null = null;
+
 async function loadNativeModules() {
-  if (Platform.OS !== 'web' && !Audio) {
-    try {
-      const expoAv = await import('expo-av');
-      Audio = expoAv.Audio;
-      FileSystem = await import('expo-file-system');
-      const pcmUtils = await import('./pcmToWav');
-      base64ToUint8Array = pcmUtils.base64ToUint8Array;
-      pcm16ToWavBytes = pcmUtils.pcm16ToWavBytes;
-    } catch {
-      // Native audio modules not available
-    }
+  if (Platform.OS === 'web') return;
+
+  // Prevent multiple simultaneous loads
+  if (moduleLoadPromise) {
+    return moduleLoadPromise;
+  }
+
+  if (!Audio) {
+    moduleLoadPromise = (async () => {
+      try {
+        console.log('🔄 Loading native audio modules...');
+        const expoAv = await import('expo-av');
+        Audio = expoAv.Audio;
+        FileSystem = await import('expo-file-system');
+        const pcmUtils = await import('./pcmToWav');
+        base64ToUint8Array = pcmUtils.base64ToUint8Array;
+        pcm16ToWavBytes = pcmUtils.pcm16ToWavBytes;
+        console.log('✅ Native audio modules loaded successfully');
+      } catch (error) {
+        console.warn('⚠️ Native audio modules not available:', error);
+        // Don't throw - let fallback handle it
+      }
+    })();
+
+    await moduleLoadPromise;
   }
 }
 
@@ -35,8 +51,17 @@ export class AudioPlayer {
 
   constructor(soundRef: AudioPlayerRef) {
     this.soundRef = soundRef;
-    // Load native modules asynchronously
-    loadNativeModules();
+    // Start loading native modules immediately
+    this.initialize();
+  }
+
+  // Initialize audio modules
+  async initialize(): Promise<void> {
+    try {
+      await loadNativeModules();
+    } catch (error) {
+      console.warn('⚠️ Audio initialization warning:', error);
+    }
   }
 
   // Update the ref (needed for React ref updates)
@@ -45,16 +70,33 @@ export class AudioPlayer {
   }
 
   async playAudio(audioBase64: string, mimeType?: string): Promise<void> {
-    // Ensure native modules are loaded
-    await loadNativeModules();
+    try {
+      // Ensure native modules are loaded
+      await loadNativeModules();
 
-    // Clean up previous audio
-    await this.cleanup();
+      // Clean up previous audio
+      await this.cleanup();
 
-    if (Platform.OS === 'web') {
-      await this.playWebAudio(audioBase64, mimeType);
-    } else {
-      await this.playNativeAudio(audioBase64, mimeType);
+      if (Platform.OS === 'web') {
+        await this.playWebAudio(audioBase64, mimeType);
+      } else {
+        await this.playNativeAudio(audioBase64, mimeType);
+      }
+    } catch (error) {
+      console.error('❌ Audio playback error:', error);
+
+      // Try fallback to web audio if native fails
+      if (Platform.OS !== 'web') {
+        console.log('🔄 Attempting web audio fallback...');
+        try {
+          await this.playWebAudio(audioBase64, mimeType);
+        } catch (fallbackError) {
+          console.error('❌ Web audio fallback also failed:', fallbackError);
+          throw new Error(`Audio playback failed: ${error.message}`);
+        }
+      } else {
+        throw error;
+      }
     }
   }
 
@@ -63,8 +105,16 @@ export class AudioPlayer {
   }
 
   private async playNativeAudio(audioBase64: string, mimeType?: string): Promise<void> {
+    // Try to load native modules again if not available
     if (!Audio || !FileSystem) {
-      throw new Error('Native audio modules not available');
+      await loadNativeModules();
+    }
+
+    // If still not available, fall back to web audio
+    if (!Audio || !FileSystem) {
+      console.log('⚠️ Native audio not available, falling back to web audio');
+      await this.playWebAudio(audioBase64, mimeType);
+      return;
     }
 
     // Set audio mode for native playback
