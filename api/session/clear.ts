@@ -1,33 +1,30 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { Redis } from '@upstash/redis';
 
-// Initialize Upstash Redis client
-let redis: Redis | null = null;
-let redisAvailable = false;
+// Try to import Vercel KV
+let kv: any = null;
+let kvAvailable = false;
 
 try {
-  redis = new Redis({
-    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-  redisAvailable = true;
-  console.log('✅ Upstash Redis client initialized for session clear');
+  const kvModule = require('@vercel/kv');
+  kv = kvModule.kv;
+  kvAvailable = true;
+  console.log('✅ Vercel KV imported for session clear');
 } catch (error) {
-  console.warn('⚠️ Upstash Redis not available for session clear:', error);
-  redisAvailable = false;
+  console.warn('⚠️ Vercel KV not available for session clear:', error);
+  kvAvailable = false;
 }
 
-// Session Manager with Upstash Redis
+// Session Manager with Vercel KV
 const sessionManager = {
   async clearSession(sessionId: string): Promise<void> {
-    if (!redisAvailable || !redis) {
-      console.warn('⚠️ Redis not available, cannot clear session');
+    if (!kvAvailable || !kv) {
+      console.warn('⚠️ KV not available, cannot clear session');
       return; // Graceful degradation
     }
 
     try {
-      await redis.del(`sess:${sessionId}`);
-      console.log(`🗑️ Session cleared from Redis: ${sessionId}`);
+      await kv.del(`sess:${sessionId}`);
+      console.log(`🗑️ Session cleared from KV: ${sessionId}`);
     } catch (error) {
       console.error('❌ Session clear error:', error);
       throw error; // Re-throw for proper error handling
