@@ -274,10 +274,36 @@ async function handleAssistCore(request: AssistRequest): Promise<AssistResponse>
   if (request.image) {
     image = request.image;
   } else if (request.imageRef) {
-    const cached = imageCache.get(request.imageRef);
-    if (!cached || cached.expires < Date.now()) {
-      throw new Error(`No cached image found for imageRef: ${request.imageRef}`);
+    let cached;
+
+    if (request.imageRef === 'last') {
+      // Find the most recent image in cache
+      let mostRecentImage = null;
+      let mostRecentTime = 0;
+
+      for (const [key, value] of imageCache.entries()) {
+        if (value.expires > Date.now()) { // Only consider non-expired images
+          const timestamp = parseInt(key.split('-')[1]); // Extract timestamp from key
+          if (timestamp > mostRecentTime) {
+            mostRecentTime = timestamp;
+            mostRecentImage = value;
+          }
+        }
+      }
+
+      if (!mostRecentImage) {
+        throw new Error('No recent cached image found for imageRef: last');
+      }
+      cached = mostRecentImage;
+      console.log(`📸 Using most recent cached image (timestamp: ${mostRecentTime})`);
+    } else {
+      // Use exact imageRef lookup
+      cached = imageCache.get(request.imageRef);
+      if (!cached || cached.expires < Date.now()) {
+        throw new Error(`No cached image found for imageRef: ${request.imageRef}`);
+      }
     }
+
     image = cached.buffer;
   } else {
     throw new Error('No valid image provided');
