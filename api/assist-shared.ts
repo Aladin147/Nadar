@@ -3,7 +3,76 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { sessionManager } from '../shared/memory/sessionManager';
+
+// Inline session memory for Vercel deployment (temporary)
+const RSM_ENABLED = process.env.RSM_ENABLED === '1';
+
+// Simple session memory implementation
+const sessionMemory = new Map<string, any>();
+
+const sessionManager = {
+  async getContext(sessionId: string): Promise<string> {
+    if (!RSM_ENABLED) return '';
+    const session = sessionMemory.get(sessionId);
+    if (!session) return '';
+
+    // Simple context formatting
+    const parts: string[] = [];
+    if (session.recentQA && session.recentQA.length > 0) {
+      const qa = session.recentQA.slice(-2).map((q: any) => `Q: ${q.q} → A: ${q.a}`).join('\n');
+      parts.push(`Recent:\n${qa}`);
+    }
+    if (session.facts && session.facts.length > 0) {
+      parts.push(`Facts: ${session.facts.join(' • ')}`);
+    }
+
+    const context = parts.join('\n');
+    return context ? `\n\n--- Session Context (use only if relevant) ---\n${context}\n--- End Context ---\n` : '';
+  },
+
+  async updateSession(sessionId: string, update: any): Promise<void> {
+    if (!RSM_ENABLED) return;
+
+    const current = sessionMemory.get(sessionId) || {};
+
+    if (update.question && update.answer) {
+      const newQA = { q: update.question, a: update.answer, t: new Date().toISOString() };
+      const recentQA = [...(current.recentQA || []), newQA].slice(-3);
+      current.recentQA = recentQA;
+    }
+
+    if (update.facts && update.facts.length > 0) {
+      const allFacts = [...(current.facts || []), ...update.facts];
+      current.facts = [...new Set(allFacts)].slice(-3);
+    }
+
+    current.lastUpdated = new Date().toISOString();
+    sessionMemory.set(sessionId, current);
+
+    // Simple TTL cleanup (30 minutes)
+    setTimeout(() => {
+      const session = sessionMemory.get(sessionId);
+      if (session && session.lastUpdated === current.lastUpdated) {
+        sessionMemory.delete(sessionId);
+      }
+    }, 30 * 60 * 1000);
+  },
+
+  extractFacts(text: string, confidence: number): string[] {
+    if (confidence < 0.6) return [];
+    const facts: string[] = [];
+    const lowerText = text.toLowerCase();
+
+    const keywords = ['exit', 'خروج', 'مخرج', 'entrance', 'دخول', 'stairs', 'درج', 'elevator', 'مصعد'];
+    for (const keyword of keywords) {
+      if (lowerText.includes(keyword)) {
+        facts.push(keyword.toUpperCase());
+      }
+    }
+
+    return facts.slice(0, 3);
+  }
+};
 
 // Core types (would be imported from shared package)
 interface ImageSignals {

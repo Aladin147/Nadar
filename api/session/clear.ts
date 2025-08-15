@@ -1,5 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sessionManager } from '../../shared/memory/sessionManager';
+
+// Simple session memory for clearing (temporary inline implementation)
+const sessionMemory = new Map<string, any>();
+
+const sessionManager = {
+  async clearSession(sessionId: string): Promise<void> {
+    sessionMemory.delete(sessionId);
+    console.log(`🗑️ Session cleared: ${sessionId}`);
+  }
+};
 
 /**
  * Clear session memory endpoint
