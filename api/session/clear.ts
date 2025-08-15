@@ -1,12 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { kv } from '@vercel/kv';
 
-// Simple session memory for clearing (temporary inline implementation)
-const sessionMemory = new Map<string, any>();
-
+// Session Manager with Vercel KV (Upstash Redis)
 const sessionManager = {
   async clearSession(sessionId: string): Promise<void> {
-    sessionMemory.delete(sessionId);
-    console.log(`🗑️ Session cleared: ${sessionId}`);
+    try {
+      await kv.del(`sess:${sessionId}`);
+      console.log(`🗑️ Session cleared from KV: ${sessionId}`);
+    } catch (error) {
+      console.error('❌ Session clear error:', error);
+      throw error; // Re-throw for proper error handling
+    }
   }
 };
 

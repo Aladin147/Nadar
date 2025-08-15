@@ -3,89 +3,208 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { kv } from '@vercel/kv';
 
-// Inline session memory for Vercel deployment (temporary)
+// Rolling Session Memory Configuration
 const RSM_ENABLED = process.env.RSM_ENABLED === '1';
+const SESSION_TTL = 1800; // 30 minutes
 
-// Simple session memory implementation
-const sessionMemory = new Map<string, any>();
+// Session Memory Types
+interface QA {
+  q: string;
+  a: string;
+  t: string;
+}
 
+interface SessionShard {
+  followupToken?: string;
+  capturedAt?: string;
+  signals?: any;
+  user_intent?: string;
+  recentQA?: QA[];
+  facts?: string[];
+  prefs?: {
+    lang?: "darija" | "ar" | "en";
+    ttsRate?: number;
+    voice?: string;
+  };
+}
+
+// Session Manager with Vercel KV (Upstash Redis)
 const sessionManager = {
   async getContext(sessionId: string): Promise<string> {
     if (!RSM_ENABLED) return '';
-    const session = sessionMemory.get(sessionId);
-    if (!session) return '';
 
-    // Simple context formatting
-    const parts: string[] = [];
-    if (session.recentQA && session.recentQA.length > 0) {
-      const qa = session.recentQA.slice(-2).map((q: any) => `Q: ${q.q} → A: ${q.a}`).join('\n');
-      parts.push(`Recent:\n${qa}`);
-    }
-    if (session.facts && session.facts.length > 0) {
-      parts.push(`Facts: ${session.facts.join(' • ')}`);
-    }
+    try {
+      const session = await kv.get<SessionShard>(`sess:${sessionId}`);
+      if (!session) return '';
 
-    const context = parts.join('\n');
-    return context ? `\n\n--- Session Context (use only if relevant) ---\n${context}\n--- End Context ---\n` : '';
+      // Format context with priority-based packing
+      const parts: string[] = [];
+
+      // 1. User intent (highest priority)
+      if (session.user_intent) {
+        parts.push(`Intent: ${session.user_intent}`);
+      }
+
+      // 2. Facts (high priority)
+      if (session.facts && session.facts.length > 0) {
+        parts.push(`Facts: ${session.facts.join(' • ')}`);
+      }
+
+      // 3. Recent Q&A (medium priority)
+      if (session.recentQA && session.recentQA.length > 0) {
+        const qa = session.recentQA
+          .slice(-3) // Keep last 3
+          .map(q => `Q: ${q.q} → A: ${q.a}`)
+          .join('\n');
+        parts.push(`Recent:\n${qa}`);
+      }
+
+      const context = parts.join('\n');
+
+      // Enforce character limit (≤1200 chars ≈ 300 tokens)
+      const trimmedContext = context.length > 1200 ? context.slice(0, 1200) + '...' : context;
+
+      return trimmedContext ? `\n\n--- Session Context (use only if relevant) ---\n${trimmedContext}\n--- End Context ---\n` : '';
+    } catch (error) {
+      console.error('❌ Session context error:', error);
+      return ''; // Graceful degradation
+    }
   },
 
   async updateSession(sessionId: string, update: any): Promise<void> {
     if (!RSM_ENABLED) return;
 
-    const current = sessionMemory.get(sessionId) || {};
+    try {
+      // Get current session
+      const current = await kv.get<SessionShard>(`sess:${sessionId}`) || {};
 
-    if (update.question && update.answer) {
-      const newQA = { q: update.question, a: update.answer, t: new Date().toISOString() };
-      const recentQA = [...(current.recentQA || []), newQA].slice(-3);
-      current.recentQA = recentQA;
-    }
+      // Update timestamp
+      current.capturedAt = new Date().toISOString();
 
-    if (update.facts && update.facts.length > 0) {
-      const allFacts = [...(current.facts || []), ...update.facts];
-      current.facts = [...new Set(allFacts)].slice(-3);
-    }
+      // Update Q&A if provided
+      if (update.question && update.answer) {
+        const newQA: QA = {
+          q: update.question,
+          a: update.answer,
+          t: new Date().toISOString(),
+        };
 
-    current.lastUpdated = new Date().toISOString();
-    sessionMemory.set(sessionId, current);
-
-    // Simple TTL cleanup (30 minutes)
-    setTimeout(() => {
-      const session = sessionMemory.get(sessionId);
-      if (session && session.lastUpdated === current.lastUpdated) {
-        sessionMemory.delete(sessionId);
+        const recentQA = [...(current.recentQA || []), newQA].slice(-3); // Keep last 3
+        current.recentQA = recentQA;
       }
-    }, 30 * 60 * 1000);
+
+      // Update other fields
+      if (update.signals) current.signals = update.signals;
+      if (update.followupToken) current.followupToken = update.followupToken;
+      if (update.userIntent) current.user_intent = update.userIntent;
+
+      // Update facts (merge with existing, keep unique)
+      if (update.facts && update.facts.length > 0) {
+        const allFacts = [...(current.facts || []), ...update.facts];
+        current.facts = [...new Set(allFacts)].slice(-3); // Keep last 3 unique facts
+      }
+
+      // Update preferences
+      if (update.prefs) {
+        current.prefs = { ...current.prefs, ...update.prefs };
+      }
+
+      // Save to KV with TTL
+      await kv.set(`sess:${sessionId}`, current, { ex: SESSION_TTL });
+
+      console.log(`✅ Session updated in KV: ${sessionId}`);
+    } catch (error) {
+      console.error('❌ Session update error:', error);
+      // Don't throw - graceful degradation
+    }
   },
 
   extractFacts(text: string, confidence: number): string[] {
     if (confidence < 0.6) return [];
+
     const facts: string[] = [];
     const lowerText = text.toLowerCase();
 
-    const keywords = ['exit', 'خروج', 'مخرج', 'entrance', 'دخول', 'stairs', 'درج', 'elevator', 'مصعد'];
+    // Navigation keywords
+    const keywords = [
+      'exit', 'خروج', 'مخرج',
+      'entrance', 'دخول', 'مدخل',
+      'stairs', 'درج', 'سلالم',
+      'elevator', 'مصعد', 'أسانسير',
+      'toilet', 'حمام', 'مرحاض',
+      'restaurant', 'مطعم', 'ريستو',
+      'pharmacy', 'صيدلية', 'فارماسي',
+      'hospital', 'مستشفى', 'سبيطار',
+      'police', 'شرطة', 'بوليس',
+      'parking', 'موقف', 'باركينغ',
+    ];
+
     for (const keyword of keywords) {
       if (lowerText.includes(keyword)) {
         facts.push(keyword.toUpperCase());
       }
     }
 
+    // Extract numbers (room numbers, floor numbers, etc.)
+    const numbers = text.match(/\b\d{1,4}\b/g);
+    if (numbers && numbers.length > 0) {
+      facts.push(`Room/Floor: ${numbers.slice(0, 2).join(', ')}`);
+    }
+
     return facts.slice(0, 3);
   },
 
-  async getSessionInfo(sessionId: string): Promise<any> {
-    return sessionMemory.get(sessionId) || null;
+  async getSessionInfo(sessionId: string): Promise<SessionShard | null> {
+    if (!RSM_ENABLED) return null;
+
+    try {
+      return await kv.get<SessionShard>(`sess:${sessionId}`);
+    } catch (error) {
+      console.error('❌ Session info error:', error);
+      return null;
+    }
   },
 
-  guessUserIntent(recentQA: any[], signals?: any): string {
+  guessUserIntent(recentQA: QA[], signals?: any): string {
     if (!recentQA || recentQA.length === 0) return '';
+
     const lastQuestion = recentQA[recentQA.length - 1]?.q.toLowerCase() || '';
 
-    if (lastQuestion.includes('exit') || lastQuestion.includes('خروج')) return 'finding exit';
-    if (lastQuestion.includes('toilet') || lastQuestion.includes('حمام')) return 'finding restroom';
-    if (lastQuestion.includes('read') || lastQuestion.includes('قرا')) return 'reading text';
+    // Simple intent classification
+    if (lastQuestion.includes('exit') || lastQuestion.includes('خروج') || lastQuestion.includes('مخرج')) {
+      return 'finding exit';
+    }
+    if (lastQuestion.includes('toilet') || lastQuestion.includes('حمام') || lastQuestion.includes('مرحاض')) {
+      return 'finding restroom';
+    }
+    if (lastQuestion.includes('food') || lastQuestion.includes('eat') || lastQuestion.includes('مطعم') || lastQuestion.includes('أكل')) {
+      return 'finding food';
+    }
+    if (lastQuestion.includes('read') || lastQuestion.includes('text') || lastQuestion.includes('قرا') || lastQuestion.includes('نص')) {
+      return 'reading text';
+    }
+    if (signals?.people_count && signals.people_count > 0) {
+      return 'navigating crowded area';
+    }
+    if (signals?.has_text) {
+      return 'reading signage';
+    }
 
     return 'general assistance';
+  },
+
+  async clearSession(sessionId: string): Promise<void> {
+    if (!RSM_ENABLED) return;
+
+    try {
+      await kv.del(`sess:${sessionId}`);
+      console.log(`🗑️ Session cleared from KV: ${sessionId}`);
+    } catch (error) {
+      console.error('❌ Session clear error:', error);
+      // Don't throw - graceful degradation
+    }
   }
 };
 
