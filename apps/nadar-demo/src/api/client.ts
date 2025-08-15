@@ -1,4 +1,5 @@
 import { API_BASE } from '../config';
+import { sessionCostTracker, RequestCostData } from '../utils/costTracker';
 
 function normalizeFetchError(e: any): Error {
   // Normalize AbortError and common network failures to our error codes
@@ -110,7 +111,7 @@ export async function assist(
     console.log('❓ Question:', question);
   }
 
-  return await postJSON<{
+  const result = await postJSON<{
     speak: string;
     details?: string[];
     signals: {
@@ -126,7 +127,26 @@ export async function assist(
     sessionId: string;
     processingTime: number;
     fallback?: boolean;
+    tokenUsage?: {
+      input: number;
+      output: number;
+      total: number;
+    };
   }>('/api/assist-shared', body);
+
+  // Track cost for this request
+  const costData: RequestCostData = {
+    endpoint: '/api/assist-shared',
+    tokenUsage: result.tokenUsage,
+    imageBytes: Math.round(imageBase64.length * 0.75), // Rough base64 to bytes conversion
+    outputChars: result.speak.length + (result.details?.join('').length || 0),
+    ttsUsed: false, // TTS happens separately
+    isLiveEngine: false,
+    timestamp: Date.now()
+  };
+  sessionCostTracker.addRequest(costData);
+
+  return result;
 }
 
 // Multimodal assist function (image + audio + text)
@@ -293,12 +313,24 @@ export async function tts(
   provider?: 'gemini' | 'elevenlabs',
   rate?: number
 ) {
-  return postJSON<{ audioBase64: string; mimeType?: string }>(`/api/tts-shared`, {
+  const result = await postJSON<{ audioBase64: string; mimeType?: string }>(`/api/tts-shared`, {
     text,
     voice,
     provider: provider || 'elevenlabs', // Default to ElevenLabs for best quality and speed
     rate
   });
+
+  // Track TTS cost
+  const costData: RequestCostData = {
+    endpoint: '/api/tts-shared',
+    outputChars: text.length,
+    ttsUsed: true,
+    isLiveEngine: false,
+    timestamp: Date.now()
+  };
+  sessionCostTracker.addRequest(costData);
+
+  return result;
 }
 
 export async function testConnection() {

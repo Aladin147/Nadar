@@ -317,11 +317,12 @@ async function handleAssistCore(request: AssistRequest): Promise<AssistResponse>
   // Step 2: Generate response with session context
   const processingStart = Date.now();
   const language = request.language || 'darija';
-  const responseText = await generateResponse(image, language, signals, request.question, genAI, sessionContext);
+  const responseResult = await generateResponse(image, language, signals, request.question, genAI, sessionContext);
   const processingTime = Date.now() - processingStart;
 
   // Parse response
-  const { paragraph, details } = parseResponse(responseText);
+  const { paragraph, details } = parseResponse(responseResult.text);
+  const tokenUsage = responseResult.tokenUsage;
 
   // Save image for reuse
   const followupToken = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -393,7 +394,9 @@ async function handleAssistCore(request: AssistRequest): Promise<AssistResponse>
       inspection_ms: inspectionTime,
       processing_ms: processingTime,
       total_ms: totalTime
-    }
+    },
+    // Add token usage for cost tracking
+    tokenUsage: tokenUsage || undefined
   };
 }
 
@@ -445,7 +448,7 @@ async function generateResponse(
   question?: string,
   genAI?: GoogleGenerativeAI,
   sessionContext?: string
-): Promise<string> {
+): Promise<{ text: string; tokenUsage?: { input: number; output: number; total: number } }> {
   // Use quality model for main response generation (sophisticated MVP architecture)
   const model = genAI!.getGenerativeModel({
     model: 'gemini-2.5-flash',
@@ -525,7 +528,22 @@ Format your response as a JSON object with exactly these fields:
     { text: fullPrompt }
   ]);
 
-  return result.response.text();
+  const response = result.response;
+  const responseText = response.text();
+
+  // Extract real token usage if available (for cost tracking)
+  const usageMetadata = response.usageMetadata;
+  let tokenUsage;
+  if (usageMetadata) {
+    tokenUsage = {
+      input: usageMetadata.promptTokenCount || 0,
+      output: usageMetadata.candidatesTokenCount || 0,
+      total: usageMetadata.totalTokenCount || 0
+    };
+    console.log('📊 Token usage:', tokenUsage);
+  }
+
+  return { text: responseText, tokenUsage };
 }
 
 function parseResponse(responseText: string): { paragraph: string; details: string[] } {

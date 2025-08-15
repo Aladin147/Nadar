@@ -18,6 +18,7 @@ import { theme } from '../theme';
 import { tts, assistWithImageRef, assistVoiceFollowup, clearSessionMemory } from '../api/client';
 import { AudioPlayer, AudioPlayerRef } from '../utils/audioPlayer';
 import { audioRecorder } from '../utils/audioRecording';
+import { CompactCostDisplay, CostTracker } from '../components/CostTracker';
 
 type RootStackParamList = {
   Welcome: undefined;
@@ -40,6 +41,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
   const [followupText, setFollowupText] = useState('');
   const [isRecordingFollowup, setIsRecordingFollowup] = useState(false);
   const [isProcessingFollowup, setIsProcessingFollowup] = useState(false);
+  const [showCostTracker, setShowCostTracker] = useState(false);
   const audioRef = useRef<AudioPlayerRef['current']>(null);
   const audioPlayer = useRef(new AudioPlayer({ current: null }));
 
@@ -226,6 +228,10 @@ export default function ResultsScreen({ navigation, route }: Props) {
           </View>
         </View>
 
+        {/* Cost Tracker Display */}
+        <CompactCostDisplay onPress={() => setShowCostTracker(true)} />
+        </View>
+
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.scrollContent}
@@ -378,6 +384,12 @@ export default function ResultsScreen({ navigation, route }: Props) {
         </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Cost Tracker Modal */}
+      <CostTracker
+        visible={showCostTracker}
+        onClose={() => setShowCostTracker(false)}
+      />
     </LinearGradient>
   );
 }
