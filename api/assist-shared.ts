@@ -246,6 +246,7 @@ interface AssistResponse {
   signals: ImageSignals;
   followup_suggest?: string[];
   followupToken?: string;
+  sessionId?: string;
   timing: {
     inspection_ms: number;
     processing_ms: number;
