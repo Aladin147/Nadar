@@ -14,7 +14,6 @@ import {
   Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
@@ -232,7 +231,7 @@ export default function WelcomeScreen({ navigation }: Props) {
   };
 
   const allPermissionsGranted = cameraPermission?.granted && audioPermission;
-  const canProceed = allPermissionsGranted && isConnected;
+  const canProceed = allPermissionsGranted && (isConnected || __DEV__); // Allow dev mode bypass
 
   // Rotation interpolation
   const spin = rotateAnim.interpolate({
@@ -397,7 +396,7 @@ export default function WelcomeScreen({ navigation }: Props) {
                   }
                 ]}
               >
-                <BlurView intensity={20} style={styles.statusBlur}>
+                <View style={styles.statusBlur}>
                   <View style={styles.statusContent}>
                     <Animated.View
                       style={[
@@ -410,10 +409,10 @@ export default function WelcomeScreen({ navigation }: Props) {
                     />
                     <Text style={styles.statusText}>
                       {isConnected === null ? 'Connecting...' :
-                       isConnected ? 'System Ready' : 'Offline Mode'}
+                       isConnected ? 'System Ready' : __DEV__ ? 'Dev Mode' : 'Offline Mode'}
                     </Text>
                   </View>
-                </BlurView>
+                </View>
               </Animated.View>
             </Animated.View>
 
@@ -426,9 +425,9 @@ export default function WelcomeScreen({ navigation }: Props) {
                 ]}
               >
                 <TouchableOpacity activeOpacity={0.9}>
-                  <BlurView intensity={10} style={styles.featureCard}>
+                  <View style={styles.featureCard}>
                     <LinearGradient
-                      colors={['rgba(59, 130, 246, 0.1)', 'rgba(59, 130, 246, 0.05)']}
+                      colors={['rgba(59, 130, 246, 0.15)', 'rgba(59, 130, 246, 0.05)', 'rgba(59, 130, 246, 0.02)']}
                       style={styles.cardGradient}
                     >
                       <View style={styles.cardHeader}>
@@ -463,7 +462,7 @@ export default function WelcomeScreen({ navigation }: Props) {
                         </View>
                       </View>
                     </LinearGradient>
-                  </BlurView>
+                  </View>
                 </TouchableOpacity>
               </Animated.View>
 
@@ -474,9 +473,9 @@ export default function WelcomeScreen({ navigation }: Props) {
                 ]}
               >
                 <TouchableOpacity activeOpacity={0.9}>
-                  <BlurView intensity={10} style={styles.featureCard}>
+                  <View style={styles.featureCard}>
                     <LinearGradient
-                      colors={['rgba(168, 85, 247, 0.1)', 'rgba(168, 85, 247, 0.05)']}
+                      colors={['rgba(168, 85, 247, 0.15)', 'rgba(168, 85, 247, 0.05)', 'rgba(168, 85, 247, 0.02)']}
                       style={styles.cardGradient}
                     >
                       <View style={styles.cardHeader}>
@@ -511,7 +510,7 @@ export default function WelcomeScreen({ navigation }: Props) {
                         </View>
                       </View>
                     </LinearGradient>
-                  </BlurView>
+                  </View>
                 </TouchableOpacity>
               </Animated.View>
 
@@ -522,9 +521,9 @@ export default function WelcomeScreen({ navigation }: Props) {
                 ]}
               >
                 <TouchableOpacity activeOpacity={0.9}>
-                  <BlurView intensity={10} style={styles.featureCard}>
+                  <View style={styles.featureCard}>
                     <LinearGradient
-                      colors={['rgba(34, 197, 94, 0.1)', 'rgba(34, 197, 94, 0.05)']}
+                      colors={['rgba(34, 197, 94, 0.15)', 'rgba(34, 197, 94, 0.05)', 'rgba(34, 197, 94, 0.02)']}
                       style={styles.cardGradient}
                     >
                       <View style={styles.cardHeader}>
@@ -559,7 +558,7 @@ export default function WelcomeScreen({ navigation }: Props) {
                         </View>
                       </View>
                     </LinearGradient>
-                  </BlurView>
+                  </View>
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -761,13 +760,15 @@ const styles = StyleSheet.create({
   statusBlur: {
     borderRadius: 20,
     overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   statusContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   statusDot: {
     width: 8,
@@ -792,11 +793,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   cardGradient: {
     padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 24,
   },
   cardHeader: {
@@ -889,10 +891,10 @@ const styles = StyleSheet.create({
   permissionItems: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 40,
   },
   permissionItem: {
     alignItems: 'center',
+    marginHorizontal: 20,
   },
   permissionIcon: {
     width: 40,
