@@ -5,7 +5,7 @@ The cost estimator utility analyzes telemetry data from the Nadar server to prov
 ## Features
 
 - **Token Estimation**: Estimates Gemini tokens using ~4 characters per token ratio
-- **Cost Calculation**: Maps to current Gemini Flash/Live and ElevenLabs pricing
+- **Cost Calculation**: Maps to current Gemini Flash/Live and ElevenLabs pricing (Flash v2.5 at 0.5 credits/char)
 - **Performance Metrics**: P95 latency tracking and error rate analysis
 - **Engine Comparison**: Breakdown by AI engine (Gemini Flash vs Live)
 - **Cost Projections**: Hourly, daily, and monthly cost projections

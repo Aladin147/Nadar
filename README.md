@@ -46,19 +46,20 @@ This README provides a technical overview for developers: architecture, setup, b
 
 ## Repository layout
 
-- app/ — React Native (Expo) client
+- apps/nadar-demo — React Native (Expo) client
   - src/
-    - screens/ — Landing, Capture, Results, History, Settings, MobileSetup
+    - screens/ — Welcome, Capture, Results, History, Settings
     - app/ — UI kit, theme, state, navigation
     - api/ — API client (fetch wrappers)
     - utils/ — audio, downscale, discovery helpers
-- server/ — Node.js (TypeScript) API
+- api/ — Vercel serverless endpoints (thin adapters)
+  - /assist-shared.ts, /ocr-shared.ts, /tts-shared.ts (inject into shared core)
+- server/ — Node.js (TypeScript) API & scripts
   - src/
-    - routes/ — /describe, /ocr, /qa, /tts
-    - providers/ — GeminiProvider, ElevenLabsProvider, HybridProvider, IAIProvider
-    - middleware/ — shared middleware (rate‑limiting, etc.)
-- docs/ — design system and setup docs
-- README-MOBILE.md — mobile testing & setup guide
+    - utils/, scripts/, telemetry, cost analysis tools
+- shared/ — Shared core business logic & providers
+- docs/ — architecture, API reference, costs, telemetry
+- README-MOBILE.md — mobile testing & setup guide (see also docs/mobile-setup.md)
 
 ---
 
@@ -193,7 +194,7 @@ Mobile connectivity
 
 ## HTTP API (server)
 
-Base URL: http://<host>:4000
+Base URL: http://HOST:4000 (example)
 
 - GET /health → { ok: true }
 

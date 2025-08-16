@@ -1,6 +1,6 @@
 # Nadar API Architecture - Shared Core Implementation
 
-## Overview
+## Overview (Current, Shared Core)
 
 This document describes the migration from duplicate API implementations to a unified shared core architecture, eliminating code duplication and ensuring consistent behavior across all deployment targets.
 

@@ -1,17 +1,25 @@
-# Nadar /docs
+# Nadar Documentation
 
-This folder contains the working documentation for the Nadar MVP.
+Authoritative documentation for architecture, API, costs, telemetry, and mobile setup.
 
-Contents
-- mvp-scope.md — Scope, in/out-of-scope, acceptance criteria, and latency budgets
-- ux-spec.md — Voice-first UX flows, gestures, audio cues, accessibility
-- prompts.md — System prompts and templates (Darija-first) with verbosity controls
-- architecture.md — App + backend architecture and provider abstraction
-- telemetry.md — What we measure (latency, tokens, errors), schema, retention
-- pilot-plan.md — 20-user pilot plan: scripts, feedback, success metrics
+## Index
 
-Conventions
-- Keep language concrete; avoid vague placeholders
-- Prioritize Darija-first accessibility and safety
-- Prefer concise, structured formats suitable for TTS
+- architecture.md — Current shared-core architecture (authoritative)
+- api.md — HTTP API reference for /api/*-shared endpoints (authoritative)
+- costs.md — Pricing assumptions and cost tracking
+- telemetry.md — Metrics and schema (timing, tokenUsage, error codes)
+- mobile-setup.md — Mobile setup and testing (canonical)
+
+## Legacy (MVP Archive)
+
+- mvp-scope.md — Initial MVP scope and latency budgets (legacy)
+- ux-spec.md — MVP UX flows and accessibility notes (legacy)
+- prompts.md — Early system prompts and templates (legacy)
+- pilot-plan.md — MVP pilot plan (legacy)
+- architecture-mvp.md — superseded by architecture.md (current)
+
+## Notes
+
+- Prefer the “authoritative” docs for current behavior.
+- Legacy content is retained for historical context.
 

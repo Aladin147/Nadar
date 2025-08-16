@@ -1,8 +1,11 @@
-# Nadar Mobile Testing Guide
+# Nadar Mobile Testing Guide (Canonical)
+
+For full setup and troubleshooting, see docs/mobile-setup.md.
 
 ## 🚀 Quick Start for Mobile Development
 
 The development workflow has been streamlined. You can now start both the server and the app with a single command from the root of the project.
+
 
 ### Prerequisites
 1. **Install Expo Go** on your mobile device.

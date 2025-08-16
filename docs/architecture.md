@@ -1,31 +1,77 @@
-# Architecture (MVP)
+# Architecture (Current — Shared Core)
 
-App (React Native, TypeScript)
-- Screens: Scene, Read, Q&A, Settings
-- Components: CaptureButton, StatusStrip, ModeChips, AudioControls
-- Providers: IAIProvider interface + GeminiProvider implementation
-- Services: telemetry, prompts, ttsPlayback
-- Utils: imageDownscale, latencyTimer
-- Store: mode, lastImage, settings
+This document describes the current architecture using a shared core with thin runtime adapters. It replaces the legacy MVP architecture (see architecture-mvp.md).
 
-Backend (Node.js, Express)
-- Routes: /describe, /ocr, /qa, /tts
-- Provider module: gemini.ts (wraps Gemini API)
-- Middleware: rateLimit, logging
-- No image persistence; ephemeral handling
+## Overview
 
-Provider interface (IAIProvider)
-- describe({ image, options }): Promise<{ text, timings, tokens }>
-- ocr({ image, options }): Promise<{ text, timings, tokens }>
-- qa({ image, question, options }): Promise<{ text, timings, tokens }>
-- tts({ text, voice, options }): Promise<{ audio, timings, tokens }>
+- Shared business logic lives in `shared/` (runtime-agnostic)
+- Thin adapters in `api/` expose Vercel serverless endpoints
+- Server-side utilities and analysis live in `server/`
+- React Native (Expo) client is in `apps/nadar-demo`
 
-API contracts
-- POST /describe { image, mode, verbosity, language }
-- POST /ocr { image, language }
-- POST /qa { image, question, language }
-- POST /tts { text, voice }
+## Layers
 
-Privacy & Safety
-- Ephemeral image data; redact PII in logs; opt-in telemetry
+1) Shared Core (shared/)
+- Business logic for Assist/OCR/TTS
+- Provider interfaces (AI, TTS, storage) and implementations
+- Deterministic error mapping and telemetry emission
+
+2) Runtime Adapters (api/*-shared.ts)
+- 5–20 line endpoints that:
+  - Parse/validate requests
+  - Inject providers into core
+  - Map core responses to HTTP JSON
+- Endpoints:
+  - POST /api/assist-shared
+  - POST /api/ocr-shared
+  - POST /api/tts-shared
+
+3) Client (apps/nadar-demo)
+- Screens: Welcome, Capture, Results, History, Settings
+- Utilities: audio player (native+web), image downscale, cost tracker
+- API client wrappers target the /api/*-shared endpoints
+
+4) Server utilities (server/)
+- Telemetry, cost analysis scripts (`server/scripts/cost.ts`)
+- Operational helpers and pricing constants for reporting
+
+## Data Flow (Assist)
+1. App captures or selects image and calls /api/assist-shared with imageBase64 or imageRef
+2. Adapter injects providers and calls shared core
+3. Core runs inspection + generation; emits timing/token usage when available
+4. Response includes:
+   - speak (primary TTS-friendly text)
+   - details[] (optional)
+   - signals (ImageSignals)
+   - followupToken (image reference for subsequent calls)
+   - sessionId (optional)
+   - timing, tokenUsage (when available)
+
+## Image Cache & Follow-ups
+- The API maintains an ephemeral cache of the last image via a token
+- Prefer `followupToken` over "last" to avoid races between requests
+
+## Error Codes
+- INVALID_IMAGE, IMAGE_NOT_FOUND, INSPECTION_ERROR, GENERATION_ERROR, METHOD_NOT_ALLOWED
+- NETWORK, TIMEOUT, QUOTA for transport/provider issues
+
+## Telemetry & Costs
+- Timing fields: inspection_ms, processing_ms, total_ms
+- tokenUsage when provided by Gemini (input/output/total)
+- Client cost tracker and server scripts use synchronized pricing constants
+  - Gemini 2.5 Flash: $0.075/M input, $0.30/M output, $0.075/M image
+  - ElevenLabs Flash v2.5: ~$0.015 per 1,000 chars
+
+## Providers
+- Vision/LLM: Gemini 2.5 Flash (thinking budget 0 for latency)
+- TTS: ElevenLabs Flash v2.5 (primary); Gemini TTS supported
+
+## Security & Privacy
+- Ephemeral image handling; do not persist images server-side
+- Structured error handling; minimal logs with no PII
+
+## References
+- API reference: docs/api.md
+- Costs & pricing: docs/costs.md
+- Shared core overview: shared/README.md
 
