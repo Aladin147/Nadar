@@ -2,7 +2,7 @@
 
 This document defines the canonical request/response contracts for the shared API endpoints used by the demo app and server. All endpoints are available under the same base URL (Vercel serverless).
 
-- Base URL (production): <https://nadar-server-hxtkpxxnd-aladin147s-projects.vercel.app>
+- Base URL (production): <https://nadar-server-7hxphigr3-aladin147s-projects.vercel.app>
 - Content-Type: application/json
 - Authentication: none (demo)
 - Languages: `darija` (default), `ar`, `en`
