@@ -75,7 +75,7 @@ export default function WelcomeScreen({ navigation }: Props) {
         }),
         Animated.timing(rotateAnim, {
           toValue: 1,
-          duration: 1200,
+          duration: 2400, // Slower, more graceful rotation
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -104,57 +104,57 @@ export default function WelcomeScreen({ navigation }: Props) {
     ]).start();
 
     // Continuous animations
-    // Pulse animation for logo
+    // Pulse animation for logo - much more subtle
     const pulseAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.15,
-          duration: 2000,
+          toValue: 1.03, // Much more subtle scaling
+          duration: 4000, // Slower, more breathing-like
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 2000,
+          duration: 4000, // Slower return
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ])
     );
 
-    // Floating animation
+    // Floating animation - more gentle
     const floatAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
-          toValue: -10,
-          duration: 3000,
+          toValue: -3, // Much more subtle movement
+          duration: 6000, // Slower, more meditative
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(floatAnim, {
           toValue: 0,
-          duration: 3000,
+          duration: 6000, // Slower return
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ])
     );
 
-    // Shimmer effect
+    // Shimmer effect - slower and more elegant
     const shimmerAnimation = Animated.loop(
       Animated.timing(shimmerAnim, {
         toValue: 1,
-        duration: 3000,
+        duration: 5000, // Slower shimmer for elegance
         easing: Easing.linear,
         useNativeDriver: true,
       })
     );
 
-    // Gradient rotation
+    // Gradient rotation - much slower for ambient effect
     const gradientAnimation = Animated.loop(
       Animated.timing(gradientAnim, {
         toValue: 1,
-        duration: 10000,
+        duration: 20000, // Very slow ambient rotation
         easing: Easing.linear,
         useNativeDriver: true,
       })
