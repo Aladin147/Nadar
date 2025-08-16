@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { theme } from '../theme';
+import * as Haptics from 'expo-haptics';
 import { tts, assistWithImageRef, assistVoiceFollowup, clearSessionMemory } from '../api/client';
 import { AudioPlayer, AudioPlayerRef } from '../utils/audioPlayer';
 import { audioRecorder } from '../utils/audioRecording';
@@ -49,6 +50,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
   const [isProcessingFollowup, setIsProcessingFollowup] = useState(false);
   const [showCostTracker, setShowCostTracker] = useState(false);
   const [selectedChip, setSelectedChip] = useState<number | null>(null);
+  const [textSize, setTextSize] = useState<'small' | 'medium' | 'large'>('medium');
   const audioRef = useRef<AudioPlayerRef['current']>(null);
   const audioPlayer = useRef(new AudioPlayer({ current: null }));
 
@@ -197,6 +199,34 @@ export default function ResultsScreen({ navigation, route }: Props) {
     } finally {
       setIsPlayingTTS(false);
     }
+  };
+
+  const getTextSizeStyle = () => {
+    switch (textSize) {
+      case 'small': return { fontSize: 14, lineHeight: 20 };
+      case 'large': return { fontSize: 20, lineHeight: 28 };
+      default: return { fontSize: 16, lineHeight: 24 };
+    }
+  };
+
+  const getTitleSizeStyle = () => {
+    switch (textSize) {
+      case 'small': return { fontSize: 20 };
+      case 'large': return { fontSize: 28 };
+      default: return { fontSize: 24 };
+    }
+  };
+
+  const cycleTextSize = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTextSize(current => {
+      switch (current) {
+        case 'small': return 'medium';
+        case 'medium': return 'large';
+        case 'large': return 'small';
+        default: return 'medium';
+      }
+    });
   };
 
   const handleFollowupChip = async (question: string, index: number) => {
@@ -372,6 +402,22 @@ export default function ResultsScreen({ navigation, route }: Props) {
           <View style={styles.headerActions}>
             <TouchableOpacity
               style={styles.headerButton}
+              onPress={cycleTextSize}
+            >
+              <LinearGradient
+                colors={['rgba(168, 85, 247, 0.1)', 'rgba(168, 85, 247, 0.05)']}
+                style={styles.headerButtonGradient}
+              >
+                <Text style={[
+                  styles.headerButtonIcon,
+                  { fontSize: textSize === 'small' ? 14 : textSize === 'large' ? 22 : 18 }
+                ]}>
+                  A
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
               onPress={handleClearMemory}
             >
               <LinearGradient
@@ -476,7 +522,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
 
                 {/* Main Response Text */}
                 <View style={styles.responseBody}>
-                  <Text style={styles.responseText}>{response.speak}</Text>
+                  <Text style={[styles.responseText, getTextSizeStyle()]}>{response.speak}</Text>
                 </View>
 
                 {/* Details Section with Animation */}
@@ -491,7 +537,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
                             style={styles.detailBulletGradient}
                           />
                         </View>
-                        <Text style={styles.detailText}>{detail}</Text>
+                        <Text style={[styles.detailText, getTextSizeStyle()]}>{detail}</Text>
                       </View>
                     ))}
                   </Animated.View>

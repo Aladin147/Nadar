@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { CameraView } from 'expo-camera';
+import { CameraView, FlashMode } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { theme } from '../theme';
@@ -39,6 +39,7 @@ export default function CaptureScreen({ navigation }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [captureMode, setCaptureMode] = useState<'ready' | 'recording' | 'processing'>('ready');
   const [captureHint, setCaptureHint] = useState('Point at what you want to analyze');
+  const [flashMode, setFlashMode] = useState<FlashMode>('off');
   const cameraRef = useRef<CameraView>(null);
 
   // Animation values - very subtle
@@ -262,6 +263,36 @@ export default function CaptureScreen({ navigation }: Props) {
     }
   };
 
+  const toggleFlash = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFlashMode(current => {
+      switch (current) {
+        case 'off': return 'on';
+        case 'on': return 'auto';
+        case 'auto': return 'off';
+        default: return 'off';
+      }
+    });
+  };
+
+  const getFlashIcon = () => {
+    switch (flashMode) {
+      case 'on': return '⚡';
+      case 'auto': return '🔆';
+      case 'off': return '⚡';
+      default: return '⚡';
+    }
+  };
+
+  const getFlashLabel = () => {
+    switch (flashMode) {
+      case 'on': return 'ON';
+      case 'auto': return 'AUTO';
+      case 'off': return 'OFF';
+      default: return 'OFF';
+    }
+  };
+
   const startRecording = async () => {
     try {
       setIsRecording(true);
@@ -423,7 +454,26 @@ export default function CaptureScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <View style={styles.headerSpacer} />
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={toggleFlash}
+            disabled={isLoading || isRecording}
+          >
+            <LinearGradient
+              colors={flashMode === 'off' ?
+                ['rgba(100, 116, 139, 0.1)', 'rgba(100, 116, 139, 0.05)'] :
+                ['rgba(59, 130, 246, 0.1)', 'rgba(59, 130, 246, 0.05)']
+              }
+              style={styles.headerButtonGradient}
+            >
+              <Text style={[
+                styles.headerButtonText,
+                { opacity: flashMode === 'off' ? 0.5 : 1 }
+              ]}>
+                {getFlashIcon()}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Camera View Container */}
@@ -452,6 +502,7 @@ export default function CaptureScreen({ navigation }: Props) {
                   ref={cameraRef}
                   style={styles.camera}
                   facing="back"
+                  flash={flashMode}
                 />
 
                 {/* Scan Line Effect */}

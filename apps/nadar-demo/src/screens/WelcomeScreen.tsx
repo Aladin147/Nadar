@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCameraPermissions } from 'expo-camera';
 import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
 import { theme } from '../theme';
 import { testConnection } from '../api/client';
 
@@ -150,11 +151,11 @@ export default function WelcomeScreen({ navigation }: Props) {
       })
     );
 
-    // Gradient rotation - much slower for ambient effect
+    // Gradient rotation - extremely slow for barely perceptible ambient effect
     const gradientAnimation = Animated.loop(
       Animated.timing(gradientAnim, {
         toValue: 1,
-        duration: 20000, // Very slow ambient rotation
+        duration: 60000, // 1 minute for barely noticeable ambient effect
         easing: Easing.linear,
         useNativeDriver: true,
       })
@@ -271,15 +272,15 @@ export default function WelcomeScreen({ navigation }: Props) {
           />
         </Animated.View>
 
-        {/* Floating orbs for depth */}
+        {/* Floating orbs for depth - much more subtle */}
         <Animated.View
           style={[
             styles.orb,
             styles.orb1,
             {
               transform: [
-                { translateY: floatAnim },
-                { scale: pulseAnim }
+                { translateY: Animated.multiply(floatAnim, 0.3) }, // Much more subtle movement
+                { scale: Animated.add(1, Animated.multiply(Animated.subtract(pulseAnim, 1), 0.2)) } // Very subtle scaling
               ],
             }
           ]}
@@ -290,8 +291,8 @@ export default function WelcomeScreen({ navigation }: Props) {
             styles.orb2,
             {
               transform: [
-                { translateY: Animated.multiply(floatAnim, -1) },
-                { scale: pulseAnim }
+                { translateY: Animated.multiply(floatAnim, -0.2) }, // Even more subtle counter-movement
+                { scale: Animated.add(1, Animated.multiply(Animated.subtract(pulseAnim, 1), 0.1)) } // Barely perceptible scaling
               ],
             }
           ]}
@@ -424,7 +425,10 @@ export default function WelcomeScreen({ navigation }: Props) {
                   { transform: [{ translateX: card1Anim }] }
                 ]}
               >
-                <TouchableOpacity activeOpacity={0.9}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                >
                   <View style={styles.featureCard}>
                     <LinearGradient
                       colors={['rgba(59, 130, 246, 0.15)', 'rgba(59, 130, 246, 0.05)', 'rgba(59, 130, 246, 0.02)']}
@@ -472,7 +476,10 @@ export default function WelcomeScreen({ navigation }: Props) {
                   { transform: [{ translateX: card2Anim }] }
                 ]}
               >
-                <TouchableOpacity activeOpacity={0.9}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                >
                   <View style={styles.featureCard}>
                     <LinearGradient
                       colors={['rgba(168, 85, 247, 0.15)', 'rgba(168, 85, 247, 0.05)', 'rgba(168, 85, 247, 0.02)']}
@@ -520,7 +527,10 @@ export default function WelcomeScreen({ navigation }: Props) {
                   { transform: [{ translateX: card3Anim }] }
                 ]}
               >
-                <TouchableOpacity activeOpacity={0.9}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                >
                   <View style={styles.featureCard}>
                     <LinearGradient
                       colors={['rgba(34, 197, 94, 0.15)', 'rgba(34, 197, 94, 0.05)', 'rgba(34, 197, 94, 0.02)']}
@@ -597,6 +607,7 @@ export default function WelcomeScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.ctaButton}
               onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 if (canProceed) {
                   navigation.navigate('Capture');
                 } else {
