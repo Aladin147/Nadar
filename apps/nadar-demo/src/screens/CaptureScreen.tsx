@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { theme } from '../theme';
 import { assist, assistMultimodal } from '../api/client';
 import { audioRecorder } from '../utils/audioRecording';
+import { optimizeImageForAI, logPerformance, getPerformanceStats } from '../utils/performanceOptimizer';
 
 type RootStackParamList = {
   Welcome: undefined;
@@ -232,15 +233,22 @@ export default function CaptureScreen({ navigation }: Props) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        base64: true,
+        quality: 0.6, // Reduced for faster processing
+        base64: false, // We'll optimize it ourselves
       });
 
-      if (!photo?.base64) {
+      if (!photo?.uri) {
         throw new Error('Failed to capture image');
       }
 
-      const result = await assist(photo.base64, 'image/jpeg');
+      // Optimize image for AI processing
+      const imageProcessingStart = Date.now();
+      const optimizedImage = await optimizeImageForAI(photo.uri);
+      const imageProcessingTime = Date.now() - imageProcessingStart;
+
+      console.log(`⚡ Image optimized: ${Math.round(optimizedImage.originalSize/1024)}KB → ${Math.round(optimizedImage.optimizedSize/1024)}KB in ${imageProcessingTime}ms`);
+
+      const result = await assist(optimizedImage.base64, 'image/jpeg');
       
       navigation.navigate('Results', { 
         response: result, 
@@ -260,19 +268,23 @@ export default function CaptureScreen({ navigation }: Props) {
   const handleGalleryPick = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'], // Updated from deprecated MediaTypeOptions
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
-        base64: true,
+        quality: 0.6, // Reduced for faster processing
+        base64: false, // We'll optimize it ourselves
       });
 
-      if (!result.canceled && result.assets[0]?.base64) {
+      if (!result.canceled && result.assets[0]?.uri) {
         setIsLoading(true);
         setCaptureMode('processing');
         setCaptureHint('Processing image from gallery...');
-        
-        const assistResult = await assist(result.assets[0].base64, 'image/jpeg');
+
+        // Use optimized image processing
+        const optimizedImage = await optimizeImageForAI(result.assets[0].uri);
+        console.log(`⚡ Gallery image optimized: ${Math.round(optimizedImage.originalSize/1024)}KB → ${Math.round(optimizedImage.optimizedSize/1024)}KB`);
+
+        const assistResult = await assist(optimizedImage.base64, optimizedImage.mimeType);
         
         navigation.navigate('Results', { 
           response: assistResult, 
@@ -333,18 +345,22 @@ export default function CaptureScreen({ navigation }: Props) {
       setIsRecording(false);
 
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        base64: true,
+        quality: 0.6, // Reduced for faster processing
+        base64: false, // We'll optimize it ourselves
       });
 
-      if (!photo?.base64) {
+      if (!photo?.uri) {
         throw new Error('Failed to capture image');
       }
+
+      // Optimize image for AI processing
+      const optimizedImage = await optimizeImageForAI(photo.uri);
+      console.log(`⚡ Multimodal image optimized: ${Math.round(optimizedImage.originalSize/1024)}KB → ${Math.round(optimizedImage.optimizedSize/1024)}KB`);
 
       if (audioUri) {
         const audioBase64 = await audioRecorder.convertToBase64(audioUri);
         const multimodalResult = await assistMultimodal(
-          photo.base64,
+          optimizedImage.base64,
           'image/jpeg',
           audioBase64,
           'audio/wav'
@@ -373,7 +389,7 @@ export default function CaptureScreen({ navigation }: Props) {
           sessionId: multimodalResult.sessionId
         });
       } else {
-        const result = await assist(photo.base64, 'image/jpeg');
+        const result = await assist(optimizedImage.base64, 'image/jpeg');
         navigation.navigate('Results', {
           response: result,
           sessionId: result.sessionId

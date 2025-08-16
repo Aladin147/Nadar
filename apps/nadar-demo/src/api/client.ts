@@ -1,5 +1,11 @@
 import { API_BASE } from '../config';
 import { sessionCostTracker, RequestCostData } from '../utils/costTracker';
+import {
+  PERFORMANCE_CONFIG,
+  logPerformance,
+  createOptimizedFetch,
+  PerformanceCache
+} from '../utils/performanceOptimizer';
 
 function normalizeFetchError(e: any): Error {
   // Normalize AbortError and common network failures to our error codes
@@ -25,23 +31,29 @@ async function resolveApiBase(): Promise<string> {
   return base;
 }
 
-export async function postJSON<T>(path: string, body: any, attempts = 2): Promise<T> {
+export async function postJSON<T>(path: string, body: any, attempts = PERFORMANCE_CONFIG.retryAttempts): Promise<T> {
   let lastErr: any;
   const base = await resolveApiBase();
+  const networkStartTime = Date.now();
+
+  // Use optimized fetch with performance settings
+  const optimizedFetch = createOptimizedFetch(PERFORMANCE_CONFIG.requestTimeout);
 
   for (let i = 0; i < attempts; i++) {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const requestStartTime = Date.now();
 
-      const res = await fetch(`${base}${path}`, {
+      const res = await optimizedFetch(`${base}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
         body: JSON.stringify(body),
-        signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
+      const networkTime = Date.now() - requestStartTime;
 
       if (!res.ok) {
         const contentType = res.headers.get('content-type') || '';
@@ -77,11 +89,31 @@ export async function postJSON<T>(path: string, body: any, attempts = 2): Promis
         throw error;
       }
 
-      return await res.json();
+      const result = await res.json();
+
+      // Log performance data if this is an AI request
+      if (path.includes('/assist') || path.includes('/live')) {
+        const totalNetworkTime = Date.now() - networkStartTime;
+        const imageSize = body.imageBase64 ? (body.imageBase64.length * 3) / 4 : 0;
+
+        // Extract server processing time from response if available
+        const serverProcessingTime = result.model_ms || result.processingTime || 0;
+
+        logPerformance({
+          imageProcessingMs: 0, // Will be set by caller
+          networkMs: totalNetworkTime,
+          serverProcessingMs: serverProcessingTime,
+          totalMs: totalNetworkTime + serverProcessingTime,
+          imageSizeBytes: imageSize,
+          compressionRatio: 1 // Will be set by caller
+        });
+      }
+
+      return result;
     } catch (e: any) {
       lastErr = normalizeFetchError(e);
       if (i < attempts - 1) {
-        await new Promise(r => setTimeout(r, 400 * (i + 1)));
+        await new Promise(r => setTimeout(r, 200 * (i + 1))); // Reduced retry delay
         continue;
       }
     }
