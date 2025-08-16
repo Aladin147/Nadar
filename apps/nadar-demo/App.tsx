@@ -9,11 +9,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import CaptureScreen from "./src/screens/CaptureScreen";
 import ResultsScreen from "./src/screens/ResultsScreen";
+import SettingsScreen from "./src/screens/SettingsScreen";
 
 // Define navigation types
 export type RootStackParamList = {
   Welcome: undefined;
   Capture: undefined;
+  Settings: undefined;
   Results: { response: any; sessionId: string };
 };
 
@@ -47,6 +49,7 @@ export default function App() {
           >
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="Capture" component={CaptureScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="Results" component={ResultsScreen} />
           </Stack.Navigator>
           <StatusBar style="light" backgroundColor="#000000" />

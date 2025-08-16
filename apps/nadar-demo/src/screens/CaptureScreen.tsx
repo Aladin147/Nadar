@@ -34,6 +34,32 @@ interface Props {
 
 const { width, height } = Dimensions.get('window');
 
+// Custom icon components for better visual design
+const GalleryIcon = () => (
+  <View style={styles.customIcon}>
+    <View style={styles.galleryFrame} />
+    <View style={styles.galleryImage} />
+    <View style={styles.galleryCorner} />
+  </View>
+);
+
+const MicrophoneIcon = () => (
+  <View style={styles.customIcon}>
+    <View style={styles.micBody} />
+    <View style={styles.micGrille1} />
+    <View style={styles.micGrille2} />
+    <View style={styles.micGrille3} />
+    <View style={styles.micBase} />
+  </View>
+);
+
+const FlashIcon = ({ mode }: { mode: FlashMode }) => (
+  <View style={styles.customIcon}>
+    <View style={[styles.flashBolt, { opacity: mode === 'off' ? 0.3 : 1 }]} />
+    <View style={[styles.flashSpark, { opacity: mode === 'auto' ? 1 : 0 }]} />
+  </View>
+);
+
 export default function CaptureScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -275,23 +301,7 @@ export default function CaptureScreen({ navigation }: Props) {
     });
   };
 
-  const getFlashIcon = () => {
-    switch (flashMode) {
-      case 'on': return '⚡';
-      case 'auto': return '🔆';
-      case 'off': return '⚡';
-      default: return '⚡';
-    }
-  };
 
-  const getFlashLabel = () => {
-    switch (flashMode) {
-      case 'on': return 'ON';
-      case 'auto': return 'AUTO';
-      case 'off': return 'OFF';
-      default: return 'OFF';
-    }
-  };
 
   const startRecording = async () => {
     try {
@@ -391,15 +401,27 @@ export default function CaptureScreen({ navigation }: Props) {
     outputRange: ['0deg', '360deg'],
   });
 
+  const rotation2 = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-180deg'],
+  });
+
   return (
     <View style={styles.container}>
-      {/* Gradient background */}
+      {/* Enhanced deep gradient background */}
       <LinearGradient
-        colors={['#0F172A', '#1E293B', '#0F172A']}
+        colors={[
+          '#0A0E27',
+          '#1A1B3A',
+          '#2D1B69',
+          '#1A1B3A',
+          '#0A0E27'
+        ]}
+        locations={[0, 0.25, 0.5, 0.75, 1]}
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Animated background elements */}
+      {/* Enhanced animated background elements */}
       <Animated.View
         style={[
           styles.backgroundOrb,
@@ -408,7 +430,21 @@ export default function CaptureScreen({ navigation }: Props) {
               { rotate: rotation },
               { scale: pulseAnim }
             ],
-            opacity: 0.03,
+            opacity: 0.04,
+          }
+        ]}
+      />
+
+      {/* Additional background orbs for depth */}
+      <Animated.View
+        style={[
+          styles.backgroundOrb2,
+          {
+            transform: [
+              { rotate: rotation2 },
+              { scale: Animated.multiply(pulseAnim, 0.8) }
+            ],
+            opacity: 0.02,
           }
         ]}
       />
@@ -466,12 +502,7 @@ export default function CaptureScreen({ navigation }: Props) {
               }
               style={styles.headerButtonGradient}
             >
-              <Text style={[
-                styles.headerButtonText,
-                { opacity: flashMode === 'off' ? 0.5 : 1 }
-              ]}>
-                {getFlashIcon()}
-              </Text>
+              <FlashIcon mode={flashMode} />
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
@@ -489,10 +520,14 @@ export default function CaptureScreen({ navigation }: Props) {
             }
           ]}
         >
-          {/* Camera Frame with Premium Border */}
+          {/* Enhanced Camera Frame with Premium Border */}
           <View style={styles.cameraFrame}>
             <LinearGradient
-              colors={['rgba(59, 130, 246, 0.2)', 'rgba(168, 85, 247, 0.2)']}
+              colors={[
+                'rgba(59, 130, 246, 0.25)',
+                'rgba(139, 92, 246, 0.2)',
+                'rgba(168, 85, 247, 0.25)'
+              ]}
               style={styles.cameraFrameGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -570,7 +605,14 @@ export default function CaptureScreen({ navigation }: Props) {
           ]}
         >
           <LinearGradient
-            colors={['rgba(15, 23, 42, 0.95)', 'rgba(30, 41, 59, 0.9)']}
+            colors={[
+              'rgba(10, 14, 39, 0.98)',
+              'rgba(26, 27, 58, 0.95)',
+              'rgba(45, 27, 105, 0.92)',
+              'rgba(26, 27, 58, 0.95)',
+              'rgba(10, 14, 39, 0.98)'
+            ]}
+            locations={[0, 0.25, 0.5, 0.75, 1]}
             style={styles.controlPanelGradient}
           >
             {/* Secondary Controls */}
@@ -586,7 +628,7 @@ export default function CaptureScreen({ navigation }: Props) {
                   colors={['rgba(148, 163, 184, 0.1)', 'rgba(148, 163, 184, 0.05)']}
                   style={styles.secondaryButtonGradient}
                 >
-                  <Text style={styles.secondaryButtonIcon}>🖼️</Text>
+                  <GalleryIcon />
                   <Text style={styles.secondaryButtonText}>Gallery</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -653,7 +695,7 @@ export default function CaptureScreen({ navigation }: Props) {
                     </>
                   ) : (
                     <>
-                      <Text style={styles.secondaryButtonIcon}>🎤</Text>
+                      <MicrophoneIcon />
                       <Text style={styles.secondaryButtonText}>Voice</Text>
                     </>
                   )}
@@ -683,7 +725,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Background elements
+  // Enhanced background elements
   backgroundOrb: {
     position: 'absolute',
     width: 600,
@@ -692,6 +734,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(59, 130, 246, 0.5)',
     top: height / 2 - 300,
     left: width / 2 - 300,
+  },
+  backgroundOrb2: {
+    position: 'absolute',
+    width: 400,
+    height: 400,
+    borderRadius: 200,
+    backgroundColor: 'rgba(168, 85, 247, 0.3)',
+    top: height / 2 - 200,
+    right: -100,
   },
 
   // Header
@@ -967,5 +1018,100 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     fontWeight: '500',
+  },
+
+  // Custom icon styles
+  customIcon: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Gallery icon
+  galleryFrame: {
+    width: 18,
+    height: 14,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  galleryImage: {
+    position: 'absolute',
+    width: 10,
+    height: 8,
+    backgroundColor: '#60A5FA',
+    borderRadius: 1,
+    top: 3,
+    left: 4,
+  },
+  galleryCorner: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+    top: 1,
+    right: 1,
+  },
+
+  // Microphone icon
+  micBody: {
+    width: 8,
+    height: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+  },
+  micGrille1: {
+    position: 'absolute',
+    width: 4,
+    height: 1,
+    backgroundColor: '#3B82F6',
+    borderRadius: 0.5,
+    top: 4,
+  },
+  micGrille2: {
+    position: 'absolute',
+    width: 4,
+    height: 1,
+    backgroundColor: '#3B82F6',
+    borderRadius: 0.5,
+    top: 6,
+  },
+  micGrille3: {
+    position: 'absolute',
+    width: 4,
+    height: 1,
+    backgroundColor: '#3B82F6',
+    borderRadius: 0.5,
+    top: 8,
+  },
+  micBase: {
+    position: 'absolute',
+    width: 12,
+    height: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 1,
+    bottom: -2,
+  },
+
+  // Flash icon
+  flashBolt: {
+    width: 12,
+    height: 16,
+    backgroundColor: '#FFFFFF',
+    transform: [{ skewX: '-15deg' }],
+  },
+  flashSpark: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    backgroundColor: '#F59E0B',
+    borderRadius: 1.5,
+    top: 2,
+    right: 2,
   },
 });

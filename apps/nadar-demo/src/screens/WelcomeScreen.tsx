@@ -24,6 +24,7 @@ import { testConnection } from '../api/client';
 type RootStackParamList = {
   Welcome: undefined;
   Capture: undefined;
+  Settings: undefined;
   Results: { response: any };
 };
 
@@ -41,136 +42,213 @@ export default function WelcomeScreen({ navigation }: Props) {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
 
-  // Animation values
+  // Animation values - subtle and premium
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.3)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const gradientAnim = useRef(new Animated.Value(0)).current;
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
   
-  // Individual card animations
-  const card1Anim = useRef(new Animated.Value(-width)).current;
-  const card2Anim = useRef(new Animated.Value(-width)).current;
-  const card3Anim = useRef(new Animated.Value(-width)).current;
+  // Aurora effect animations
+  const aurora1Anim = useRef(new Animated.Value(0)).current;
+  const aurora2Anim = useRef(new Animated.Value(0)).current;
+  const aurora3Anim = useRef(new Animated.Value(0)).current;
+  
+  // Card animations
+  const card1Anim = useRef(new Animated.Value(30)).current;
+  const card2Anim = useRef(new Animated.Value(30)).current;
+  const card3Anim = useRef(new Animated.Value(30)).current;
+
+  // Floating particles
+  const particle1Anim = useRef(new Animated.Value(0)).current;
+  const particle2Anim = useRef(new Animated.Value(0)).current;
+  const particle3Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     checkConnectionStatus();
     checkAudioPermissions();
 
-    // Epic entrance animation sequence
-    Animated.sequence([
-      // First: Logo entrance with rotation
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 4,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 2400, // Slower, more graceful rotation
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      // Then: Cards slide in with stagger
-      Animated.stagger(150, [
-        Animated.spring(card1Anim, {
-          toValue: 0,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(card2Anim, {
-          toValue: 0,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.spring(card3Anim, {
-          toValue: 0,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
+    // Smooth entrance animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 20,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Cards fade in after logo
+      Animated.stagger(200, [
+        Animated.parallel([
+          Animated.timing(card1Anim, {
+            toValue: 0,
+            duration: 600,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(card2Anim, {
+            toValue: 0,
+            duration: 600,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(card3Anim, {
+            toValue: 0,
+            duration: 600,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    });
 
-    // Continuous animations
-    // Pulse animation for logo - much more subtle
+    // Very subtle pulse for logo
     const pulseAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.03, // Much more subtle scaling
-          duration: 4000, // Slower, more breathing-like
+          toValue: 1.05,
+          duration: 4000,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 4000, // Slower return
+          duration: 4000,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ])
     );
 
-    // Floating animation - more gentle
-    const floatAnimation = Animated.loop(
+    // Aurora animations - very slow and subtle
+    const aurora1Animation = Animated.loop(
       Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: -3, // Much more subtle movement
-          duration: 6000, // Slower, more meditative
+        Animated.timing(aurora1Anim, {
+          toValue: 1,
+          duration: 15000,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.timing(floatAnim, {
+        Animated.timing(aurora1Anim, {
           toValue: 0,
-          duration: 6000, // Slower return
+          duration: 15000,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ])
     );
 
-    // Shimmer effect - slower and more elegant
-    const shimmerAnimation = Animated.loop(
-      Animated.timing(shimmerAnim, {
-        toValue: 1,
-        duration: 5000, // Slower shimmer for elegance
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
+    const aurora2Animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(aurora2Anim, {
+          toValue: 1,
+          duration: 20000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(aurora2Anim, {
+          toValue: 0,
+          duration: 20000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
     );
 
-    // Gradient rotation - much slower for ambient effect
-    const gradientAnimation = Animated.loop(
-      Animated.timing(gradientAnim, {
-        toValue: 1,
-        duration: 20000, // Very slow ambient rotation
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
+    const aurora3Animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(aurora3Anim, {
+          toValue: 1,
+          duration: 25000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(aurora3Anim, {
+          toValue: 0,
+          duration: 25000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
     );
 
     pulseAnimation.start();
-    floatAnimation.start();
-    shimmerAnimation.start();
-    gradientAnimation.start();
+    aurora1Animation.start();
+    aurora2Animation.start();
+    aurora3Animation.start();
+
+    // Floating particles animations
+    const particle1Animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(particle1Anim, {
+          toValue: 1,
+          duration: 12000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(particle1Anim, {
+          toValue: 0,
+          duration: 12000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const particle2Animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(particle2Anim, {
+          toValue: 1,
+          duration: 18000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(particle2Anim, {
+          toValue: 0,
+          duration: 18000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const particle3Animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(particle3Anim, {
+          toValue: 1,
+          duration: 22000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(particle3Anim, {
+          toValue: 0,
+          duration: 22000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    particle1Animation.start();
+    particle2Animation.start();
+    particle3Animation.start();
 
     return () => {
       pulseAnimation.stop();
-      floatAnimation.stop();
-      shimmerAnimation.stop();
-      gradientAnimation.stop();
+      aurora1Animation.stop();
+      aurora2Animation.stop();
+      aurora3Animation.stop();
+      particle1Animation.stop();
+      particle2Animation.stop();
+      particle3Animation.stop();
     };
   }, []);
 
@@ -232,376 +310,593 @@ export default function WelcomeScreen({ navigation }: Props) {
   };
 
   const allPermissionsGranted = cameraPermission?.granted && audioPermission;
-  const canProceed = allPermissionsGranted && (isConnected || __DEV__); // Allow dev mode bypass
+  const canProceed = allPermissionsGranted && (isConnected || __DEV__);
 
-  // Rotation interpolation
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  // Clean Visual Intelligence icon - simplified and readable
+  const VisionIcon = () => (
+    <View style={styles.iconSvg}>
+      {/* Main eye structure */}
+      <View style={styles.eyeContainer}>
+        <View style={styles.eyeOuter} />
+        <View style={styles.eyeIris} />
+        <View style={styles.eyePupil}>
+          <View style={styles.aiSpark} />
+        </View>
+      </View>
 
-  // Shimmer translation
-  const shimmerTranslate = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-width, width],
-  });
+      {/* Simple AI indicators */}
+      <View style={styles.aiIndicator1} />
+      <View style={styles.aiIndicator2} />
+      <View style={styles.aiIndicator3} />
+    </View>
+  );
+
+  const VoiceIcon = () => (
+    <View style={styles.iconSvg}>
+      <View style={styles.iconWave1} />
+      <View style={styles.iconWave2} />
+      <View style={styles.iconWave3} />
+    </View>
+  );
+
+  const ShieldIcon = () => (
+    <View style={styles.iconSvg}>
+      <View style={styles.iconShield} />
+      <View style={styles.iconCheck} />
+    </View>
+  );
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <View style={styles.container}>
-        {/* Animated gradient background */}
-        <Animated.View 
+        {/* Deep gradient background */}
+        <LinearGradient
+          colors={['#0A0E27', '#1A1F3A', '#0D1117']}
+          style={StyleSheet.absoluteFillObject}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+
+        {/* Enhanced spotlight from above effect - tighter cone with smoother gradient */}
+        <View style={styles.spotlightContainer}>
+          {/* Outermost soft glow */}
+          <View style={styles.spotlightOuter1}>
+            <LinearGradient
+              colors={[
+                'rgba(59, 130, 246, 0.22)',
+                'rgba(59, 130, 246, 0.16)',
+                'rgba(59, 130, 246, 0.11)',
+                'rgba(59, 130, 246, 0.07)',
+                'rgba(59, 130, 246, 0.04)',
+                'rgba(59, 130, 246, 0.02)',
+                'rgba(59, 130, 246, 0.01)',
+                'transparent'
+              ]}
+              style={styles.spotlightGradient}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+          </View>
+
+          {/* Second outer layer */}
+          <View style={styles.spotlightOuter2}>
+            <LinearGradient
+              colors={[
+                'rgba(56, 189, 248, 0.18)',
+                'rgba(56, 189, 248, 0.13)',
+                'rgba(56, 189, 248, 0.09)',
+                'rgba(56, 189, 248, 0.06)',
+                'rgba(56, 189, 248, 0.03)',
+                'rgba(56, 189, 248, 0.015)',
+                'transparent'
+              ]}
+              style={styles.spotlightGradient}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+          </View>
+
+          {/* First middle layer */}
+          <View style={styles.spotlightMiddle1}>
+            <LinearGradient
+              colors={[
+                'rgba(139, 92, 246, 0.15)',
+                'rgba(139, 92, 246, 0.11)',
+                'rgba(139, 92, 246, 0.07)',
+                'rgba(139, 92, 246, 0.04)',
+                'rgba(139, 92, 246, 0.02)',
+                'rgba(139, 92, 246, 0.01)',
+                'transparent'
+              ]}
+              style={styles.spotlightGradient}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+          </View>
+
+          {/* Second middle layer */}
+          <View style={styles.spotlightMiddle2}>
+            <LinearGradient
+              colors={[
+                'rgba(99, 102, 241, 0.12)',
+                'rgba(99, 102, 241, 0.08)',
+                'rgba(99, 102, 241, 0.05)',
+                'rgba(99, 102, 241, 0.03)',
+                'rgba(99, 102, 241, 0.015)',
+                'transparent'
+              ]}
+              style={styles.spotlightGradient}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+          </View>
+
+          {/* First inner layer */}
+          <View style={styles.spotlightInner1}>
+            <LinearGradient
+              colors={[
+                'rgba(168, 85, 247, 0.10)',
+                'rgba(168, 85, 247, 0.07)',
+                'rgba(168, 85, 247, 0.04)',
+                'rgba(168, 85, 247, 0.02)',
+                'rgba(168, 85, 247, 0.01)',
+                'transparent'
+              ]}
+              style={styles.spotlightGradient}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+          </View>
+
+          {/* Innermost bright core */}
+          <View style={styles.spotlightInner2}>
+            <LinearGradient
+              colors={[
+                'rgba(147, 51, 234, 0.08)',
+                'rgba(147, 51, 234, 0.05)',
+                'rgba(147, 51, 234, 0.03)',
+                'rgba(147, 51, 234, 0.015)',
+                'rgba(147, 51, 234, 0.005)',
+                'transparent'
+              ]}
+              style={styles.spotlightGradient}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+          </View>
+
+          {/* Soft edge blending - left */}
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(10, 14, 39, 0.3)',
+              'rgba(10, 14, 39, 0.7)',
+              'rgba(10, 14, 39, 1)'
+            ]}
+            style={styles.spotlightBlendLeft}
+            start={{ x: 1, y: 0.5 }}
+            end={{ x: 0, y: 0.5 }}
+          />
+
+          {/* Soft edge blending - right */}
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(10, 14, 39, 0.3)',
+              'rgba(10, 14, 39, 0.7)',
+              'rgba(10, 14, 39, 1)'
+            ]}
+            style={styles.spotlightBlendRight}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+          />
+        </View>
+
+        {/* Aurora effect layers */}
+        <Animated.View
           style={[
-            StyleSheet.absoluteFillObject,
+            styles.aurora,
+            styles.aurora1,
             {
-              transform: [{
-                rotate: gradientAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '360deg'],
-                })
-              }]
-            }
+              opacity: aurora1Anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.05, 0.12],
+              }),
+              transform: [
+                {
+                  translateY: aurora1Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -50],
+                  }),
+                },
+              ],
+            },
           ]}
         >
           <LinearGradient
-            colors={['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']}
+            colors={['rgba(56, 189, 248, 0)', 'rgba(56, 189, 248, 0.4)', 'rgba(56, 189, 248, 0)']}
             style={StyleSheet.absoluteFillObject}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
           />
         </Animated.View>
 
-        {/* Floating orbs for depth */}
         <Animated.View
           style={[
-            styles.orb,
-            styles.orb1,
+            styles.aurora,
+            styles.aurora2,
             {
+              opacity: aurora2Anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.04, 0.09],
+              }),
               transform: [
-                { translateY: floatAnim },
-                { scale: pulseAnim }
+                {
+                  translateX: aurora2Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 30],
+                  }),
+                },
               ],
-            }
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['rgba(139, 92, 246, 0)', 'rgba(139, 92, 246, 0.3)', 'rgba(139, 92, 246, 0)']}
+            style={StyleSheet.absoluteFillObject}
+            start={{ x: 0.2, y: 0 }}
+            end={{ x: 0.8, y: 1 }}
+          />
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.aurora,
+            styles.aurora3,
+            {
+              opacity: aurora3Anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.03, 0.07],
+              }),
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['rgba(34, 197, 94, 0)', 'rgba(34, 197, 94, 0.2)', 'rgba(34, 197, 94, 0)']}
+            style={StyleSheet.absoluteFillObject}
+            start={{ x: 0.8, y: 0 }}
+            end={{ x: 0.2, y: 1 }}
+          />
+        </Animated.View>
+
+        {/* Floating particles for subtle ambiance */}
+        <Animated.View
+          style={[
+            styles.particle,
+            styles.particle1,
+            {
+              opacity: particle1Anim.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: [0, 0.3, 0],
+              }),
+              transform: [
+                {
+                  translateY: particle1Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [height, -100],
+                  }),
+                },
+                {
+                  translateX: particle1Anim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, 20, 0],
+                  }),
+                },
+              ],
+            },
           ]}
         />
+
         <Animated.View
           style={[
-            styles.orb,
-            styles.orb2,
+            styles.particle,
+            styles.particle2,
             {
+              opacity: particle2Anim.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: [0, 0.2, 0],
+              }),
               transform: [
-                { translateY: Animated.multiply(floatAnim, -1) },
-                { scale: pulseAnim }
+                {
+                  translateY: particle2Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [height, -100],
+                  }),
+                },
+                {
+                  translateX: particle2Anim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, -15, 0],
+                  }),
+                },
               ],
-            }
+            },
+          ]}
+        />
+
+        <Animated.View
+          style={[
+            styles.particle,
+            styles.particle3,
+            {
+              opacity: particle3Anim.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: [0, 0.25, 0],
+              }),
+              transform: [
+                {
+                  translateY: particle3Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [height, -100],
+                  }),
+                },
+              ],
+            },
           ]}
         />
 
         <SafeAreaView style={styles.safeArea}>
+          {/* Settings Button */}
+          <Animated.View
+            style={[
+              styles.settingsButton,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }]
+              }
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Settings')}
+              style={styles.settingsButtonTouch}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
+                style={styles.settingsButtonGradient}
+              >
+                <View style={styles.settingsIcon}>
+                  <View style={styles.settingsGear} />
+                  <View style={styles.settingsTooth1} />
+                  <View style={styles.settingsTooth2} />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             bounces={true}
           >
-            {/* Hero Section with Premium Logo */}
+            {/* Hero Section */}
             <Animated.View
               style={[
                 styles.heroSection,
                 {
                   opacity: fadeAnim,
-                  transform: [
-                    { scale: scaleAnim },
-                    { translateY: floatAnim }
-                  ]
-                }
+                  transform: [{ scale: scaleAnim }],
+                },
               ]}
             >
-              {/* Logo with multiple layers */}
-              <View style={styles.logoContainer}>
-                {/* Outer glow ring */}
+              {/* Logo Container */}
+              <Animated.View
+                style={[
+                  styles.logoContainer,
+                  {
+                    transform: [{ scale: pulseAnim }],
+                  },
+                ]}
+              >
+                {/* Subtle glow behind logo */}
                 <Animated.View
                   style={[
-                    styles.logoGlowOuter,
+                    styles.logoGlow,
                     {
-                      transform: [{ scale: pulseAnim }],
                       opacity: pulseAnim.interpolate({
-                        inputRange: [1, 1.15],
-                        outputRange: [0.3, 0.1],
-                      })
-                    }
+                        inputRange: [1, 1.05],
+                        outputRange: [0.2, 0.3],
+                      }),
+                    },
                   ]}
                 />
                 
-                {/* Middle glow ring */}
+                {/* Your actual logo */}
+                <Image
+                  source={require('../../assets/welcome_screen.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+
+              {/* App Title */}
+              <View style={styles.titleContainer}>
+                <Text style={styles.appTitle}>نَظَر</Text>
+                <Text style={styles.appSubtitle}>NADAR AI</Text>
+                <View style={styles.taglineContainer}>
+                  <View style={styles.taglineLine} />
+                  <Text style={styles.tagline}>Your AI Vision Companion</Text>
+                  <View style={styles.taglineLine} />
+                </View>
+              </View>
+
+              {/* Status Indicator */}
+              <View style={styles.statusContainer}>
                 <Animated.View
                   style={[
-                    styles.logoGlowMiddle,
+                    styles.statusDot,
                     {
+                      backgroundColor: isConnected ? '#10B981' : '#EF4444',
                       transform: [{ scale: pulseAnim }],
-                      opacity: pulseAnim.interpolate({
-                        inputRange: [1, 1.15],
-                        outputRange: [0.5, 0.2],
-                      })
-                    }
+                    },
                   ]}
                 />
-
-                {/* Main logo */}
-                <Animated.View
-                  style={[
-                    styles.logoMain,
-                    {
-                      transform: [
-                        { rotate: spin },
-                        { scale: pulseAnim }
-                      ]
-                    }
-                  ]}
-                >
-                  <LinearGradient
-                    colors={['#60A5FA', '#3B82F6', '#2563EB']}
-                    style={styles.logoGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Image
-                      source={require('../../assets/icon.png')}
-                      style={styles.logoIcon}
-                      resizeMode="contain"
-                    />
-
-                    {/* Shimmer effect */}
-                    <Animated.View
-                      style={[
-                        styles.shimmer,
-                        {
-                          transform: [{ translateX: shimmerTranslate }]
-                        }
-                      ]}
-                    />
-                  </LinearGradient>
-                </Animated.View>
+                <Text style={styles.statusText}>
+                  {isConnected === null
+                    ? 'Initializing...'
+                    : isConnected
+                    ? 'System Online'
+                    : __DEV__
+                    ? 'Development Mode'
+                    : 'Offline Mode'}
+                </Text>
               </View>
-
-              {/* App Title with gradient text effect */}
-              <View style={styles.titleContainer}>
-                <Text style={styles.appTitleArabic}>نَظَر</Text>
-                <Text style={styles.appSubtitle}>NADAR AI</Text>
-                <Text style={styles.tagline}>Your AI Vision Companion</Text>
-              </View>
-
-              {/* Live connection status */}
-              <Animated.View
-                style={[
-                  styles.statusBadge,
-                  {
-                    transform: [{ scale: pulseAnim }]
-                  }
-                ]}
-              >
-                <View style={styles.statusBlur}>
-                  <View style={styles.statusContent}>
-                    <Animated.View
-                      style={[
-                        styles.statusDot,
-                        {
-                          backgroundColor: isConnected ? '#10B981' : '#EF4444',
-                          transform: [{ scale: pulseAnim }]
-                        }
-                      ]}
-                    />
-                    <Text style={styles.statusText}>
-                      {isConnected === null ? 'Connecting...' :
-                       isConnected ? 'System Ready' : __DEV__ ? 'Dev Mode' : 'Offline Mode'}
-                    </Text>
-                  </View>
-                </View>
-              </Animated.View>
             </Animated.View>
 
-            {/* Premium Feature Cards */}
+            {/* Feature Cards */}
             <View style={styles.cardsContainer}>
-              {/* Card 1 - Visual Intelligence */}
+              {/* Visual Intelligence Card */}
               <Animated.View
                 style={[
-                  { transform: [{ translateX: card1Anim }] }
+                  styles.featureCard,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: card1Anim }],
+                  },
                 ]}
               >
-                <TouchableOpacity activeOpacity={0.9}>
-                  <View style={styles.featureCard}>
-                    <LinearGradient
-                      colors={['rgba(59, 130, 246, 0.15)', 'rgba(59, 130, 246, 0.05)', 'rgba(59, 130, 246, 0.02)']}
-                      style={styles.cardGradient}
-                    >
-                      <View style={styles.cardHeader}>
-                        <View style={styles.cardIconContainer}>
-                          <LinearGradient
-                            colors={['#60A5FA', '#3B82F6']}
-                            style={styles.cardIconGradient}
-                          >
-                            <Image
-                              source={require('../../assets/icon.png')}
-                              style={styles.cardIconImage}
-                              resizeMode="contain"
-                            />
-                          </LinearGradient>
-                        </View>
-                        <View style={styles.cardBadge}>
-                          <Text style={styles.cardBadgeText}>AI POWERED</Text>
-                        </View>
-                      </View>
-                      
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
+                  style={styles.cardGradient}
+                >
+                  <View style={styles.cardContent}>
+                    <View style={styles.cardIcon}>
+                      <LinearGradient
+                        colors={['#3B82F6', '#2563EB']}
+                        style={styles.cardIconGradient}
+                      >
+                        <VisionIcon />
+                      </LinearGradient>
+                    </View>
+                    <View style={styles.cardTextContent}>
                       <Text style={styles.cardTitle}>Visual Intelligence</Text>
                       <Text style={styles.cardDescription}>
-                        Advanced neural networks analyze your environment in real-time, 
-                        identifying objects, text, and context with unprecedented accuracy.
+                        Advanced neural networks analyze your environment with 95% accuracy
                       </Text>
-                      
-                      <View style={styles.cardStats}>
-                        <View style={styles.stat}>
-                          <Text style={styles.statValue}>95%</Text>
-                          <Text style={styles.statLabel}>Accuracy</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.stat}>
-                          <Text style={styles.statValue}>&lt;2s</Text>
-                          <Text style={styles.statLabel}>Response</Text>
-                        </View>
-                      </View>
-                    </LinearGradient>
+                    </View>
                   </View>
-                </TouchableOpacity>
+                </LinearGradient>
               </Animated.View>
 
-              {/* Card 2 - Darija Voice */}
+              {/* Voice Interaction Card */}
               <Animated.View
                 style={[
-                  { transform: [{ translateX: card2Anim }] }
+                  styles.featureCard,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: card2Anim }],
+                  },
                 ]}
               >
-                <TouchableOpacity activeOpacity={0.9}>
-                  <View style={styles.featureCard}>
-                    <LinearGradient
-                      colors={['rgba(168, 85, 247, 0.15)', 'rgba(168, 85, 247, 0.05)', 'rgba(168, 85, 247, 0.02)']}
-                      style={styles.cardGradient}
-                    >
-                      <View style={styles.cardHeader}>
-                        <View style={styles.cardIconContainer}>
-                          <LinearGradient
-                            colors={['#C084FC', '#A855F7']}
-                            style={styles.cardIconGradient}
-                          >
-                            <Text style={styles.cardIcon}>🗣️</Text>
-                          </LinearGradient>
-                        </View>
-                        <View style={[styles.cardBadge, { backgroundColor: 'rgba(168, 85, 247, 0.2)' }]}>
-                          <Text style={styles.cardBadgeText}>DARIJA NATIVE</Text>
-                        </View>
-                      </View>
-                      
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
+                  style={styles.cardGradient}
+                >
+                  <View style={styles.cardContent}>
+                    <View style={styles.cardIcon}>
+                      <LinearGradient
+                        colors={['#8B5CF6', '#7C3AED']}
+                        style={styles.cardIconGradient}
+                      >
+                        <VoiceIcon />
+                      </LinearGradient>
+                    </View>
+                    <View style={styles.cardTextContent}>
                       <Text style={styles.cardTitle}>Natural Voice</Text>
                       <Text style={styles.cardDescription}>
-                        Speak naturally in Moroccan Darija. Our AI understands context, 
-                        dialects, and responds in clear, natural language.
+                        Speak naturally in Darija, get instant responses
                       </Text>
-                      
-                      <View style={styles.cardStats}>
-                        <View style={styles.stat}>
-                          <Text style={styles.statValue}>100%</Text>
-                          <Text style={styles.statLabel}>Darija</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.stat}>
-                          <Text style={styles.statValue}>Natural</Text>
-                          <Text style={styles.statLabel}>Speech</Text>
-                        </View>
-                      </View>
-                    </LinearGradient>
+                    </View>
                   </View>
-                </TouchableOpacity>
+                </LinearGradient>
               </Animated.View>
 
-              {/* Card 3 - Safety First */}
+              {/* Safety Features Card */}
               <Animated.View
                 style={[
-                  { transform: [{ translateX: card3Anim }] }
+                  styles.featureCard,
+                  {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: card3Anim }],
+                  },
                 ]}
               >
-                <TouchableOpacity activeOpacity={0.9}>
-                  <View style={styles.featureCard}>
-                    <LinearGradient
-                      colors={['rgba(34, 197, 94, 0.15)', 'rgba(34, 197, 94, 0.05)', 'rgba(34, 197, 94, 0.02)']}
-                      style={styles.cardGradient}
-                    >
-                      <View style={styles.cardHeader}>
-                        <View style={styles.cardIconContainer}>
-                          <LinearGradient
-                            colors={['#4ADE80', '#22C55E']}
-                            style={styles.cardIconGradient}
-                          >
-                            <Text style={styles.cardIcon}>🛡️</Text>
-                          </LinearGradient>
-                        </View>
-                        <View style={[styles.cardBadge, { backgroundColor: 'rgba(34, 197, 94, 0.2)' }]}>
-                          <Text style={styles.cardBadgeText}>SAFETY FIRST</Text>
-                        </View>
-                      </View>
-                      
-                      <Text style={styles.cardTitle}>Hazard Detection</Text>
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
+                  style={styles.cardGradient}
+                >
+                  <View style={styles.cardContent}>
+                    <View style={styles.cardIcon}>
+                      <LinearGradient
+                        colors={['#10B981', '#059669']}
+                        style={styles.cardIconGradient}
+                      >
+                        <ShieldIcon />
+                      </LinearGradient>
+                    </View>
+                    <View style={styles.cardTextContent}>
+                      <Text style={styles.cardTitle}>Safety First</Text>
                       <Text style={styles.cardDescription}>
-                        Instant alerts for obstacles, hazards, and navigation guidance. 
-                        Your safety is our primary concern.
+                        Real-time hazard detection and navigation guidance
                       </Text>
-                      
-                      <View style={styles.cardStats}>
-                        <View style={styles.stat}>
-                          <Text style={styles.statValue}>24/7</Text>
-                          <Text style={styles.statLabel}>Active</Text>
-                        </View>
-                        <View style={styles.statDivider} />
-                        <View style={styles.stat}>
-                          <Text style={styles.statValue}>Instant</Text>
-                          <Text style={styles.statLabel}>Alerts</Text>
-                        </View>
-                      </View>
-                    </LinearGradient>
+                    </View>
                   </View>
-                </TouchableOpacity>
+                </LinearGradient>
               </Animated.View>
             </View>
 
-            {/* Permissions Status - Minimalist */}
+            {/* Permissions Section - Only show if needed */}
             {!allPermissionsGranted && (
-              <View style={styles.permissionsContainer}>
-                <Text style={styles.permissionsTitle}>Quick Setup</Text>
-                <View style={styles.permissionItems}>
+              <Animated.View 
+                style={[
+                  styles.permissionsSection,
+                  { opacity: fadeAnim }
+                ]}
+              >
+                <View style={styles.permissionRow}>
                   <View style={styles.permissionItem}>
-                    <View style={[
-                      styles.permissionIcon,
-                      { backgroundColor: cameraPermission?.granted ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }
-                    ]}>
-                      <Text>{cameraPermission?.granted ? '✓' : '📷'}</Text>
-                    </View>
+                    <View
+                      style={[
+                        styles.permissionDot,
+                        {
+                          backgroundColor: cameraPermission?.granted
+                            ? '#10B981'
+                            : '#475569',
+                        },
+                      ]}
+                    />
                     <Text style={styles.permissionText}>Camera</Text>
                   </View>
-                  
+                  <View style={styles.permissionDivider} />
                   <View style={styles.permissionItem}>
-                    <View style={[
-                      styles.permissionIcon,
-                      { backgroundColor: audioPermission ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }
-                    ]}>
-                      <Text>{audioPermission ? '✓' : '🎤'}</Text>
-                    </View>
+                    <View
+                      style={[
+                        styles.permissionDot,
+                        {
+                          backgroundColor: audioPermission ? '#10B981' : '#475569',
+                        },
+                      ]}
+                    />
                     <Text style={styles.permissionText}>Microphone</Text>
                   </View>
                 </View>
-              </View>
+              </Animated.View>
             )}
           </ScrollView>
 
-          {/* Premium CTA Button */}
+          {/* CTA Button */}
           <View style={styles.ctaContainer}>
             <TouchableOpacity
               style={styles.ctaButton}
@@ -613,27 +908,36 @@ export default function WelcomeScreen({ navigation }: Props) {
                 }
               }}
               disabled={isCheckingPermissions}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
             >
               <LinearGradient
-                colors={canProceed ? 
-                  ['#3B82F6', '#2563EB', '#1E40AF'] : 
-                  ['#64748B', '#475569', '#334155']
+                colors={
+                  canProceed
+                    ? ['#3B82F6', '#2563EB']
+                    : ['#475569', '#334155']
                 }
                 style={styles.ctaGradient}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
               >
                 {isCheckingPermissions ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <>
+                  <View style={styles.ctaContent}>
                     <Text style={styles.ctaText}>
-                      {canProceed ? 'Start Experience' : 
-                       allPermissionsGranted ? 'Connecting...' : 'Enable Access'}
+                      {canProceed
+                        ? 'Begin Experience'
+                        : allPermissionsGranted
+                        ? 'Connecting...'
+                        : 'Setup Nadar'}
                     </Text>
-                    <Text style={styles.ctaArrow}>→</Text>
-                  </>
+                    {canProceed && (
+                      <View style={styles.ctaArrow}>
+                        <View style={styles.arrowLine} />
+                        <View style={styles.arrowHead} />
+                      </View>
+                    )}
+                  </View>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -647,7 +951,7 @@ export default function WelcomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0A0E27',
   },
   safeArea: {
     flex: 1,
@@ -659,169 +963,130 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Floating orbs
-  orb: {
+  // Aurora Effects
+  aurora: {
     position: 'absolute',
-    borderRadius: 1000,
+    width: width * 2,
+    height: height * 0.8,
   },
-  orb1: {
-    width: 400,
-    height: 400,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  aurora1: {
     top: -100,
-    left: -100,
+    left: -width * 0.5,
   },
-  orb2: {
-    width: 300,
-    height: 300,
-    backgroundColor: 'rgba(168, 85, 247, 0.1)',
-    bottom: -50,
-    right: -50,
+  aurora2: {
+    top: height * 0.2,
+    left: -width * 0.3,
+  },
+  aurora3: {
+    bottom: -100,
+    right: -width * 0.4,
   },
 
   // Hero Section
   heroSection: {
     alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingTop: 50,
+    paddingBottom: 30,
   },
   logoContainer: {
-    width: 160,
-    height: 160,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 30,
   },
-  logoGlowOuter: {
+  logoGlow: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#3B82F6',
   },
-  logoGlowMiddle: {
-    position: 'absolute',
+  logo: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(59, 130, 246, 0.3)',
-  },
-  logoMain: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    overflow: 'hidden',
-    elevation: 20,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-  },
-  logoGradient: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoIcon: {
-    width: 60,
-    height: 60,
-    zIndex: 2,
-  },
-  shimmer: {
-    position: 'absolute',
-    width: 40,
-    height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    transform: [{ skewX: '-20deg' }],
   },
 
   // Title Section
   titleContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 25,
   },
-  appTitleArabic: {
-    fontSize: 56,
+  appTitle: {
+    fontSize: 48,
     fontWeight: '900',
     color: '#FFFFFF',
     marginBottom: 5,
-    textShadowColor: 'rgba(59, 130, 246, 0.5)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 10,
   },
   appSubtitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 4,
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 3,
+    marginBottom: 15,
+  },
+  taglineContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  taglineLine: {
+    width: 30,
+    height: 1,
+    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+    marginHorizontal: 12,
   },
   tagline: {
-    fontSize: 16,
-    color: '#64748B',
+    fontSize: 14,
+    color: '#475569',
     fontWeight: '500',
   },
 
-  // Status Badge
-  statusBadge: {
-    marginTop: 20,
-  },
-  statusBlur: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  statusContent: {
+  // Status Section
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     marginRight: 8,
   },
   statusText: {
-    color: '#CBD5E1',
-    fontSize: 14,
+    fontSize: 12,
+    color: '#64748B',
     fontWeight: '600',
   },
 
-  // Cards Container
+  // Cards
   cardsContainer: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 10,
   },
-
-  // Feature Cards
   featureCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    marginBottom: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  cardGradient: {
-    padding: 24,
-    borderRadius: 24,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardIconContainer: {
-    width: 56,
-    height: 56,
+    marginBottom: 12,
     borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  cardGradient: {
+    padding: 16,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 16,
   },
   cardIconGradient: {
     width: '100%',
@@ -829,103 +1094,293 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardIcon: {
-    fontSize: 28,
-  },
-  cardIconImage: {
-    width: 24,
-    height: 24,
-    tintColor: '#FFFFFF',
-  },
-  cardBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  cardBadgeText: {
-    color: '#CBD5E1',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
+  cardTextContent: {
+    flex: 1,
   },
   cardTitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  cardDescription: {
-    fontSize: 15,
-    color: '#94A3B8',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  cardStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#E2E8F0',
     marginBottom: 4,
   },
-  statLabel: {
-    fontSize: 12,
+  cardDescription: {
+    fontSize: 13,
     color: '#64748B',
-    fontWeight: '600',
+    lineHeight: 18,
   },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginHorizontal: 20,
+
+  // Enhanced icon designs
+  iconSvg: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Clean Visual Intelligence icon styles - properly centered
+  eyeContainer: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  eyeOuter: {
+    width: 18,
+    height: 11,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  eyeIris: {
+    width: 8,
+    height: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
+    opacity: 0.9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  eyePupil: {
+    width: 4,
+    height: 4,
+    backgroundColor: '#3B82F6',
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  aiSpark: {
+    width: 1.5,
+    height: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 0.75,
+    alignSelf: 'center',
+  },
+
+  // Simple AI indicators around the eye
+  aiIndicator1: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    backgroundColor: '#3B82F6',
+    borderRadius: 1.5,
+    top: 2,
+    left: 2,
+    opacity: 0.8,
+  },
+  aiIndicator2: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 1.5,
+    top: 2,
+    right: 2,
+    opacity: 0.8,
+  },
+  aiIndicator3: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    backgroundColor: '#10B981',
+    borderRadius: 1.5,
+    bottom: 2,
+    left: 10.5,
+    opacity: 0.8,
+  },
+
+  // Floating particles
+  particle: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3B82F6',
+  },
+  particle1: {
+    left: width * 0.2,
+  },
+  particle2: {
+    left: width * 0.7,
+    backgroundColor: '#8B5CF6',
+  },
+  particle3: {
+    left: width * 0.5,
+    backgroundColor: '#10B981',
+  },
+
+  // Spotlight from above effect
+  spotlightContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+  },
+  // Shared gradient style
+  spotlightGradient: {
+    width: '100%',
+    height: '100%',
+  },
+  // Enhanced spotlight layers with tighter cone and smoother gradients
+  spotlightOuter1: {
+    position: 'absolute',
+    top: -height * 0.25,
+    left: width * 0.12,
+    width: width * 0.76,
+    height: height * 1.2,
+    borderRadius: width * 0.38,
+    overflow: 'hidden',
+  },
+  spotlightOuter2: {
+    position: 'absolute',
+    top: -height * 0.22,
+    left: width * 0.16,
+    width: width * 0.68,
+    height: height * 1.0,
+    borderRadius: width * 0.34,
+    overflow: 'hidden',
+  },
+  spotlightMiddle1: {
+    position: 'absolute',
+    top: -height * 0.18,
+    left: width * 0.20,
+    width: width * 0.60,
+    height: height * 0.85,
+    borderRadius: width * 0.30,
+    overflow: 'hidden',
+  },
+  spotlightMiddle2: {
+    position: 'absolute',
+    top: -height * 0.15,
+    left: width * 0.24,
+    width: width * 0.52,
+    height: height * 0.72,
+    borderRadius: width * 0.26,
+    overflow: 'hidden',
+  },
+  spotlightInner1: {
+    position: 'absolute',
+    top: -height * 0.12,
+    left: width * 0.28,
+    width: width * 0.44,
+    height: height * 0.60,
+    borderRadius: width * 0.22,
+    overflow: 'hidden',
+  },
+  spotlightInner2: {
+    position: 'absolute',
+    top: -height * 0.08,
+    left: width * 0.32,
+    width: width * 0.36,
+    height: height * 0.48,
+    borderRadius: width * 0.18,
+    overflow: 'hidden',
+  },
+  // Soft edge blending
+  spotlightBlendLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: width * 0.3,
+    height: height,
+  },
+  spotlightBlendRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: width * 0.3,
+    height: height,
+  },
+  iconWave1: {
+    position: 'absolute',
+    width: 4,
+    height: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+    left: 4,
+  },
+  iconWave2: {
+    position: 'absolute',
+    width: 4,
+    height: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  iconWave3: {
+    position: 'absolute',
+    width: 4,
+    height: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+    right: 4,
+  },
+  iconShield: {
+    width: 20,
+    height: 22,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 2,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+  },
+  iconCheck: {
+    position: 'absolute',
+    width: 8,
+    height: 4,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: '#FFFFFF',
+    transform: [{ rotate: '-45deg' }],
+    top: 8,
   },
 
   // Permissions
-  permissionsContainer: {
-    margin: 20,
-    padding: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 20,
+  permissionsSection: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  permissionsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#94A3B8',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  permissionItems: {
+  permissionRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
   },
   permissionItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
   },
-  permissionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+  permissionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 8,
   },
   permissionText: {
     fontSize: 12,
     color: '#64748B',
     fontWeight: '600',
   },
+  permissionDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginHorizontal: 16,
+  },
 
-  // CTA Section
+  // CTA Button
   ctaContainer: {
     position: 'absolute',
     bottom: 0,
@@ -934,35 +1389,96 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 30,
     paddingTop: 20,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(10, 14, 39, 0.95)',
   },
   ctaButton: {
-    borderRadius: 20,
+    borderRadius: 14,
     overflow: 'hidden',
-    elevation: 10,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
   },
   ctaGradient: {
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+  },
+  ctaContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 32,
   },
   ctaText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginRight: 8,
+    letterSpacing: 0.5,
   },
   ctaArrow: {
-    fontSize: 20,
-    color: '#FFFFFF',
-    fontWeight: '700',
+    marginLeft: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  arrowLine: {
+    width: 16,
+    height: 2,
+    backgroundColor: '#FFFFFF',
+  },
+  arrowHead: {
+    width: 8,
+    height: 8,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderColor: '#FFFFFF',
+    transform: [{ rotate: '45deg' }],
+    marginLeft: -5,
+  },
+
+  // Settings button
+  settingsButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  settingsButtonTouch: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  settingsButtonGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+  },
+  settingsIcon: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsGear: {
+    width: 16,
+    height: 16,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 8,
+  },
+  settingsTooth1: {
+    position: 'absolute',
+    width: 3,
+    height: 2,
+    backgroundColor: '#FFFFFF',
+    top: -1,
+    left: 8.5,
+  },
+  settingsTooth2: {
+    position: 'absolute',
+    width: 2,
+    height: 3,
+    backgroundColor: '#FFFFFF',
+    left: -1,
+    top: 8.5,
   },
 });
