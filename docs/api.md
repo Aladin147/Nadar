@@ -190,4 +190,3 @@ Response:
 - Prefer `followupToken` over "last" for follow-up calls to ensure correct image reference
 - `tokenUsage` appears when the provider returns usage metadata (Gemini)
 - ElevenLabs defaults to Flash v2.5 (low latency, lower cost); see docs/costs.md
-

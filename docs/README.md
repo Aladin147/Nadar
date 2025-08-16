@@ -9,6 +9,7 @@ Authoritative documentation for architecture, API, costs, telemetry, and mobile 
 - costs.md — Pricing assumptions and cost tracking
 - telemetry.md — Metrics and schema (timing, tokenUsage, error codes)
 - mobile-setup.md — Mobile setup and testing (canonical)
+- style-guide.md — Documentation standards and formatting rules
 
 ## Legacy (MVP Archive)
 
@@ -22,4 +23,3 @@ Authoritative documentation for architecture, API, costs, telemetry, and mobile 
 
 - Prefer the “authoritative” docs for current behavior.
 - Legacy content is retained for historical context.
-

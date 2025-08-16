@@ -58,8 +58,8 @@ This README provides a technical overview for developers: architecture, setup, b
   - src/
     - utils/, scripts/, telemetry, cost analysis tools
 - shared/ — Shared core business logic & providers
-- docs/ — architecture, API reference, costs, telemetry
-- README-MOBILE.md — mobile testing & setup guide (see also docs/mobile-setup.md)
+- docs/ — architecture, API reference, costs, telemetry (see docs/README.md)
+- README-MOBILE.md — mobile testing & setup guide (canonical: docs/mobile-setup.md)
 
 ---
 
@@ -194,30 +194,23 @@ Mobile connectivity
 
 ## HTTP API (server)
 
-Base URL: http://HOST:4000 (example)
+Base URL: `http://HOST:4000` (example)
 
 - GET /health → { ok: true }
 
+**Note**: Current production API uses `/api/*-shared` endpoints. See `docs/api.md` for complete reference.
+
+Legacy server endpoints (if running locally):
+
 - POST /describe
-  - { imageBase64: string, mimeType?: string, options?: { language?: 'darija'|'ar'|'en', verbosity?: 'brief'|'normal'|'detailed' } }
-  - → { text: string, timings?, tokens?, structured? }
-
 - POST /ocr
-  - { imageBase64: string, mimeType?: string, options?: ... }
-  - → { text: string, timings? }
-
 - POST /qa
-  - { imageBase64: string, question: string, mimeType?: string, options?: ... }
-  - → { text: string, timings? }
-
 - POST /tts
-  - { text: string, voice?: string, provider?: 'gemini'|'elevenlabs' }
-  - → { audioBase64: string, mimeType?: string }
 
-Notes
+Notes:
 
 - Requests enforce timeouts to keep latency predictable
-- Inputs validated with zod schemas (server/src/routes/schemas.ts)
+- Current production uses shared-core architecture with Vercel serverless endpoints
 - HybridProvider decides how to serve TTS (Gemini primary; ElevenLabs if configured)
 
 ---

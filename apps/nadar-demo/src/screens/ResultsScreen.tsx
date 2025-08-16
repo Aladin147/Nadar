@@ -9,7 +9,11 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
-  Dimensions
+  Dimensions,
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -34,6 +38,8 @@ interface Props {
   route: ResultsScreenRouteProp;
 }
 
+const { width, height } = Dimensions.get('window');
+
 export default function ResultsScreen({ navigation, route }: Props) {
   const { response, sessionId } = route.params;
   const [isPlayingTTS, setIsPlayingTTS] = useState(false);
@@ -42,17 +48,140 @@ export default function ResultsScreen({ navigation, route }: Props) {
   const [isRecordingFollowup, setIsRecordingFollowup] = useState(false);
   const [isProcessingFollowup, setIsProcessingFollowup] = useState(false);
   const [showCostTracker, setShowCostTracker] = useState(false);
+  const [selectedChip, setSelectedChip] = useState<number | null>(null);
   const audioRef = useRef<AudioPlayerRef['current']>(null);
   const audioPlayer = useRef(new AudioPlayer({ current: null }));
+
+  // Animation values - much slower and subtler
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  
+  // Individual element animations
+  const responseCardAnim = useRef(new Animated.Value(50)).current;
+  const followupCardAnim = useRef(new Animated.Value(50)).current;
+  const chip1Anim = useRef(new Animated.Value(20)).current;
+  const chip2Anim = useRef(new Animated.Value(20)).current;
+  const chip3Anim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     // Initialize audio player
     audioPlayer.current.initialize();
 
+    // Entrance animations - very gentle
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 20,
+        useNativeDriver: true,
+      }),
+      Animated.timing(responseCardAnim, {
+        toValue: 0,
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Follow-up card slides in after main card
+      Animated.parallel([
+        Animated.timing(followupCardAnim, {
+          toValue: 0,
+          duration: 600,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        // Stagger chip animations
+        Animated.stagger(100, [
+          Animated.spring(chip1Anim, {
+            toValue: 0,
+            friction: 10,
+            tension: 30,
+            useNativeDriver: true,
+          }),
+          Animated.spring(chip2Anim, {
+            toValue: 0,
+            friction: 10,
+            tension: 30,
+            useNativeDriver: true,
+          }),
+          Animated.spring(chip3Anim, {
+            toValue: 0,
+            friction: 10,
+            tension: 30,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    });
+
+    // Very subtle continuous animations
+    const floatAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -5,
+          duration: 4000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 4000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.02,
+          duration: 3000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const shimmerAnimation = Animated.loop(
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 5000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+
+    floatAnimation.start();
+    pulseAnimation.start();
+    shimmerAnimation.start();
+
     // Auto-play TTS for the main response
     if (response?.speak) {
       playTTS(response.speak);
     }
+
+    return () => {
+      floatAnimation.stop();
+      pulseAnimation.stop();
+      shimmerAnimation.stop();
+    };
   }, [response]);
 
   const playTTS = async (text: string) => {
@@ -60,37 +189,20 @@ export default function ResultsScreen({ navigation, route }: Props) {
 
     try {
       setIsPlayingTTS(true);
-      console.log('🎵 Playing TTS for:', text.substring(0, 50) + '...');
-
-      // Ensure audio player is initialized
       await audioPlayer.current.initialize();
-
       const ttsResult = await tts(text, 'Kore', 'elevenlabs');
-      console.log('🔊 TTS result received, mime type:', ttsResult.mimeType);
-
       await audioPlayer.current.playAudio(ttsResult.audioBase64, ttsResult.mimeType);
-
-      console.log('✅ TTS playback completed');
     } catch (error) {
-      console.error('❌ TTS playback failed:', error);
-
-      // Show a brief user-friendly message for audio issues
-      if (error.message?.includes('Native audio modules')) {
-        console.log('ℹ️ Audio playback not available on this device');
-      }
-      // Don't show error to user - TTS failure shouldn't block the demo
+      console.error('TTS playback failed:', error);
     } finally {
       setIsPlayingTTS(false);
     }
   };
 
-  const handleFollowupChip = async (question: string) => {
+  const handleFollowupChip = async (question: string, index: number) => {
+    setSelectedChip(index);
     try {
       setIsProcessingFollowup(true);
-      console.log('🔄 Processing follow-up question:', question);
-      console.log('🎫 Using followupToken:', response.followupToken);
-
-      // Use the actual followupToken from the response, fallback to 'last'
       const imageRef = response.followupToken || 'last';
       const followupResult = await assistWithImageRef(
         imageRef,
@@ -99,28 +211,23 @@ export default function ResultsScreen({ navigation, route }: Props) {
         sessionId
       );
 
-      console.log('✅ Follow-up response received:', followupResult.speak.substring(0, 50) + '...');
-
-      // Play TTS for the response
       if (followupResult.speak) {
         await playTTS(followupResult.speak);
       }
 
-      // Show the response in an alert (in a full implementation, you might navigate to a new screen)
       Alert.alert('Follow-up Response', followupResult.speak || 'Response received');
-
     } catch (error) {
-      console.error('❌ Follow-up error:', error);
-      Alert.alert('Error', 'Failed to process follow-up question. Please try again.');
+      Alert.alert('Error', 'Failed to process follow-up question.');
     } finally {
       setIsProcessingFollowup(false);
+      setSelectedChip(null);
     }
   };
 
   const handleTextFollowup = async () => {
     if (!followupText.trim()) return;
     
-    await handleFollowupChip(followupText);
+    await handleFollowupChip(followupText, -1);
     setFollowupText('');
   };
 
@@ -128,9 +235,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
     try {
       setIsRecordingFollowup(true);
       await audioRecorder.startRecording();
-      console.log('🎤 Started recording followup question');
     } catch (error) {
-      console.error('❌ Failed to start followup recording:', error);
       setIsRecordingFollowup(false);
       Alert.alert('Error', 'Failed to start audio recording.');
     }
@@ -143,37 +248,27 @@ export default function ResultsScreen({ navigation, route }: Props) {
 
       if (audioUri) {
         setIsProcessingFollowup(true);
-        console.log('🎤 Processing voice follow-up question...');
-
         const audioBase64 = await audioRecorder.convertToBase64(audioUri);
-
-        // Use the voice follow-up function with audio + imageRef
         const imageRef = response.followupToken || 'last';
         const followupResult = await assistVoiceFollowup(
           imageRef,
           audioBase64,
-          'audio/wav', // Assuming WAV format from recorder
+          'audio/wav',
           { language: 'darija', verbosity: 'brief' },
           sessionId
         );
 
-        console.log('✅ Voice follow-up response received:', followupResult.speak.substring(0, 50) + '...');
-
-        // Play TTS for the response
         if (followupResult.speak) {
           await playTTS(followupResult.speak);
         }
 
-        // Show the response
         Alert.alert('Voice Follow-up Response', followupResult.speak || 'Response received');
-
         setIsProcessingFollowup(false);
       }
     } catch (error) {
-      console.error('❌ Voice follow-up error:', error);
       setIsRecordingFollowup(false);
       setIsProcessingFollowup(false);
-      Alert.alert('Error', 'Failed to process voice follow-up. Please try again.');
+      Alert.alert('Error', 'Failed to process voice follow-up.');
     }
   };
 
@@ -182,61 +277,120 @@ export default function ResultsScreen({ navigation, route }: Props) {
   };
 
   const handleClearMemory = async () => {
-    try {
-      Alert.alert(
-        'Clear Session Memory',
-        'This will clear all conversation history and context. Are you sure?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Clear',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await clearSessionMemory(sessionId);
-                Alert.alert('Success', 'Session memory cleared successfully');
-              } catch (error) {
-                console.error('❌ Clear memory error:', error);
-                Alert.alert('Error', 'Failed to clear session memory');
-              }
+    Alert.alert(
+      'Clear Session Memory',
+      'This will clear all conversation history and context. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearSessionMemory(sessionId);
+              Alert.alert('Success', 'Session memory cleared successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to clear session memory');
             }
           }
-        ]
-      );
-    } catch (error) {
-      console.error('❌ Clear memory dialog error:', error);
-    }
+        }
+      ]
+    );
   };
 
+  const chipAnimations = [chip1Anim, chip2Anim, chip3Anim];
+
   return (
-    <LinearGradient
-      colors={theme.gradients.background.colors}
-      style={styles.container}
-      start={theme.gradients.background.start}
-      end={theme.gradients.background.end}
-    >
+    <View style={styles.container}>
+      {/* Animated gradient background */}
+      <LinearGradient
+        colors={['#0F172A', '#1E293B', '#0F172A']}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+
+      {/* Subtle floating orbs */}
+      <Animated.View
+        style={[
+          styles.orb,
+          styles.orb1,
+          {
+            transform: [
+              { translateY: floatAnim },
+              { scale: pulseAnim }
+            ],
+            opacity: 0.05,
+          }
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.orb,
+          styles.orb2,
+          {
+            transform: [
+              { translateY: Animated.multiply(floatAnim, -1) },
+              { scale: pulseAnim }
+            ],
+            opacity: 0.05,
+          }
+        ]}
+      />
+
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
+        {/* Premium Header */}
         <View style={styles.header}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={styles.headerButton}
             onPress={() => navigation.navigate('Welcome')}
           >
-            <Text style={styles.backButtonText}>← Home</Text>
+            <LinearGradient
+              colors={['rgba(59, 130, 246, 0.1)', 'rgba(59, 130, 246, 0.05)']}
+              style={styles.headerButtonGradient}
+            >
+              <Text style={styles.headerButtonText}>←</Text>
+            </LinearGradient>
           </TouchableOpacity>
-          <Text style={styles.title}>Results</Text>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>AI Analysis</Text>
+            <Animated.View style={[styles.headerSubtitle, { opacity: fadeAnim }]}>
+              <View style={styles.sessionIndicator}>
+                <Animated.View style={[
+                  styles.sessionDot,
+                  {
+                    transform: [{ scale: pulseAnim }],
+                    backgroundColor: '#10B981',
+                  }
+                ]} />
+                <Text style={styles.sessionText}>Session Active</Text>
+              </View>
+            </Animated.View>
+          </View>
+
           <View style={styles.headerActions}>
             <TouchableOpacity
-              style={styles.clearMemoryButton}
+              style={styles.headerButton}
               onPress={handleClearMemory}
             >
-              <Text style={styles.clearMemoryButtonText}>🧹</Text>
+              <LinearGradient
+                colors={['rgba(239, 68, 68, 0.1)', 'rgba(239, 68, 68, 0.05)']}
+                style={styles.headerButtonGradient}
+              >
+                <Text style={styles.headerButtonIcon}>🗑️</Text>
+              </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.newCaptureButton}
+              style={styles.headerButton}
               onPress={handleNewCapture}
             >
-              <Text style={styles.newCaptureButtonText}>📷 New</Text>
+              <LinearGradient
+                colors={['rgba(34, 197, 94, 0.1)', 'rgba(34, 197, 94, 0.05)']}
+                style={styles.headerButtonGradient}
+              >
+                <Text style={styles.headerButtonIcon}>+</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -244,157 +398,279 @@ export default function ResultsScreen({ navigation, route }: Props) {
         {/* Cost Tracker Display */}
         <CompactCostDisplay onPress={() => setShowCostTracker(true)} />
 
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-        {/* Main Response Card */}
-        <View style={styles.responseCard}>
-          {/* Response Header with Icon */}
-          <View style={styles.responseHeader}>
-            <View style={styles.responseIconContainer}>
-              <Text style={styles.responseIcon}>🤖</Text>
-            </View>
-            <View style={styles.responseHeaderText}>
-              <Text style={styles.responseTitle}>AI Response</Text>
-              {isPlayingTTS && (
-                <View style={styles.ttsIndicator}>
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                  <Text style={styles.ttsIndicatorText}>Playing audio...</Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Main Response Text */}
-          <View style={styles.responseContent}>
-            <Text style={styles.responseText}>{response.speak}</Text>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.responseActions}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.replayButton]}
-              onPress={() => playTTS(response.speak)}
-              disabled={isPlayingTTS}
-            >
-              <Text style={styles.actionButtonIcon}>🔊</Text>
-              <Text style={styles.actionButtonText}>Replay</Text>
-            </TouchableOpacity>
-
-            {/* Details Toggle */}
-            {response.details && response.details.length > 0 && (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.detailsButton]}
-                onPress={() => setShowDetails(!showDetails)}
-              >
-                <Text style={styles.actionButtonIcon}>📋</Text>
-                <Text style={styles.actionButtonText}>
-                  {showDetails ? 'Hide Details' : 'Show Details'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Details Section */}
-          {showDetails && response.details && (
-            <View style={styles.detailsContainer}>
-              <Text style={styles.detailsTitle}>Additional Details</Text>
-              {response.details.map((detail: string, index: number) => (
-                <View key={index} style={styles.detailItem}>
-                  <Text style={styles.detailBullet}>•</Text>
-                  <Text style={styles.detailText}>{detail}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Follow-up Section */}
-        <View style={styles.followupCard}>
-          {/* Section Header */}
-          <View style={styles.followupHeader}>
-            <View style={styles.followupIconContainer}>
-              <Text style={styles.followupIcon}>💬</Text>
-            </View>
-            <Text style={styles.followupTitle}>Continue the Conversation</Text>
-          </View>
-
-          {/* Suggested Questions */}
-          {response.followup_suggest && response.followup_suggest.length > 0 && (
-            <View style={styles.suggestedSection}>
-              <Text style={styles.suggestedTitle}>Quick Questions</Text>
-              <View style={styles.suggestedGrid}>
-                {response.followup_suggest.map((suggestion: string, index: number) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionChip}
-                    onPress={() => handleFollowupChip(suggestion)}
-                    disabled={isProcessingFollowup}
-                  >
-                    <Text style={styles.suggestionText}>{suggestion}</Text>
-                    <Text style={styles.suggestionArrow}>→</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Custom Question Input */}
-          <View style={styles.customQuestionSection}>
-            <Text style={styles.customQuestionTitle}>Ask Your Own Question</Text>
-
-            {/* Text Input Area */}
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Type your question here..."
-                placeholderTextColor={theme.colors.textMut}
-                value={followupText}
-                onChangeText={setFollowupText}
-                multiline
-                editable={!isProcessingFollowup}
-              />
-              <TouchableOpacity
-                style={[styles.sendButton, !followupText.trim() && styles.sendButtonDisabled]}
-                onPress={handleTextFollowup}
-                disabled={!followupText.trim() || isProcessingFollowup}
-              >
-                {isProcessingFollowup ? (
-                  <ActivityIndicator size="small" color={theme.colors.text} />
-                ) : (
-                  <Text style={styles.sendButtonText}>Send</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Voice Input Button */}
-            <TouchableOpacity
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+          >
+            {/* Main Response Card - Premium Design */}
+            <Animated.View
               style={[
-                styles.voiceInputButton,
-                isRecordingFollowup && styles.voiceInputButtonActive
+                styles.responseCard,
+                {
+                  opacity: fadeAnim,
+                  transform: [
+                    { translateY: responseCardAnim },
+                    { scale: scaleAnim },
+                    { translateY: floatAnim }
+                  ]
+                }
               ]}
-              onPress={isRecordingFollowup ? stopVoiceFollowup : startVoiceFollowup}
-              disabled={isProcessingFollowup}
             >
-              <View style={styles.voiceInputContent}>
-                {isRecordingFollowup ? (
-                  <>
-                    <ActivityIndicator size="small" color={theme.colors.text} />
-                    <Text style={styles.voiceInputText}>🔴 Recording... Tap to stop</Text>
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.voiceInputIcon}>🎤</Text>
-                    <Text style={styles.voiceInputText}>Ask with Voice</Text>
-                  </>
+              <LinearGradient
+                colors={['rgba(59, 130, 246, 0.08)', 'rgba(59, 130, 246, 0.02)']}
+                style={styles.cardGradient}
+              >
+                {/* Card Header with Animation */}
+                <View style={styles.responseHeader}>
+                  <View style={styles.responseAvatarContainer}>
+                    <LinearGradient
+                      colors={['#60A5FA', '#3B82F6', '#2563EB']}
+                      style={styles.responseAvatar}
+                    >
+                      <Text style={styles.responseAvatarEmoji}>🤖</Text>
+                    </LinearGradient>
+                    {isPlayingTTS && (
+                      <Animated.View style={[
+                        styles.audioWave,
+                        {
+                          transform: [{ scale: pulseAnim }],
+                          opacity: pulseAnim.interpolate({
+                            inputRange: [1, 1.02],
+                            outputRange: [0.6, 0.2],
+                          })
+                        }
+                      ]} />
+                    )}
+                  </View>
+                  
+                  <View style={styles.responseHeaderContent}>
+                    <Text style={styles.responseLabel}>Nadar Response</Text>
+                    {isPlayingTTS && (
+                      <View style={styles.playingIndicator}>
+                        <ActivityIndicator size="small" color="#3B82F6" />
+                        <Text style={styles.playingText}>Speaking...</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.detailsToggle}
+                    onPress={() => setShowDetails(!showDetails)}
+                  >
+                    <LinearGradient
+                      colors={['rgba(148, 163, 184, 0.1)', 'rgba(148, 163, 184, 0.05)']}
+                      style={styles.detailsToggleGradient}
+                    >
+                      <Text style={styles.detailsToggleText}>
+                        {showDetails ? '−' : '+'}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Main Response Text */}
+                <View style={styles.responseBody}>
+                  <Text style={styles.responseText}>{response.speak}</Text>
+                </View>
+
+                {/* Details Section with Animation */}
+                {showDetails && response.details && response.details.length > 0 && (
+                  <Animated.View style={[styles.detailsSection, { opacity: fadeAnim }]}>
+                    <View style={styles.detailsDivider} />
+                    {response.details.map((detail: string, index: number) => (
+                      <View key={index} style={styles.detailItem}>
+                        <View style={styles.detailBullet}>
+                          <LinearGradient
+                            colors={['#60A5FA', '#3B82F6']}
+                            style={styles.detailBulletGradient}
+                          />
+                        </View>
+                        <Text style={styles.detailText}>{detail}</Text>
+                      </View>
+                    ))}
+                  </Animated.View>
                 )}
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-        </ScrollView>
+
+                {/* Action Buttons */}
+                <View style={styles.responseActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => playTTS(response.speak)}
+                    disabled={isPlayingTTS}
+                  >
+                    <LinearGradient
+                      colors={isPlayingTTS ? 
+                        ['rgba(148, 163, 184, 0.1)', 'rgba(148, 163, 184, 0.05)'] :
+                        ['rgba(59, 130, 246, 0.2)', 'rgba(59, 130, 246, 0.1)']}
+                      style={styles.actionButtonGradient}
+                    >
+                      <Text style={styles.actionButtonIcon}>🔊</Text>
+                      <Text style={styles.actionButtonText}>Replay</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {response.signals?.has_text && (
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => {/* Handle read text */}}
+                    >
+                      <LinearGradient
+                        colors={['rgba(168, 85, 247, 0.2)', 'rgba(168, 85, 247, 0.1)']}
+                        style={styles.actionButtonGradient}
+                      >
+                        <Text style={styles.actionButtonIcon}>📖</Text>
+                        <Text style={styles.actionButtonText}>Read Text</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </LinearGradient>
+            </Animated.View>
+
+            {/* Follow-up Section - Premium Design */}
+            <Animated.View
+              style={[
+                styles.followupCard,
+                {
+                  opacity: fadeAnim,
+                  transform: [
+                    { translateY: followupCardAnim },
+                    { scale: scaleAnim }
+                  ]
+                }
+              ]}
+            >
+              <LinearGradient
+                colors={['rgba(168, 85, 247, 0.05)', 'rgba(168, 85, 247, 0.02)']}
+                style={styles.cardGradient}
+              >
+                <View style={styles.followupHeader}>
+                  <View style={styles.followupIconContainer}>
+                    <LinearGradient
+                      colors={['#C084FC', '#A855F7']}
+                      style={styles.followupIcon}
+                    >
+                      <Text style={styles.followupIconEmoji}>💬</Text>
+                    </LinearGradient>
+                  </View>
+                  <Text style={styles.followupTitle}>Continue Conversation</Text>
+                </View>
+
+                {/* Suggested Questions with Premium Chips */}
+                {response.followup_suggest && response.followup_suggest.length > 0 && (
+                  <View style={styles.suggestedQuestions}>
+                    {response.followup_suggest.slice(0, 3).map((suggestion: string, index: number) => (
+                      <Animated.View
+                        key={index}
+                        style={[
+                          { transform: [{ translateX: chipAnimations[index] || 0 }] }
+                        ]}
+                      >
+                        <TouchableOpacity
+                          style={[
+                            styles.suggestionChip,
+                            selectedChip === index && styles.suggestionChipActive
+                          ]}
+                          onPress={() => handleFollowupChip(suggestion, index)}
+                          disabled={isProcessingFollowup}
+                          activeOpacity={0.7}
+                        >
+                          <LinearGradient
+                            colors={selectedChip === index ?
+                              ['rgba(59, 130, 246, 0.3)', 'rgba(59, 130, 246, 0.2)'] :
+                              ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+                            style={styles.chipGradient}
+                          >
+                            <Text style={styles.suggestionText}>{suggestion}</Text>
+                            {selectedChip === index && isProcessingFollowup ? (
+                              <ActivityIndicator size="small" color="#3B82F6" />
+                            ) : (
+                              <Text style={styles.suggestionArrow}>→</Text>
+                            )}
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      </Animated.View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Custom Input Section */}
+                <View style={styles.inputSection}>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Ask anything..."
+                      placeholderTextColor="rgba(148, 163, 184, 0.5)"
+                      value={followupText}
+                      onChangeText={setFollowupText}
+                      multiline
+                      editable={!isProcessingFollowup}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.sendButton,
+                        (!followupText.trim() || isProcessingFollowup) && styles.sendButtonDisabled
+                      ]}
+                      onPress={handleTextFollowup}
+                      disabled={!followupText.trim() || isProcessingFollowup}
+                    >
+                      <LinearGradient
+                        colors={followupText.trim() && !isProcessingFollowup ?
+                          ['#3B82F6', '#2563EB'] :
+                          ['#475569', '#334155']}
+                        style={styles.sendButtonGradient}
+                      >
+                        {isProcessingFollowup ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.sendButtonText}>↑</Text>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Voice Button */}
+                  <TouchableOpacity
+                    style={styles.voiceButton}
+                    onPress={isRecordingFollowup ? stopVoiceFollowup : startVoiceFollowup}
+                    disabled={isProcessingFollowup}
+                    activeOpacity={0.7}
+                  >
+                    <LinearGradient
+                      colors={isRecordingFollowup ?
+                        ['#EF4444', '#DC2626'] :
+                        ['rgba(168, 85, 247, 0.1)', 'rgba(168, 85, 247, 0.05)']}
+                      style={styles.voiceButtonGradient}
+                    >
+                      {isRecordingFollowup ? (
+                        <>
+                          <Animated.View style={[
+                            styles.recordingDot,
+                            {
+                              transform: [{ scale: pulseAnim }]
+                            }
+                          ]} />
+                          <Text style={styles.voiceButtonText}>Recording... Tap to stop</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={styles.voiceButtonIcon}>🎤</Text>
+                          <Text style={styles.voiceButtonText}>Voice Question</Text>
+                        </>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
 
       {/* Cost Tracker Modal */}
@@ -402,318 +678,398 @@ export default function ResultsScreen({ navigation, route }: Props) {
         visible={showCostTracker}
         onClose={() => setShowCostTracker(false)}
       />
-    </LinearGradient>
+    </View>
   );
 }
-
-const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0F172A',
   },
   safeArea: {
     flex: 1,
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
+
+  // Floating orbs
+  orb: {
+    position: 'absolute',
+    borderRadius: 1000,
+  },
+  orb1: {
+    width: 500,
+    height: 500,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    top: -200,
+    right: -200,
+  },
+  orb2: {
+    width: 400,
+    height: 400,
+    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+    bottom: -150,
+    left: -150,
+  },
+
+  // Premium Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing(3),
-    paddingVertical: theme.spacing(2),
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  backButton: {
-    padding: theme.spacing(1),
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  backButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.primary,
+  headerButtonGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtonText: {
+    fontSize: 20,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
-  title: {
-    ...theme.typography.h2,
-    color: theme.colors.text,
+  headerButtonIcon: {
+    fontSize: 18,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sessionIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  sessionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  sessionText: {
+    fontSize: 11,
+    color: '#10B981',
+    fontWeight: '600',
   },
   headerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing(1),
   },
-  clearMemoryButton: {
-    padding: theme.spacing(1),
-  },
-  clearMemoryButtonText: {
-    fontSize: 18,
-  },
-  newCaptureButton: {
-    padding: theme.spacing(1),
-  },
-  newCaptureButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.primary,
-    fontWeight: '600',
-  },
+
+  // Content
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: theme.spacing(3),
-    paddingBottom: theme.spacing(6),
+    padding: 16,
+    paddingBottom: 32,
   },
-  // Response Card Styles
+
+  // Response Card
   responseCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing(4),
-    marginBottom: theme.spacing(4),
+    marginBottom: 16,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    ...theme.shadows.lg,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  cardGradient: {
+    padding: 20,
   },
   responseHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing(3),
+    marginBottom: 16,
   },
-  responseIconContainer: {
+  responseAvatarContainer: {
+    position: 'relative',
+  },
+  responseAvatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
+    borderRadius: 16,
     alignItems: 'center',
-    marginRight: theme.spacing(2),
+    justifyContent: 'center',
   },
-  responseIcon: {
+  responseAvatarEmoji: {
     fontSize: 24,
   },
-  responseHeaderText: {
+  audioWave: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  responseHeaderContent: {
     flex: 1,
+    marginLeft: 12,
   },
-  responseTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.text,
-    fontWeight: '700',
-    marginBottom: theme.spacing(0.5),
+  responseLabel: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginBottom: 2,
   },
-  ttsIndicator: {
+  playingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  ttsIndicatorText: {
-    ...theme.typography.caption,
-    color: theme.colors.primary,
-    marginLeft: theme.spacing(1),
+  playingText: {
+    fontSize: 12,
+    color: '#3B82F6',
+    marginLeft: 6,
     fontWeight: '500',
   },
-  responseContent: {
-    marginBottom: theme.spacing(3),
+  detailsToggle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  detailsToggleGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsToggleText: {
+    fontSize: 20,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  responseBody: {
+    marginBottom: 16,
   },
   responseText: {
-    ...theme.typography.body,
-    fontSize: 18,
-    lineHeight: 28,
-    color: theme.colors.text,
-    textAlign: 'left',
+    fontSize: 17,
+    lineHeight: 26,
+    color: '#E2E8F0',
+    fontWeight: '400',
   },
-  responseActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing(2),
+  detailsSection: {
+    paddingTop: 16,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing(3),
-    paddingVertical: theme.spacing(2),
-    borderRadius: theme.radius.lg,
-    minWidth: 100,
-  },
-  replayButton: {
-    backgroundColor: theme.colors.primary,
-  },
-  detailsButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  actionButtonIcon: {
-    fontSize: 16,
-    marginRight: theme.spacing(1),
-  },
-  actionButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.text,
-    fontWeight: '600',
-  },
-  detailsContainer: {
-    marginTop: theme.spacing(3),
-    paddingTop: theme.spacing(3),
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  detailsTitle: {
-    ...theme.typography.h4,
-    color: theme.colors.text,
-    fontWeight: '600',
-    marginBottom: theme.spacing(2),
+  detailsDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 16,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: theme.spacing(1.5),
+    marginBottom: 12,
   },
   detailBullet: {
-    ...theme.typography.body,
-    color: theme.colors.primary,
-    marginRight: theme.spacing(1),
-    marginTop: 2,
+    width: 20,
+    height: 20,
+    marginRight: 12,
+    marginTop: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailBulletGradient: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   detailText: {
-    ...theme.typography.body,
-    color: theme.colors.textMut,
     flex: 1,
+    fontSize: 15,
     lineHeight: 22,
+    color: '#94A3B8',
   },
-  // Follow-up Card Styles
+  responseActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    marginHorizontal: -4,
+  },
+  actionButton: {
+    margin: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  actionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  actionButtonIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    fontWeight: '600',
+  },
+
+  // Follow-up Card
   followupCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: theme.radius.xl,
-    padding: theme.spacing(4),
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    ...theme.shadows.lg,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   followupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing(3),
+    marginBottom: 20,
   },
   followupIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing(2),
+    marginRight: 12,
   },
   followupIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  followupIconEmoji: {
     fontSize: 20,
   },
   followupTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.text,
+    fontSize: 18,
     fontWeight: '700',
+    color: '#E2E8F0',
   },
-  suggestedSection: {
-    marginBottom: theme.spacing(4),
-  },
-  suggestedTitle: {
-    ...theme.typography.body,
-    fontWeight: '600',
-    color: theme.colors.text,
-    marginBottom: theme.spacing(2),
-  },
-  suggestedGrid: {
-    gap: theme.spacing(2),
+
+  // Suggested Questions
+  suggestedQuestions: {
+    marginBottom: 20,
   },
   suggestionChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(3),
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    marginBottom: 10,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  suggestionChipActive: {
+    transform: [{ scale: 0.98 }],
+  },
+  chipGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
   },
   suggestionText: {
-    ...theme.typography.body,
-    color: theme.colors.text,
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
+    color: '#CBD5E1',
+    fontWeight: '500',
+    marginRight: 12,
   },
   suggestionArrow: {
-    ...theme.typography.body,
-    color: theme.colors.primary,
     fontSize: 18,
+    color: '#60A5FA',
     fontWeight: '600',
   },
-  // Custom Question Input Styles
-  customQuestionSection: {
-    marginTop: theme.spacing(1),
-  },
-  customQuestionTitle: {
-    ...theme.typography.body,
-    fontWeight: '600',
-    color: theme.colors.text,
-    marginBottom: theme.spacing(3),
+
+  // Input Section
+  inputSection: {
+    marginTop: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: theme.spacing(3),
-    gap: theme.spacing(2),
+    marginBottom: 12,
   },
   textInput: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: theme.radius.lg,
-    paddingHorizontal: theme.spacing(3),
-    paddingVertical: theme.spacing(3),
-    maxHeight: 120,
-    ...theme.typography.body,
-    color: theme.colors.text,
-    fontSize: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingTop: 12,
+    fontSize: 15,
+    color: '#E2E8F0',
+    maxHeight: 100,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginRight: 8,
   },
   sendButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing(3),
-    paddingVertical: theme.spacing(3),
-    borderRadius: theme.radius.lg,
-    minWidth: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
   },
   sendButtonDisabled: {
     opacity: 0.5,
   },
+  sendButtonGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sendButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.text,
+    fontSize: 20,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
-  voiceInputButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing(3),
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
+
+  // Voice Button
+  voiceButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
   },
-  voiceInputButtonActive: {
-    backgroundColor: theme.colors.error,
-    borderColor: theme.colors.error,
-  },
-  voiceInputContent: {
+  voiceButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
   },
-  voiceInputIcon: {
+  voiceButtonIcon: {
     fontSize: 20,
-    marginRight: theme.spacing(2),
+    marginRight: 10,
   },
-  voiceInputText: {
-    ...theme.typography.body,
-    color: theme.colors.text,
+  voiceButtonText: {
+    fontSize: 15,
+    color: '#E2E8F0',
     fontWeight: '600',
-    fontSize: 16,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    marginRight: 10,
   },
 });
